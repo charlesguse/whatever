@@ -128,11 +128,11 @@ Single front-end project (unchanged from features 001/002): sim code under `src/
 
 ### Tests for User Story 4
 
-- [ ] T028 [P] [US4] Update `tests/lib/themes/classroom.test.ts` to assert the firefly's label is exactly `"Pencil Sharpener"` and the butterfly's label is exactly `"Paper Airplane"`, and that the two entries remain mutually distinguishable and distinguishable from every other element at the shipped cell size (FR-029)
+- [X] T028 [P] [US4] Update `tests/lib/themes/classroom.test.ts` to assert the firefly's label is exactly `"Pencil Sharpener"` and the butterfly's label is exactly `"Paper Airplane"`, and that the two entries remain mutually distinguishable and distinguishable from every other element at the shipped cell size (FR-029)
 
 ### Implementation for User Story 4
 
-- [ ] T029 [US4] In `src/lib/themes/classroom.ts`, relabel the `firefly` entry to `"Pencil Sharpener"` and the `butterfly` entry to `"Paper Airplane"`, adjusting glyph/color only as needed for distinguishability; touch no other file (FR-029, FR-030, SC-014)
+- [X] T029 [US4] In `src/lib/themes/classroom.ts`, relabel the `firefly` entry to `"Pencil Sharpener"` and the `butterfly` entry to `"Paper Airplane"`, adjusting glyph/color only as needed for distinguishability; touch no other file (FR-029, FR-030, SC-014)
 
 **Checkpoint**: All four user stories independently functional.
 

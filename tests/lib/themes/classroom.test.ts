@@ -22,6 +22,36 @@ describe('classroom theme completeness', () => {
   });
 });
 
+// FR-029, FR-030: the firefly and butterfly labels are corrected now that
+// both elements have behavior, and stay distinguishable from each other and
+// from every other element (appearance-only — no src/sim/ or render change).
+describe('classroom theme enemy labels', () => {
+  it('labels the firefly "Pencil Sharpener"', () => {
+    expect(classroomTheme.elements.firefly.label).toBe('Pencil Sharpener');
+  });
+
+  it('labels the butterfly "Paper Airplane"', () => {
+    expect(classroomTheme.elements.butterfly.label).toBe('Paper Airplane');
+  });
+
+  it('keeps the firefly and butterfly mutually distinguishable', () => {
+    const firefly = classroomTheme.elements.firefly;
+    const butterfly = classroomTheme.elements.butterfly;
+    expect(firefly.glyph === butterfly.glyph && firefly.fillColor === butterfly.fillColor).toBe(false);
+  });
+
+  it('keeps the firefly and butterfly distinguishable from every other element', () => {
+    for (const id of ELEMENT_IDS) {
+      if (id === 'firefly' || id === 'butterfly') continue;
+      const other = classroomTheme.elements[id];
+      for (const enemyId of ['firefly', 'butterfly'] as const) {
+        const enemy = classroomTheme.elements[enemyId];
+        expect(enemy.glyph === other.glyph && enemy.fillColor === other.fillColor).toBe(false);
+      }
+    }
+  });
+});
+
 // FR-024, FR-038, FR-040: the closed door (elements.exit) must be visually
 // identical to a steel wall, and every theme must supply the door's open
 // appearance, both terminal messages, and the readout template.
