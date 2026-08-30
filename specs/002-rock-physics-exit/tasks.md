@@ -96,8 +96,8 @@ Single Svelte/Vite project at the repository root, additive over feature 001's s
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Implement the grab branch in `src/sim/tick.ts`, checked ahead of the normal move/push logic per research.md: when `input.grab` is true, act on the neighboring cell in the pressed direction without moving the kid — `dirt` is cleared, a `diamond` is collected and counted (`state.collected += 1`), and every other content (empty, `boulder`, either wall, `exit` open or closed, out-of-grid) is left untouched; grab never pushes and never enters the door (FR-019–FR-021) (depends on T003, T014)
-- [ ] T020 [P] [US3] Write grab tests in `tests/sim/grab.test.ts`: grabbing dirt clears it without moving the kid; grabbing a gold star collects it and increases the count without moving the kid; grab does nothing against an eraser (never pushes), a wall, the closed door, the open door, and the cave boundary (FR-017–FR-021, FR-046) (depends on T019)
+- [X] T019 [US3] Implement the grab branch in `src/sim/tick.ts`, checked ahead of the normal move/push logic per research.md: when `input.grab` is true, act on the neighboring cell in the pressed direction without moving the kid — `dirt` is cleared, a `diamond` is collected and counted (`state.collected += 1`), and every other content (empty, `boulder`, either wall, `exit` open or closed, out-of-grid) is left untouched; grab never pushes and never enters the door (FR-019–FR-021) (depends on T003, T014)
+- [X] T020 [P] [US3] Write grab tests in `tests/sim/grab.test.ts`: grabbing dirt clears it without moving the kid; grabbing a gold star collects it and increases the count without moving the kid; grab does nothing against an eraser (never pushes), a wall, the closed door, the open door, and the cave boundary (FR-017–FR-021, FR-046) (depends on T019)
 
 **Checkpoint**: All three physics-facing stories (US1, US2, US3) are functional; grab makes US1's hazards survivable without changing US1 or US2's rules.
 
