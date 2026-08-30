@@ -2,20 +2,27 @@ import {
   clearFallingIndex,
   clearMovedFlags,
   cloneGrid,
+  DIRECTION_DELTA,
   getCellIndex,
+  getExplosionContent,
+  getExplosionRemaining,
+  getFacing,
   inBounds,
   isFallingIndex,
   isMoved,
   setCellIndex,
+  setExplosion,
+  setFacing,
   setFallingIndex,
   setMoved,
   setPlayerPosition,
+  type Direction,
   type Grid,
 } from './grid';
-import type { CaveState } from './cave';
+import type { CaveState, CaveStatus, PendingBlast } from './cave';
 import { nextPrng, type PrngState } from './prng';
 
-export type Direction = 'up' | 'down' | 'left' | 'right';
+export type { Direction } from './grid';
 
 export interface TickInput {
   readonly direction?: Direction;
@@ -27,11 +34,39 @@ export interface TickInput {
 // eraser succeeds. Named, not repeated at any call site (FR-015).
 const PUSH_CHANCE = 1 / 8;
 
-const DIRECTION_DELTA: Readonly<Record<Direction, readonly [number, number]>> = {
-  up: [0, -1],
-  down: [0, 1],
-  left: [-1, 0],
-  right: [1, 0],
+const ORTHOGONAL_DIRS = ['up', 'down', 'left', 'right'] as const;
+
+type EnemyId = 'firefly' | 'butterfly';
+
+// FR-018: what each enemy type's own blast leaves behind.
+const ENEMY_BLAST_CONTENT: Readonly<Record<EnemyId, 'empty' | 'diamond'>> = {
+  firefly: 'empty',
+  butterfly: 'diamond',
+};
+
+// Turning 90 degrees relative to a current facing (FR-004, FR-005).
+const TURN_LEFT: Readonly<Record<Direction, Direction>> = {
+  up: 'left',
+  left: 'down',
+  down: 'right',
+  right: 'up',
+};
+const TURN_RIGHT: Readonly<Record<Direction, Direction>> = {
+  up: 'right',
+  right: 'down',
+  down: 'left',
+  left: 'up',
+};
+
+// FR-005: fixed per element id, never per instance — firefly prefers left,
+// butterfly prefers right.
+const PREFERRED_TURN: Readonly<Record<EnemyId, Readonly<Record<Direction, Direction>>>> = {
+  firefly: TURN_LEFT,
+  butterfly: TURN_RIGHT,
+};
+const NON_PREFERRED_TURN: Readonly<Record<EnemyId, Readonly<Record<Direction, Direction>>>> = {
+  firefly: TURN_RIGHT,
+  butterfly: TURN_LEFT,
 };
 
 // Mutable accumulator threaded through one tick's scan — avoids allocating a
@@ -41,7 +76,11 @@ interface TickContext {
   rngState: PrngState;
   collected: number;
   readonly quota: number;
-  status: 'inPlay' | 'dead' | 'completed';
+  status: CaveStatus;
+  // Enemies a blast destroys this tick queue their own blast here, to be
+  // stamped at the very start of next tick (FR-023) — rebuilt fresh every
+  // tick, never appended-to across ticks (data-model.md Cave State).
+  readonly nextPendingBlasts: PendingBlast[];
 }
 
 // The tick function: (grid, input) -> next grid (FR-006, FR-007). Pure —
@@ -52,8 +91,9 @@ interface TickContext {
 // tick — this is what makes stacked bodies resolve over several ticks rather
 // than simultaneously (see CLAUDE.md — do not "simplify" it away).
 export function tick(state: CaveState, input: TickInput): CaveState {
-  // FR-029: once terminal, further ticks are a no-op — no clone, no scan.
-  if (state.status !== 'inPlay') {
+  // FR-015.2/FR-029 (amended): only 'dead'/'completed' are terminal —
+  // 'dying' keeps advancing so a bloom or chain can finish.
+  if (state.status === 'dead' || state.status === 'completed') {
     return state;
   }
 
@@ -66,7 +106,10 @@ export function tick(state: CaveState, input: TickInput): CaveState {
     collected: state.collected,
     quota: state.quota,
     status: state.status,
+    nextPendingBlasts: [],
   };
+
+  ageExplosions(ctx);
 
   for (let y = 0; y < grid.height; y++) {
     for (let x = 0; x < grid.width; x++) {
@@ -76,8 +119,19 @@ export function tick(state: CaveState, input: TickInput): CaveState {
         movePlayer(ctx, x, y, input);
       } else if (id === 'boulder' || id === 'diamond') {
         processBody(ctx, x, y);
+      } else if (id === 'firefly' || id === 'butterfly') {
+        // FR-002: an enemy steps only on an odd post-increment tick number.
+        if ((state.tick + 1) % 2 === 1) {
+          stepEnemy(ctx, x, y, id);
+        }
       }
     }
+  }
+
+  // FR-015.3: the first tick that ends dying with no explosion cell left
+  // anywhere in the grid settles into dead.
+  if (ctx.status === 'dying' && !hasAnyExplosion(grid)) {
+    ctx.status = 'dead';
   }
 
   return {
@@ -89,7 +143,118 @@ export function tick(state: CaveState, input: TickInput): CaveState {
     collected: ctx.collected,
     quota: state.quota,
     status: ctx.status,
+    pendingBlasts: ctx.nextPendingBlasts,
   };
+}
+
+// The once-per-tick explosion age/convert pass (FR-019, FR-020): every cell
+// with a nonzero explosionRemaining ages by exactly one tick; a cell that
+// reaches zero converts to its explosionContent on this same tick, and — only
+// when that content is a gold star — is marked moved-this-tick so it does not
+// also fall/roll on its creation tick.
+function ageExplosions(ctx: TickContext): void {
+  const grid = ctx.grid;
+  for (let y = 0; y < grid.height; y++) {
+    for (let x = 0; x < grid.width; x++) {
+      const remaining = getExplosionRemaining(grid, x, y);
+      if (remaining === 0) continue;
+
+      const content = getExplosionContent(grid, x, y);
+      const next = remaining - 1;
+      if (next === 0) {
+        setExplosion(grid, x, y, 0, content);
+        setCellIndex(grid, x, y, content);
+        if (content === 'diamond') {
+          setMoved(grid, x, y);
+        }
+      } else {
+        setExplosion(grid, x, y, next, content);
+      }
+    }
+  }
+}
+
+function hasAnyExplosion(grid: Grid): boolean {
+  for (let y = 0; y < grid.height; y++) {
+    for (let x = 0; x < grid.width; x++) {
+      if (getExplosionRemaining(grid, x, y) !== 0) return true;
+    }
+  }
+  return false;
+}
+
+// stampBlast (data-model.md Blast/Chain, FR-016–FR-018, FR-021): the one
+// operation every detonation calls. Visits the 3x3 centered on (cx, cy),
+// clipped to the grid — no wrapping, no error at an edge or corner (FR-016).
+// A steel wall or the door (open or closed) is left completely untouched
+// (FR-017); every other visited cell becomes an explosion cell with this
+// blast's content, including the kid's own cell if caught, which is how a
+// death blooms rather than freezing silently — a cell that held 'player'
+// while status was still 'inPlay' also moves the cave into the dying state
+// (FR-015) before being overwritten.
+function stampBlast(ctx: TickContext, cx: number, cy: number, content: 'empty' | 'diamond'): void {
+  const grid = ctx.grid;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const x = cx + dx;
+      const y = cy + dy;
+      if (!inBounds(grid, x, y)) continue;
+
+      const id = getCellIndex(grid, x, y);
+      if (id === 'steelWall' || id === 'exit') continue; // FR-017
+
+      if (id === 'player' && ctx.status === 'inPlay') {
+        ctx.status = 'dying'; // FR-015
+      }
+
+      setCellIndex(grid, x, y, 'explosion');
+      setExplosion(grid, x, y, 2, content); // FR-016, FR-018, FR-019
+    }
+  }
+}
+
+// The wall-follower enemy step (FR-001–FR-009, data-model.md Enemy Step),
+// run for every firefly/butterfly cell not yet processed this tick, on a
+// cadence tick. Detonates instead of moving if the kid is orthogonally
+// adjacent (FR-010); otherwise: preferred-turn side if empty, else straight
+// ahead if empty, else turn 90° toward the non-preferred side in place
+// (FR-004). Facing is read from and written to the grid's facing array only
+// via the grid.ts helpers, never recomputed from anything else (FR-003).
+function stepEnemy(ctx: TickContext, x: number, y: number, id: EnemyId): void {
+  const grid = ctx.grid;
+
+  for (const dir of ORTHOGONAL_DIRS) {
+    const [dx, dy] = DIRECTION_DELTA[dir];
+    const nx = x + dx;
+    const ny = y + dy;
+    if (inBounds(grid, nx, ny) && getCellIndex(grid, nx, ny) === 'player') {
+      stampBlast(ctx, x, y, ENEMY_BLAST_CONTENT[id]); // FR-010
+      return;
+    }
+  }
+
+  const facing = getFacing(grid, x, y);
+
+  const preferredDir = PREFERRED_TURN[id][facing];
+  const [pdx, pdy] = DIRECTION_DELTA[preferredDir];
+  const px = x + pdx;
+  const py = y + pdy;
+  if (inBounds(grid, px, py) && getCellIndex(grid, px, py) === 'empty') {
+    moveContent(grid, x, y, px, py);
+    setFacing(grid, px, py, preferredDir);
+    return;
+  }
+
+  const [fdx, fdy] = DIRECTION_DELTA[facing];
+  const fx = x + fdx;
+  const fy = y + fdy;
+  if (inBounds(grid, fx, fy) && getCellIndex(grid, fx, fy) === 'empty') {
+    moveContent(grid, x, y, fx, fy);
+    setFacing(grid, fx, fy, facing);
+    return;
+  }
+
+  setFacing(grid, x, y, NON_PREFERRED_TURN[id][facing]);
 }
 
 // Moves whatever content is at (fromX, fromY) to (toX, toY): the origin
@@ -130,9 +295,10 @@ function processBody(ctx: TickContext, x: number, y: number): void {
 
   if (belowId === 'player') {
     if (isFallingIndex(grid, x, y)) {
-      moveContent(grid, x, y, x, y + 1);
-      setFallingIndex(grid, x, y + 1);
-      ctx.status = 'dead';
+      // FR-013 (amends feature 002's FR-010): a crushing death blooms too —
+      // the body is destroyed as part of the same blast that overwrites its
+      // own cell, one row above the kid's.
+      stampBlast(ctx, x, y + 1, 'empty');
     }
     return;
   }

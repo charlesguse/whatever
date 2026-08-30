@@ -13,7 +13,7 @@ describe('terminal status freezes the cave (FR-028–FR-030)', () => {
       S.P.S
       SSSSS
     `);
-    const dead = runTicks(state, 2);
+    const dead = runTicks(state, 4); // FR-019: a crush blooms, then settles dead 2 ticks later
     expect(getStatus(dead)).toBe('dead');
 
     const before = asciiFromState(dead);
@@ -79,16 +79,19 @@ describe('restart rebuilds the cave from its definition (FR-031–FR-032)', () =
       quota: 0,
       rows: ['SSSSS', 'S.o.S', 'S...S', 'S.P.S', 'SSSSS'],
     });
+    // FR-019: a crush blooms, then settles dead 2 ticks later — 4 ticks total.
+    const tick4 = (s: CaveState): CaveState => tick(tick(tick(tick(s, {}), {}), {}), {});
+
     const original = parseCave(deadCave);
-    const dead = tick(tick(original, {}), {});
+    const dead = tick4(original);
     expect(getStatus(dead)).toBe('dead');
 
     const restarted = parseCave(deadCave);
     expect(getStatus(restarted)).toBe('inPlay');
     expect(asciiFromState(restarted)).toBe(asciiFromState(original));
 
-    const deadReplay = tick(tick(original, {}), {});
-    const restartedReplay = tick(tick(restarted, {}), {});
+    const deadReplay = tick4(original);
+    const restartedReplay = tick4(restarted);
     expect(asciiFromState(restartedReplay)).toBe(asciiFromState(deadReplay));
     expect(getStatus(restartedReplay)).toBe('dead');
   });
