@@ -13,8 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain — the three original markers are
-      resolved; one new marker on FR-034 is open (see Notes)
+- [x] No [NEEDS CLARIFICATION] markers remain — all four are resolved (see Notes)
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -50,16 +49,20 @@
      firefly keeps "Pencil Sharpener" from feature 003; the magic wall gets the
      image the request was reaching for without re-settling names one feature
      later. One line of theme data, no simulation change.
-- One new [NEEDS CLARIFICATION] marker is opened, on **FR-034**, and it is the
-  only thing left blocking this spec. The reply's aside on FR-032 asks that a
-  dormant wall and a spent one be distinguishable, "since a player has to be able
-  to tell 'not started yet' from 'already used up'". That contradicts FR-034 and
-  the assumption behind it, which make the two deliberately identical because the
-  uncertainty is the decision the wall exists to create. It is reopened rather
-  than flipped silently because it is not a detail: it decides whether the theme
-  carries two magic wall entries or three, and it inverts one of the criteria the
-  maintainer verifies at review time. Either answer keeps the appearance in theme
-  data, so nothing downstream of the theme contract is blocked on it.
+- A fourth marker was opened on **FR-034** — whether a dormant wall and a spent
+  one should be distinguishable — and is now resolved by a second reply on the
+  issue: **FR-034 stands**. The reply withdrew its own earlier aside; the
+  ambiguity is the mechanic rather than a UI defect, as in the arcade original,
+  and making the two states legible would degrade the wall into a status
+  readout. So the theme carries **two** magic wall entries (inert and active),
+  not three, and the maintainer-verified criterion stays as written. Because the
+  inert entry now covers two distinct simulation states, the reply's
+  implementation note is folded in as **FR-034a**: nothing the shell ships may
+  leak the difference by another route — label, tooltip, accessibility text, or
+  debug overlay — and FR-036's phase accessor exists only to select the active
+  theme entry, never to answer the question the theme refuses to answer. SC-013
+  and the maintainer-verified criterion are extended to cover the leak.
+- No [NEEDS CLARIFICATION] markers remain, and nothing is blocking this spec.
 - Every other ambiguity in the request was resolved by picking a behavior and
   recording it in Assumptions, per the constitution's instruction that a spec
   picks, states, and tests rather than leaving a rule to chance. Each pick has a

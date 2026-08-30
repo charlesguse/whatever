@@ -8,9 +8,12 @@
 
 **Input**: GitHub issue #4 — "Amoeba, magic wall, and expanding wall": the last
 three elements of the declared set, and the two most interesting decisions in
-the game. Plus the clarification reply on the same issue, settling the amoeba's
-growth rate as a per-cell probability, the fate of a body converted with no room
-below the wall, and the Classroom name for the magic wall.
+the game. Plus the clarification replies on the same issue, settling the
+amoeba's growth rate as a per-cell probability, the fate of a body converted
+with no room below the wall, the Classroom name for the magic wall, and — on a
+second pass — that a dormant magic wall and a spent one stay deliberately
+indistinguishable, with the shell forbidden from leaking the difference by any
+other route.
 
 The cave stops being a static puzzle and starts pushing back. A blob of spilled
 glue creeps through the notebook paper, eating the room a player was counting
@@ -422,17 +425,18 @@ tick in each direction and stopped dead against the obstruction at each end.
 - **FR-034**: A dormant magic wall and a dead one MUST be drawn identically. A
   player MUST NOT be able to tell from the wall alone whether it has already been
   spent — that uncertainty is part of the decision the wall exists to create.
-  [NEEDS CLARIFICATION: the clarification reply's aside on FR-032 asks that
-  dormant and spent be distinguishable, "since a player has to be able to tell
-  'not started yet' from 'already used up'", which contradicts this requirement
-  and the assumption behind it. Which stands? (a) keep FR-034 — dormant and dead
-  are drawn identically, the theme carries two magic wall entries (inert and
-  active), and the suspense is the point; (b) drop FR-034 — the theme carries
-  three entries (dormant, active, spent), FR-036's read-only phase accessor
-  already exposes all three, and the maintainer-verified criterion about a
-  dormant and a dead wall being indistinguishable is removed. Either way the
-  appearance stays theme data and the renderer MUST NOT branch on phase itself
-  beyond selecting the theme entry the accessor names.]
+  The theme therefore carries exactly **two** magic wall entries, **inert** and
+  **active** (FR-033): the inert entry covers both the dormant and the dead
+  phase, and the renderer MUST NOT branch on phase itself beyond selecting
+  between those two entries.
+- **FR-034a**: Nothing the shell ships MAY reveal, by any route, whether an
+  inert-looking magic wall is dormant or dead — not the glyph, not the label,
+  not a tooltip, not accessibility text, not a shipped debug overlay, and not
+  any other user-visible or assistive output. FR-036's read-only phase accessor
+  exists so the renderer can select the active entry while a wall is running; it
+  MUST NOT become a way for the UI to answer the question the theme deliberately
+  refuses to answer. A leak here is not a cosmetic slip — it silently deletes
+  the mechanic FR-034 exists to protect.
 - **FR-035**: Adding a further theme MUST still require only a new entry in the
   theme registry, these three elements and the active-wall field included, with
   no simulation and no drawing-logic change.
@@ -442,7 +446,9 @@ tick in each direction and stopped dead against the obstruction at each end.
 - **FR-036**: The simulation MUST expose the magic wall's current phase as a
   read-only accessor, in the same style as the existing accessors, for the
   renderer's use under FR-033. Nothing outside the simulation may write it, and
-  the shell MUST NOT track the phase itself.
+  the shell MUST NOT track the phase itself. The shell's only use of the
+  accessor is choosing between the inert and active theme entries; it MUST NOT
+  distinguish dormant from dead in anything it shows the player (FR-034a).
 - **FR-037**: The simulation MUST still contain no wall-clock time, no page or
   browser access, and no randomness other than its own seeded generator. Amoeba
   growth becomes that generator's **second** consumer alongside push resolution;
@@ -595,7 +601,10 @@ tick in each direction and stopped dead against the obstruction at each end.
   growth over a run of at least 1000 ticks.
 - **SC-013**: The active magic wall's appearance comes from theme data only:
   zero simulation files and zero drawing-logic branches on theme identity,
-  verified by inspecting the change.
+  verified by inspecting the change. The theme carries exactly two magic wall
+  entries, and the shell surfaces zero user-visible or assistive differences
+  between a dormant wall and a dead one — glyph, label, tooltip, accessibility
+  text, or shipped debug overlay (FR-034a) — likewise verified by inspection.
 - **SC-014**: The automated suite passes with no browser present and covers
   every case listed in FR-039.
 
@@ -616,9 +625,9 @@ review knows what to look at:
   clock is ticking" rather than "this wall is a different color" — and its
   duration reads as "a few seconds" rather than as an instant or an eternity.
 - A dormant wall and a dead one are genuinely indistinguishable (FR-034), and
-  that reads as suspense rather than as a bug — subject to the open question on
-  FR-034, which may replace this with the opposite check: that a player can tell
-  "not started yet" from "already used up" at a glance.
+  that reads as suspense rather than as a bug. Worth checking with the whole
+  shell running, not just the canvas: no label, tooltip, accessibility text, or
+  debug overlay gives the phase away (FR-034a).
 - Expanding wall growth at one cell per tick reads as menacing rather than
   either imperceptible or unfair.
 - The shipped cave teaches all three without a tutorial: the glue should be met
@@ -694,12 +703,17 @@ review knows what to look at:
   (FR-019). "A few seconds" at the shipped tick rate of 8 ticks per second makes
   the default 40 ticks — five seconds — which is the shipped default until
   review says otherwise.
-- **A dormant wall and a dead wall look the same** (FR-034). The request only
-  distinguishes them by behavior, and the uncertainty is the interesting part:
-  a player who cannot tell whether a wall is spent has a decision to make. The
-  clarification reply's aside asks for the opposite, so this one is reopened as
-  the marker on FR-034 rather than silently flipped — it decides whether the
-  theme carries two magic wall entries or three.
+- **A dormant wall and a dead wall look the same** (FR-034), confirmed by the
+  clarification reply. The request only distinguishes them by behavior, and the
+  uncertainty is the interesting part: a player who cannot tell whether a wall is
+  spent has a decision to make. The reply's earlier aside asked for the opposite
+  on the reflex that ambiguous state is a UI defect, and withdrew it — here the
+  ambiguity is the mechanic, as it is in the arcade original, and making the two
+  states legible would degrade the wall into a status readout. Guessing wrong
+  costs a cave; that is the price of the bet, not a usability failure. So the
+  theme carries two magic wall entries, not three — and because the inert entry
+  now covers two distinct simulation states, FR-034a forbids the shell leaking
+  the difference by any other route.
 - **The magic wall is the Classroom's "Sticker Machine"** (FR-032), per the
   clarification reply. The firefly keeps "Pencil Sharpener" from feature 003;
   renaming it a feature later would churn the same theme data twice for no gain.
