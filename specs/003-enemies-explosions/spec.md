@@ -7,7 +7,9 @@
 **Status**: Draft
 
 **Input**: GitHub issue #3 — "Fireflies, butterflies, and explosions", plus the
-maintainer's follow-up comment settling the Classroom naming of the two enemies.
+maintainer's follow-up comment settling the Classroom naming of the two enemies,
+and the clarification reply on the same issue settling the crushing death, the
+door's survival, chain propagation, and the dying state it implies.
 
 The tunnels get inhabitants, and the game gets its signature scoring trick.
 Pencil sharpeners buzz along the walls of the tunnels and paper airplanes patrol
@@ -38,7 +40,8 @@ there to detonate.
 loop and a paper airplane on another, run a fixed number of ticks with no input,
 and confirm each one walks its loop in the documented turning direction and
 returns to where it started. Then walk the kid into reach of one and confirm the
-cave ends in the death state with an explosion visible.
+kid dies in a visible bloom and the cave settles into the death state once that
+bloom has burned out.
 
 **Acceptance Scenarios**:
 
@@ -61,8 +64,9 @@ cave ends in the death state with an explosion visible.
    the enemy steps once for every two ticks the kid may move, on a fixed
    cadence.
 7. **Given** the kid is in a cell orthogonally adjacent to an enemy, **When**
-   that enemy's next step runs, **Then** the enemy detonates and the cave ends
-   in the death state.
+   that enemy's next step runs, **Then** the enemy detonates and the kid is
+   caught in the blast: the cave enters the dying state and settles into the
+   death state once the bloom has burned out.
 8. **Given** an enemy is next to dirt (notebook paper), a body, a wall, the
    classroom door, another enemy, or the grid edge, **When** enemy steps run,
    **Then** it never moves into any of them and never digs, pushes, or falls.
@@ -120,8 +124,9 @@ confetti filling a 3x3, and then it is gone, leaving behind whatever that blast
 makes. It destroys the paper, the bricks, the erasers, and the stars it touches
 — but a locker survives it, and so does the classroom door, so a blast never
 punches a hole in the outer shell of a cave or destroys the way out. Blasts
-reach other enemies, and those go off too, so one well-dropped eraser in a row
-of paper airplanes pays out far more than one.
+reach other enemies, and those go off too, a tick later each, so the cascade
+visibly tears along a row of paper airplanes and one well-dropped eraser pays
+out far more than one.
 
 **Why this priority**: The blast rules are what make Stories 1 and 2 safe to
 build on and what make caves designable — a level author needs to know exactly
@@ -132,7 +137,7 @@ detonation next to a wall.
 **Independent Test**: Detonate an enemy adjacent to a locker and to a mixed
 neighbourhood of paper, brick, erasers, and stars; confirm the locker and the
 door are untouched and everything else is gone. Then detonate one enemy in a
-line of enemies and confirm every enemy in reach goes off.
+line of enemies and confirm every enemy in reach goes off, one link per tick.
 
 **Acceptance Scenarios**:
 
@@ -149,13 +154,16 @@ line of enemies and confirm every enemy in reach goes off.
    every cell of that blast turns into the same content — gold stars for a paper
    airplane, empty space for a pencil sharpener or the kid — on the same tick.
 5. **Given** a blast whose 3x3 contains another enemy, **When** the blast is
-   stamped, **Then** that enemy detonates too, with its own content, and the
-   chain continues as far as it reaches.
+   stamped, **Then** that enemy is destroyed on that tick and its own blast,
+   with its own content, is stamped on the following tick, and the chain travels
+   on one link per tick until it reaches no further enemy.
 6. **Given** an explosion cell, **When** the kid or an enemy tries to move into
    it, **Then** the move is refused; and **when** a body is above it, the body
    rests on it and does not roll off it.
 7. **Given** the kid is caught in a blast, **When** the blast is stamped,
-   **Then** the cave ends in the death state with the bloom visible and frozen.
+   **Then** the cave enters the dying state — input stops and the cave can no
+   longer be completed — the rest of the cascade keeps resolving, and once the
+   last explosion has burned out the cave is dead and frozen.
 
 ---
 
@@ -225,8 +233,12 @@ under the simulation, and no drawing logic, was touched to achieve it.
   content of the later blast in the tick's fixed resolution order. Overlap is
   legal and deterministic; it is not an error.
 - **A blast destroys the cell the kid is standing in**: the kid dies, and dies
-  once — a kid already dead is not re-detonated by a later blast in the same
+  once — a kid already dead is not re-detonated by a later link of the same
   chain.
+- **A falling eraser lands on the kid**: the kid detonates like any other death,
+  and the eraser is consumed by the blast it triggered. This is the one visible
+  change to feature 002's crushing death, and it is deliberate: every death in
+  the game blooms.
 - **A blast covers the closed classroom door**: the door survives, so a cave can
   never be made unwinnable by blowing up its exit.
 - **A blast covers an element that has no behavior yet** (amoeba, magic wall,
@@ -235,9 +247,22 @@ under the simulation, and no drawing logic, was touched to achieve it.
 - **An explosion cell resolves into a gold star with empty space beneath it**:
   the star begins falling on a later tick by the ordinary falling rule, never on
   the tick it is created.
-- **The kid dies while a chain is still blooming**: the cave freezes where it
-  is, with the explosions on screen exactly as they were. The bloom does not
-  finish resolving, because a terminal cave does not advance.
+- **The kid dies while a chain is still blooming**: the cave does not freeze
+  yet. It enters the dying state — input ignored, no way left to win — and keeps
+  ticking, so the cascade the kid set off finishes travelling, bodies the blast
+  freed fall, and the last explosion burns out. Only then does the cave go dead
+  and stop advancing. A player always sees their own death resolve.
+- **The kid dies with nothing else left to resolve**: the same path, just short.
+  The kid's own 3x3 is an explosion, so the cave stays in the dying state until
+  that bloom converts, and goes dead on the first tick with no explosion cell
+  left.
+- **The player mashes restart during the dying state**: it restarts the cave,
+  exactly as it does once the cave is dead. That moment — bloom on screen, hand
+  already on the key — is the most likely time for the key to be pressed, so it
+  cannot be a dead spot.
+- **An enemy patrols while the cave is dying**: it keeps patrolling. The dying
+  state stops input and the win condition, nothing else. There is no kid left
+  for it to detonate on, so its patrol simply runs out the bloom.
 - **A cave with no enemies at all**: behaves exactly as it does today. Nothing
   in this feature costs anything in a cave that does not use it.
 
@@ -292,19 +317,34 @@ under the simulation, and no drawing logic, was touched to achieve it.
 - **FR-011**: A **falling** eraser or gold star whose cell directly below holds
   an enemy MUST detonate that enemy, and MUST NOT move into that cell. A body
   that is not falling MUST NEVER detonate anything.
-- **FR-012**: An enemy inside a blast MUST detonate (FR-020).
+- **FR-012**: An enemy inside a blast MUST detonate (FR-023).
 - **FR-013**: The kid MUST detonate when caught in a blast, and MUST detonate
-  when a falling body reaches their cell. [NEEDS CLARIFICATION: this second
-  clause changes feature 002's FR-010, where a falling body simply took the
-  kid's cell and the cave went to the death state with no explosion. Should a
-  crushing death now bloom like every other death, or should crushing keep its
-  quieter feature-002 behavior and only enemy contact and blasts produce a
-  player explosion?]
+  when a falling body reaches their cell. A crushing death therefore blooms
+  exactly like every other death: the falling body is consumed by the blast it
+  triggered, and the 3x3 resolves to empty space (FR-018). This amends feature
+  002's FR-010, where a falling body simply took the kid's cell and the cave
+  went to the death state with no explosion. FR-038 names the amendment, and
+  feature 002's crush test MUST be updated to the new expected grid rather than
+  deleted or weakened.
 - **FR-014**: Detonation MUST have no trigger in this feature other than
   FR-010–FR-013.
-- **FR-015**: Whenever the kid detonates, the cave MUST enter the death state on
-  that tick. Per feature 002's FR-029, the cave then stops advancing, so the
-  bloom stays on screen exactly as it was.
+- **FR-015**: Whenever the kid detonates, the cave MUST enter a **dying** state
+  on that tick rather than going straight to the terminal death state. In the
+  dying state:
+  1. Player input MUST be ignored from that tick on, and the cave MUST NOT be
+     completable — collecting quota and opening the door can no longer happen.
+  2. The cave MUST keep advancing in every other respect: explosion cells age
+     and convert, chains keep propagating (FR-023), enemies keep patrolling, and
+     bodies freed by a blast fall and roll by the ordinary rules.
+  3. On the first tick on which no explosion cell remains anywhere in the grid,
+     the status MUST become **dead**, and from that tick the cave MUST stop
+     advancing exactly as feature 002's FR-029 describes.
+  4. The restart control MUST work during the dying state exactly as it does in
+     the death state.
+
+  This amends feature 002's FR-029, which froze the cave on the tick the kid
+  died; without the amendment the kid's own bloom — and any chain they set off
+  — would freeze half-resolved. FR-038 names the amendment.
 
 #### The blast
 
@@ -314,12 +354,11 @@ under the simulation, and no drawing logic, was touched to achieve it.
 - **FR-017**: Every cell of that 3x3 MUST become an explosion cell, destroying
   whatever it held, **except** a steel wall (locker) and the classroom door
   (open or closed), which MUST be left completely untouched and MUST remain a
-  hole in the blast. [NEEDS CLARIFICATION: the originating request says a blast
-  destroys everything except steel wall, but feature 002's FR-023 already
-  specifies the closed door as indestructible and a destructible exit can make a
-  cave unwinnable. Should the door survive blasts as specified here, or should
-  it be destructible, with cave design carrying the burden of keeping caves
-  winnable?]
+  hole in the blast. The door is indestructible for the same reason the locker
+  is: feature 002's FR-023 already has the closed door behave exactly like a
+  steel wall, and a destructible exit lets a chain the player did not fully
+  control strand them in a cave they cannot leave — a failure indistinguishable
+  from a bug.
 - **FR-018**: What a blast leaves behind MUST be determined by what detonated:
   a **firefly leaves empty space**, a **butterfly leaves gold stars
   (diamonds)**, and the **kid leaves empty space**. Every cell of a single blast
@@ -342,18 +381,18 @@ under the simulation, and no drawing logic, was touched to achieve it.
 #### Chains
 
 - **FR-023**: An enemy destroyed by a blast MUST itself detonate, producing its
-  own 3x3 with its own content, and that chain MUST continue for as long as it
-  reaches further enemies. Each enemy MUST detonate at most once, so a chain
-  always terminates. Chains MUST resolve **within the tick that started them**,
-  in a fixed order — blasts in the order they were triggered, and the enemies
-  within one blast in the grid's scan order. [NEEDS CLARIFICATION: should a
-  chain resolve atomically inside one tick as specified here, or should each
-  link detonate on the following tick so the player watches a cascade travel
-  across the cave? The second reads better on screen; the first is simpler to
-  reason about and to pin with a test.]
-- **FR-024**: A chain MUST NOT re-detonate the kid: once the cave is in the
-  death state the kid is dead once, and the remaining links of that same chain
-  MUST still resolve normally within their tick.
+  own 3x3 with its own content, and a chain MUST propagate **one link per
+  tick**, so the player watches the cascade travel across the cave. Precisely:
+  an enemy covered by a stamped blast is destroyed on that tick — its cell
+  becomes an explosion cell of the blast that reached it — and its own blast
+  MUST be stamped on the **following** tick, centered on the cell where it
+  stood. Each enemy MUST detonate at most once, so a chain always terminates.
+  When several detonations are pending on the same tick they MUST be stamped in
+  the grid's scan order, and FR-022 decides any cell two of them share.
+- **FR-024**: A chain MUST NOT re-detonate the kid: the kid detonates once, and
+  the remaining links MUST keep resolving on their own ticks — through the dying
+  state (FR-015) if the kid is already gone — until the cascade reaches no
+  further enemy.
 
 #### The quota and cave data
 
@@ -397,8 +436,12 @@ under the simulation, and no drawing logic, was touched to achieve it.
 #### Read-only access for the shell
 
 - **FR-033**: The simulation MUST expose, as read-only accessors: an enemy's
-  facing at a given cell, and, for an explosion cell, that it is one. Nothing
-  outside the simulation may write either.
+  facing at a given cell, and, for an explosion cell, that it is one. The
+  **dying** status (FR-015) MUST be visible through the cave-status accessor
+  feature 002 already provides, as a new value rather than a second accessor.
+  Nothing outside the simulation may write any of them, and the shell MUST NOT
+  reimplement the input-ignoring rule — it reads the status the simulation
+  reports.
 - **FR-034**: The simulation MUST still contain no wall-clock time, no page or
   browser access, and no randomness other than its own seeded generator. This
   feature MUST add **no new consumer** of that generator: push resolution
@@ -434,11 +477,20 @@ under the simulation, and no drawing logic, was touched to achieve it.
     falling normally afterwards;
   - a chain reaction through several enemies, including a mixed chain of both
     types leaving both gold stars and empty space;
+  - that chain pinned tick by tick, showing exactly one link detonating per
+    tick;
   - the kid dying on contact with each enemy type, from each of the four
     orthogonal directions, and **not** dying from a diagonal;
   - the kid caught in a blast started by something else;
-  - the cave freezing in its terminal state with the explosion cells still on
-    the grid;
+  - a falling eraser crushing the kid, leaving a 3x3 bloom that resolves to
+    empty space with the eraser consumed — the amended feature-002 rule;
+  - the kid dying to the first link of a chain, with the rest of the cascade
+    still resolving after the death and a final grid showing the whole chain
+    completed;
+  - restart pressed during the dying state, taking effect exactly as it does
+    after death;
+  - the cave becoming dead and freezing on the first tick with no explosion cell
+    left, with the resolved grid unchanged from then on;
   - gold stars from a blast counting toward quota and opening the door;
   - a cave whose quota exceeds its drawn gold stars but is within the paper
     airplane allowance loading successfully, and one that exceeds even that
@@ -452,11 +504,13 @@ under the simulation, and no drawing logic, was touched to achieve it.
 #### Non-regression
 
 - **FR-038**: Every rule and test from features 001 and 002 MUST still hold,
-  with exactly two stated exceptions, both amended here and nowhere else:
-  feature 002's **FR-010** (how a falling body kills the kid — see FR-013) and
+  with exactly three stated exceptions, all amended here and nowhere else:
+  feature 002's **FR-010** (how a falling body kills the kid — see FR-013),
   feature 002's **FR-027** (the quota-versus-gold-stars parse check — see
-  FR-025). Where an earlier test pins an amended rule, that test MUST be updated
-  to the new rule stated here and MUST NOT be deleted or weakened.
+  FR-025), and feature 002's **FR-029** (the cave freezing on the tick the kid
+  dies — see FR-015, which inserts the dying state before it). Where an earlier
+  test pins an amended rule, that test MUST be updated to the new rule stated
+  here and MUST NOT be deleted or weakened.
 - **FR-039**: The inert-element rule of feature 002 MUST continue to hold for
   every element this feature does not touch: amoeba, magic wall, and expanding
   wall stay inert, and a body still rests on them without rolling.
@@ -485,6 +539,13 @@ under the simulation, and no drawing logic, was touched to achieve it.
 - **Blast content**: What one blast leaves behind — gold stars from a paper
   airplane, empty space from a pencil sharpener or the kid. This is the game's
   scoring trick expressed as one field.
+- **Pending detonation**: An enemy the current tick's blast destroyed, whose own
+  blast is stamped on the next tick. This is what makes a chain a cascade the
+  player can watch rather than a single frame.
+- **Dying state**: The cave after the kid has detonated but before the last
+  explosion has burned out. Input is ignored and the cave cannot be won, but the
+  simulation still advances. It exists so a death — and any chain the death
+  interrupted — finishes on screen instead of freezing half-resolved.
 - **Butterfly diamond allowance**: The nine gold stars a paper airplane can be
   worth, used only by the parse-time quota check as an upper bound.
 
@@ -512,7 +573,8 @@ under the simulation, and no drawing logic, was touched to achieve it.
 - **SC-007**: Every cell of one blast converts on the same tick, exactly the
   specified number of ticks after the blast was stamped, in 100% of runs.
 - **SC-008**: A chain through a line of enemies detonates every enemy the chain
-  reaches, and no enemy detonates twice, in 100% of runs.
+  reaches, exactly one link per tick, and no enemy detonates twice, in 100% of
+  runs.
 - **SC-009**: Gold stars produced by a blast are collectible and count toward
   quota exactly like drawn ones, in 100% of attempts.
 - **SC-010**: A cave whose quota exceeds its drawn gold stars but is within the
@@ -524,7 +586,7 @@ under the simulation, and no drawing logic, was touched to achieve it.
   explosion state on 100% of runs, over a sequence of at least 100 ticks that
   includes patrols, a chain reaction, and a death.
 - **SC-012**: Every feature-001 and feature-002 test still passes, except those
-  covering the two rules FR-038 names as amended, which pass against their
+  covering the three rules FR-038 names as amended, which pass against their
   restated form. The build still emits exactly one self-contained page that
   makes zero network requests.
 - **SC-013**: A cave with several enemies patrolling and a chain reaction of at
@@ -536,6 +598,10 @@ under the simulation, and no drawing logic, was touched to achieve it.
   change.
 - **SC-015**: The automated suite passes with no browser present and covers
   every case listed in FR-036.
+- **SC-016**: A kid who dies to the first link of a chain sees the whole chain
+  finish: the cave advances until no explosion cell remains and then freezes on
+  that tick, producing an identical final grid on 100% of runs, and input during
+  the dying state changes nothing except restart.
 
 ### Verified by the maintainer at review time
 
@@ -549,6 +615,12 @@ review knows what to look at:
 - The bloom reads: two ticks of explosion (FR-019) is long enough to see and
   short enough not to stall the cave, and a chain reaction is exciting rather
   than confusing.
+- The cascade pace reads: one link per tick (FR-023) makes a long row of paper
+  airplanes tear along at a speed that thrills rather than drags. The lifetime
+  and the cadence are the dials here; the per-tick mechanism is the rule.
+- The dying state is invisible as a state (FR-015): a death should look like one
+  continuous moment — bloom, cascade, stop — not like the game carried on
+  playing without the player.
 - Death by enemy is legible: it is obvious what killed the kid, and the frozen
   bloom makes the moment clear rather than looking like a crash.
 - The pencil sharpener and the paper airplane are distinguishable at a glance
@@ -590,8 +662,31 @@ review knows what to look at:
 - **Blasts spare the classroom door** as well as steel walls (FR-017), because
   feature 002 already specifies the closed door as behaving exactly like a steel
   wall in every respect including being indestructible, and because a
-  destructible exit can strand a player in a cave they cannot leave. Flagged for
-  confirmation.
+  destructible exit can strand a player in a cave they cannot leave. Confirmed
+  by the maintainer on issue #3.
+- **Every death blooms** (FR-013), including a crushing one, confirmed by the
+  maintainer on issue #3: the original game explodes the player under a boulder
+  exactly as it does under a firefly, and two visually different deaths would be
+  a re-invention. Feature 002's crush test is updated to the new expected grid,
+  named as an amendment in FR-038 so it never reads as a regression.
+- **Chains propagate one link per tick** (FR-023), confirmed by the maintainer
+  on issue #3 over the atomic alternative. An explosion is already an element
+  with a lifetime rather than an instantaneous event, so the machinery for a
+  blast that is still resolving exists either way; paying out a twenty-star
+  chain in a single frame would throw away the cascade that is the most
+  memorable thing about this game.
+- **The dying state** (FR-015) follows directly from that choice, and was raised
+  by the maintainer in the same answer. Feature 002's FR-029 froze the cave the
+  moment the kid died; with a propagating chain that would freeze the kid's own
+  death mid-bloom and stop a cascade halfway across the cave. So death now stops
+  input and the win condition, and the cave keeps ticking until the last blast
+  has burned out.
+- **Enemies keep patrolling during the dying state.** The answer specified that
+  explosions age, chains propagate, and freed bodies fall; enemies are the one
+  case it did not name, and letting them run is the reading that keeps the dying
+  state to exactly two subtractions — input and winning — rather than making it
+  a second set of physics. Nothing observable depends on it: the kid is already
+  off the grid, so a patrolling enemy has nothing to detonate on.
 - **The parse-time quota check is relaxed, not removed** (FR-025). Nine gold
   stars per paper airplane is a generous upper bound — a blast clipped by the
   boundary or a locker yields fewer — so the check catches genuinely malformed
