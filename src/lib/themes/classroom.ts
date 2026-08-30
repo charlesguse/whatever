@@ -17,7 +17,9 @@ const elements: Record<ElementId, ThemeEntry> = {
   amoeba: { fillColor: '#8bc34a', glyph: '~', label: 'Spilled Glue' },
   magicWall: { fillColor: '#5c6bc0', glyph: '✦', label: 'Trophy Case' },
   expandingWall: { fillColor: '#795548', glyph: '▧', label: 'Bookshelf' },
-  exit: { fillColor: '#43a047', glyph: '▢', label: 'Classroom Door' },
+  // Closed-door appearance MUST match steelWall exactly (FR-024) — the
+  // door is indistinguishable from a locker until the quota is met.
+  exit: { fillColor: '#8a93a0', glyph: '▥', label: 'Locker Door' },
   explosion: { fillColor: '#ffeb3b', glyph: '✺', label: 'Confetti Burst' },
 };
 
@@ -25,6 +27,13 @@ export const classroomTheme: Theme = {
   id: 'classroom',
   elements,
   background: '#cfc09a',
+  // Visibly distinct from elements.exit (the closed-door/locker look).
+  doorOpenEntry: { fillColor: '#ffd54a', glyph: '▢', label: 'Open Classroom Door' },
+  messages: {
+    dead: 'Ouch! Head back to the classroom and try again.',
+    completed: 'You made it out the door!',
+  },
+  readout: { template: '{count} / {quota} Gold Stars' },
 };
 
 // Sanity check at module load: every declared element id must have an entry.

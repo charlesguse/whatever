@@ -21,3 +21,25 @@ describe('classroom theme completeness', () => {
     expect(themeKeys).toEqual(declaredIds);
   });
 });
+
+// FR-024, FR-038, FR-040: the closed door (elements.exit) must be visually
+// identical to a steel wall, and every theme must supply the door's open
+// appearance, both terminal messages, and the readout template.
+describe('classroom theme door/message/readout fields', () => {
+  it('makes the closed door (exit) visually identical to a steel wall', () => {
+    expect(classroomTheme.elements.exit).toEqual(classroomTheme.elements.steelWall);
+  });
+
+  it('gives the open door a visibly distinct appearance from the closed door', () => {
+    expect(classroomTheme.doorOpenEntry).not.toEqual(classroomTheme.elements.exit);
+  });
+
+  it('supplies non-empty dead/completed messages', () => {
+    expect(classroomTheme.messages.dead.length).toBeGreaterThan(0);
+    expect(classroomTheme.messages.completed.length).toBeGreaterThan(0);
+  });
+
+  it('supplies a readout template', () => {
+    expect(classroomTheme.readout.template.length).toBeGreaterThan(0);
+  });
+});

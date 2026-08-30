@@ -15,6 +15,14 @@ const KEY_TO_DIRECTION: Readonly<Record<string, Direction>> = {
   D: 'right',
 };
 
+// A held key (never a tap) for grab — reported the same way direction state
+// is (FR-019, FR-021).
+const GRAB_KEYS = new Set(['Shift']);
+
+// A one-shot key for restart — works from a terminal state or mid-play
+// (FR-031).
+const RESTART_KEYS = new Set(['r', 'R']);
+
 // Tracks key-down/key-up state and reduces it to one direction-or-nothing
 // per tick (FR-018-FR-022). Held-key cadence is driven by the sim's tick
 // rate, never the OS key-repeat rate: repeat keydown events are ignored
@@ -23,8 +31,22 @@ const KEY_TO_DIRECTION: Readonly<Record<string, Direction>> = {
 export class KeyboardInput {
   private held: Direction[] = [];
   private pendingTap: Direction | undefined;
+  private grabHeld = false;
+  private restartPending = false;
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
+    if (GRAB_KEYS.has(event.key)) {
+      event.preventDefault();
+      this.grabHeld = true;
+      return;
+    }
+
+    if (RESTART_KEYS.has(event.key)) {
+      event.preventDefault();
+      if (!event.repeat) this.restartPending = true;
+      return;
+    }
+
     const direction = KEY_TO_DIRECTION[event.key];
     if (direction === undefined) return;
     event.preventDefault();
@@ -37,6 +59,12 @@ export class KeyboardInput {
   };
 
   private readonly onKeyUp = (event: KeyboardEvent): void => {
+    if (GRAB_KEYS.has(event.key)) {
+      event.preventDefault();
+      this.grabHeld = false;
+      return;
+    }
+
     const direction = KEY_TO_DIRECTION[event.key];
     if (direction === undefined) return;
     event.preventDefault();
@@ -66,5 +94,19 @@ export class KeyboardInput {
       return direction;
     }
     return undefined;
+  }
+
+  // Whether the grab modifier is currently held, for the tick about to run
+  // (FR-019, FR-021).
+  consumeGrab(): boolean {
+    return this.grabHeld;
+  }
+
+  // Reports and clears a one-shot restart request — works both mid-play and
+  // from a terminal state (FR-031).
+  consumeRestart(): boolean {
+    if (!this.restartPending) return false;
+    this.restartPending = false;
+    return true;
   }
 }

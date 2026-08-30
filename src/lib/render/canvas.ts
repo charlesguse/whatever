@@ -1,10 +1,17 @@
-import { getCell, getPlayerPosition, type CaveState } from '../../sim/cave';
+import { getCell, getPlayerPosition, isDoorOpen, type CaveState } from '../../sim/cave';
+import type { ElementId } from '../../sim/elements';
 import { getTheme } from '../themes/registry';
+import type { Theme, ThemeEntry } from '../themes/types';
 import { updateCamera, type CameraPosition } from './camera';
 
 // Cells visible along the canvas width, at most — a tuning value left open
 // for maintainer review, like the camera dead zone.
 const TARGET_VISIBLE_CELLS = 24;
+
+// The door-flash cadence (FR-039): driven entirely by the render loop's own
+// frame timer, never by tick count or CaveState — a tuning value left open
+// for maintainer review, like the camera dead zone.
+const DOOR_FLASH_INTERVAL_MS = 400;
 
 export interface RenderLoopOptions {
   readonly canvas: HTMLCanvasElement;
@@ -27,6 +34,21 @@ function contrastingTextColor(fillColor: string): string {
   const b = parseInt(hex.slice(4, 6), 16);
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.6 ? '#000000' : '#ffffff';
+}
+
+// The door's appearance: closed (elements.exit, identical to steelWall) or,
+// once open, alternating with doorOpenEntry on the render loop's own frame
+// timer — every other element resolves through elements as usual.
+function resolveEntry(
+  theme: Theme,
+  elementId: ElementId,
+  doorOpen: boolean,
+  flashOpenFace: boolean
+): ThemeEntry {
+  if (elementId === 'exit' && doorOpen && flashOpenFace) {
+    return theme.doorOpenEntry;
+  }
+  return theme.elements[elementId];
 }
 
 function computeViewportCells(
@@ -102,10 +124,15 @@ export function createRenderLoop(options: RenderLoopOptions): RenderLoop {
     ctx.textBaseline = 'middle';
     ctx.font = `${Math.floor(cellSize * 0.7)}px sans-serif`;
 
+    // FR-039: the flash phase comes from this frame's own timestamp, never
+    // from tick count or CaveState.
+    const doorOpen = isDoorOpen(state);
+    const flashOpenFace = Math.floor(performance.now() / DOOR_FLASH_INTERVAL_MS) % 2 === 0;
+
     for (let y = firstY; y <= lastY; y++) {
       for (let x = firstX; x <= lastX; x++) {
         const elementId = getCell(state, x, y);
-        const entry = theme.elements[elementId];
+        const entry = resolveEntry(theme, elementId, doorOpen, flashOpenFace);
         const screenX = (x - cameraPos.offsetX) * cellSize;
         const screenY = (y - cameraPos.offsetY) * cellSize;
 

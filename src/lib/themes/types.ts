@@ -13,4 +13,17 @@ export interface Theme {
   readonly id: string;
   readonly elements: Readonly<Record<ElementId, ThemeEntry>>;
   readonly background: string;
+  // The door's open/flashing appearance (FR-038). elements.exit stays the
+  // door's closed appearance, visually identical to elements.steelWall.
+  readonly doorOpenEntry: ThemeEntry;
+  readonly messages: {
+    readonly dead: string;
+    readonly completed: string;
+  };
+  // A template string for the collected/quota HUD, e.g. containing
+  // "{count}" and "{quota}" placeholders the shell substitutes — plain
+  // data, no function value (constitution Principle III).
+  readonly readout: {
+    readonly template: string;
+  };
 }

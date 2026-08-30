@@ -9,11 +9,16 @@ export interface Position {
 // contents are stored as small integers in a typed array so the hot per-tick
 // scan is allocation-free; movedThisTick is a parallel flag array cleared at
 // the start of every tick (FR-004).
+// falling is a second parallel flag array, alongside movedThisTick, but
+// unlike movedThisTick it is NOT cleared at the start of every tick — it is
+// carried cell-to-cell state, only ever written by the falling/rolling
+// algorithm in tick.ts (FR-002, data-model.md Grid/Cave State).
 export interface Grid {
   readonly width: number;
   readonly height: number;
   readonly cells: Uint8Array;
   readonly movedThisTick: Uint8Array;
+  readonly falling: Uint8Array;
   playerPos: Position;
 }
 
@@ -27,6 +32,7 @@ export function createGrid(width: number, height: number, playerPos: Position): 
     height,
     cells: new Uint8Array(width * height),
     movedThisTick: new Uint8Array(width * height),
+    falling: new Uint8Array(width * height),
     playerPos,
   };
 }
@@ -37,6 +43,7 @@ export function cloneGrid(grid: Grid): Grid {
     height: grid.height,
     cells: grid.cells.slice(),
     movedThisTick: grid.movedThisTick.slice(),
+    falling: grid.falling.slice(),
     playerPos: { ...grid.playerPos },
   };
 }
@@ -67,4 +74,16 @@ export function setMoved(grid: Grid, x: number, y: number): void {
 
 export function clearMovedFlags(grid: Grid): void {
   grid.movedThisTick.fill(0);
+}
+
+export function isFallingIndex(grid: Grid, x: number, y: number): boolean {
+  return grid.falling[index(grid, x, y)] !== 0;
+}
+
+export function setFallingIndex(grid: Grid, x: number, y: number): void {
+  grid.falling[index(grid, x, y)] = 1;
+}
+
+export function clearFallingIndex(grid: Grid, x: number, y: number): void {
+  grid.falling[index(grid, x, y)] = 0;
 }
