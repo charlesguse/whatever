@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { caveFromAscii } from '../../src/sim/ascii';
 import { parseCave, type CaveDefinition } from '../../src/sim/cave';
-import { asciiLines } from './helpers/ascii-cave';
+import { asciiLines, caveFromLines } from './helpers/ascii-cave';
 
 const CAVE_NAME = 'Room 9';
 
@@ -157,5 +157,110 @@ describe('cave parsing rejections', () => {
     expect(() => parseCave(def)).toThrowError(/Room 9/);
     expect(() => parseCave(def)).toThrowError(/\(2, 1\)/);
     expect(() => parseCave(def)).toThrowError(/\(1, 2\)/);
+  });
+});
+
+// FR-028, FR-029: the three new cave-scoped parameters — explicit values,
+// documented defaults, and validation in both directions.
+describe('cave parameters (FR-028, FR-029)', () => {
+  it('loads with explicit amoebaGrowthRate/amoebaSizeLimit/magicWallDuration values', () => {
+    const state = caveFromLines('S.P.S', {
+      amoebaGrowthRate: 0.5,
+      amoebaSizeLimit: 12,
+      magicWallDuration: 7,
+    });
+    expect(state.amoebaGrowthRate).toBe(0.5);
+    expect(state.amoebaSizeLimit).toBe(12);
+    expect(state.magicWallDuration).toBe(7);
+  });
+
+  it('loads with the documented defaults (0.03/200/40) when all three are omitted', () => {
+    const state = caveFromLines('S.P.S');
+    expect(state.amoebaGrowthRate).toBe(0.03);
+    expect(state.amoebaSizeLimit).toBe(200);
+    expect(state.magicWallDuration).toBe(40);
+  });
+
+  it('rejects a non-positive amoebaSizeLimit, naming the cave and the offending value', () => {
+    const def = caveFromAscii({
+      name: CAVE_NAME,
+      seed: 1,
+      rows: ['S.P.S'],
+      amoebaSizeLimit: 0,
+    });
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/amoebaSizeLimit/);
+    expect(() => parseCave(def)).toThrowError(/0/);
+  });
+
+  it('rejects a non-whole amoebaSizeLimit, naming the cave and the offending value', () => {
+    const def = caveFromAscii({
+      name: CAVE_NAME,
+      seed: 1,
+      rows: ['S.P.S'],
+      amoebaSizeLimit: 2.5,
+    });
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/amoebaSizeLimit/);
+    expect(() => parseCave(def)).toThrowError(/2\.5/);
+  });
+
+  it('rejects a non-positive magicWallDuration, naming the cave and the offending value', () => {
+    const def = caveFromAscii({
+      name: CAVE_NAME,
+      seed: 1,
+      rows: ['S.P.S'],
+      magicWallDuration: -3,
+    });
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/magicWallDuration/);
+    expect(() => parseCave(def)).toThrowError(/-3/);
+  });
+
+  it('rejects a non-whole magicWallDuration, naming the cave and the offending value', () => {
+    const def = caveFromAscii({
+      name: CAVE_NAME,
+      seed: 1,
+      rows: ['S.P.S'],
+      magicWallDuration: 4.2,
+    });
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/magicWallDuration/);
+    expect(() => parseCave(def)).toThrowError(/4\.2/);
+  });
+
+  it('rejects an amoebaGrowthRate of 0, naming the cave and the offending value', () => {
+    const def = caveFromAscii({
+      name: CAVE_NAME,
+      seed: 1,
+      rows: ['S.P.S'],
+      amoebaGrowthRate: 0,
+    });
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/amoebaGrowthRate/);
+  });
+
+  it('rejects a negative amoebaGrowthRate, naming the cave and the offending value', () => {
+    const def = caveFromAscii({
+      name: CAVE_NAME,
+      seed: 1,
+      rows: ['S.P.S'],
+      amoebaGrowthRate: -0.1,
+    });
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/amoebaGrowthRate/);
+    expect(() => parseCave(def)).toThrowError(/-0\.1/);
+  });
+
+  it('rejects an amoebaGrowthRate greater than 1, naming the cave and the offending value', () => {
+    const def = caveFromAscii({
+      name: CAVE_NAME,
+      seed: 1,
+      rows: ['S.P.S'],
+      amoebaGrowthRate: 1.5,
+    });
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/amoebaGrowthRate/);
+    expect(() => parseCave(def)).toThrowError(/1\.5/);
   });
 });

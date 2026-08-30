@@ -11,6 +11,9 @@ export interface CaveOptions {
   readonly name?: string;
   readonly seed?: number;
   readonly quota?: number;
+  readonly amoebaGrowthRate?: number;
+  readonly amoebaSizeLimit?: number;
+  readonly magicWallDuration?: number;
 }
 
 // Strips a template literal's common leading indentation and its
@@ -44,6 +47,9 @@ export function caveFromLines(rows: string[] | string, options: CaveOptions = {}
     seed: options.seed ?? 1,
     quota: options.quota ?? 0,
     rows: lines,
+    amoebaGrowthRate: options.amoebaGrowthRate,
+    amoebaSizeLimit: options.amoebaSizeLimit,
+    magicWallDuration: options.magicWallDuration,
   });
   return parseCave(def);
 }

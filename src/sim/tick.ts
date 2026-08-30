@@ -19,7 +19,7 @@ import {
   type Direction,
   type Grid,
 } from './grid';
-import type { CaveState, CaveStatus, PendingBlast } from './cave';
+import type { CaveState, CaveStatus, MagicWallPhase, PendingBlast } from './cave';
 import { nextPrng, type PrngState } from './prng';
 
 export type { Direction } from './grid';
@@ -81,6 +81,11 @@ interface TickContext {
   // stamped at the very start of next tick (FR-023) — rebuilt fresh every
   // tick, never appended-to across ticks (data-model.md Cave State).
   readonly nextPendingBlasts: PendingBlast[];
+  readonly amoebaGrowthRate: number;
+  readonly amoebaSizeLimit: number;
+  readonly magicWallDuration: number;
+  magicWallPhase: MagicWallPhase;
+  magicWallCountdown: number;
 }
 
 // The tick function: (grid, input) -> next grid (FR-006, FR-007). Pure —
@@ -107,9 +112,18 @@ export function tick(state: CaveState, input: TickInput): CaveState {
     quota: state.quota,
     status: state.status,
     nextPendingBlasts: [],
+    amoebaGrowthRate: state.amoebaGrowthRate,
+    amoebaSizeLimit: state.amoebaSizeLimit,
+    magicWallDuration: state.magicWallDuration,
+    magicWallPhase: state.magicWallPhase,
+    magicWallCountdown: state.magicWallCountdown,
   };
 
   ageExplosions(ctx);
+
+  // FR-019: runs unconditionally, including while status is 'dying', before
+  // any falling body this tick can see the phase it decides.
+  ageMagicWall(ctx);
 
   // FR-023: chain links queued by the previous tick's stamping are stamped
   // first, in the order they were queued, before this tick's own scan can
@@ -151,6 +165,11 @@ export function tick(state: CaveState, input: TickInput): CaveState {
     quota: state.quota,
     status: ctx.status,
     pendingBlasts: ctx.nextPendingBlasts,
+    amoebaGrowthRate: ctx.amoebaGrowthRate,
+    amoebaSizeLimit: ctx.amoebaSizeLimit,
+    magicWallDuration: ctx.magicWallDuration,
+    magicWallPhase: ctx.magicWallPhase,
+    magicWallCountdown: ctx.magicWallCountdown,
   };
 }
 
@@ -188,6 +207,19 @@ function hasAnyExplosion(grid: Grid): boolean {
     }
   }
   return false;
+}
+
+// The once-per-tick magic wall countdown pass (FR-019, research.md Decision
+// 2): while the phase is 'active', decrement the countdown by exactly 1; if
+// it reaches 0, the phase becomes 'dead' in this same pass, before the main
+// scan runs, so a body falling in this same tick sees 'dead' and is not
+// converted. Runs unconditionally, including while the cave is dying.
+function ageMagicWall(ctx: TickContext): void {
+  if (ctx.magicWallPhase !== 'active') return;
+  ctx.magicWallCountdown -= 1;
+  if (ctx.magicWallCountdown === 0) {
+    ctx.magicWallPhase = 'dead';
+  }
 }
 
 // stampBlast (data-model.md Blast/Chain, FR-016–FR-018, FR-021): the one
@@ -363,7 +395,15 @@ function movePlayer(ctx: TickContext, x: number, y: number, input: TickInput): v
 
   const destId = getCellIndex(grid, nx, ny);
 
-  if (destId === 'brickWall' || destId === 'steelWall') return; // FR-015
+  if (
+    destId === 'brickWall' ||
+    destId === 'steelWall' ||
+    destId === 'amoeba' ||
+    destId === 'magicWall' ||
+    destId === 'expandingWall'
+  ) {
+    return; // FR-015, FR-002, FR-014, FR-023
+  }
 
   if (destId === 'exit') {
     if (!isDoorOpenCtx(ctx)) return; // FR-023: closed door blocks exactly like steel wall
