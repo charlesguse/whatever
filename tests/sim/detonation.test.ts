@@ -111,3 +111,90 @@ describe('a falling body detonates an enemy it lands on (FR-011)', () => {
     expect(getStatus(next)).toBe('inPlay');
   });
 });
+
+describe('chain reactions (FR-012, FR-023, FR-024, SC-008, SC-016)', () => {
+  it('a chain propagates one link per tick through a mix of enemy types, and no enemy detonates twice', () => {
+    // F(2,3) detonates on contact with the kid at tick 1, catching Y(3,3)
+    // in the same blast. Y's own blast, deferred to tick 2 (FR-023), reaches
+    // F(4,3) — one cell further, one tick later. F(4,3)'s own blast,
+    // deferred to tick 3, reaches no further enemy: the chain ends there.
+    // F(4,3) is boxed above/below so it cannot patrol away before the chain
+    // reaches it.
+    const state = caveFromLines(`
+      SSSSSSSSS
+      S.......S
+      S...S...S
+      S.FYF...S
+      S.P.S...S
+      S.......S
+      SSSSSSSSS
+    `);
+
+    const afterTick1 = runTicks(state, 1);
+    expect(isExplosion(afterTick1, 2, 3)).toBe(true); // the trigger
+    expect(isExplosion(afterTick1, 3, 3)).toBe(true); // caught in the same blast
+    expect(getCell(afterTick1, 4, 3)).toBe('firefly'); // not reached yet — still alive
+
+    const afterTick2 = runTicks(state, 2);
+    expect(isExplosion(afterTick2, 4, 3)).toBe(true); // Y's deferred blast reaches it
+
+    const afterTick3 = runTicks(state, 3);
+    expect(isExplosion(afterTick3, 4, 3)).toBe(true); // still resolving its own lifetime
+
+    // No enemy cell is ever seen going from destroyed back to a live
+    // firefly/butterfly id — each one detonates at most once (FR-023).
+    expect(getCell(afterTick3, 2, 3)).not.toBe('firefly');
+    expect(getCell(afterTick3, 3, 3)).not.toBe('butterfly');
+    expect(getCell(afterTick3, 4, 3)).not.toBe('firefly');
+  });
+
+  it('the kid is caught in a blast started by something else, entering the dying state (FR-012, FR-015)', () => {
+    // The eraser — not the kid, and not the butterfly's own contact check
+    // (the kid is only diagonally adjacent to the butterfly, which never
+    // triggers FR-010) — is what sets this blast off.
+    const state = caveFromLines(`
+      SSSSSSS
+      S..o..S
+      S...P.S
+      S.SY..S
+      S.S...S
+      S.....S
+      SSSSSSS
+    `);
+
+    const afterFall = runTicks(state, 1);
+    expect(getStatus(afterFall)).toBe('inPlay');
+
+    const afterDetonate = runTicks(state, 2);
+    expect(getStatus(afterDetonate)).toBe('dying');
+    expect(isExplosion(afterDetonate, 4, 2)).toBe(true); // the kid's former cell
+  });
+
+  it('the kid dying to the first link of a chain lets the rest of the cascade keep resolving, ending dead (FR-024, SC-016)', () => {
+    // F(2,3) detonates on contact with the kid, catching Y(3,3) in the same
+    // blast. Y's own blast, deferred one tick, reaches no further enemy —
+    // but it re-covers some of F's cells, extending their lifetime. The
+    // cave keeps advancing through the dying state regardless (FR-015),
+    // and every explosion — including the re-ignited ones — eventually
+    // burns out.
+    const state = caveFromLines(`
+      SSSSSSS
+      S.....S
+      S.....S
+      S.FY..S
+      S.P...S
+      S.....S
+      S.....S
+      SSSSSSS
+    `);
+
+    const afterTick1 = runTicks(state, 1);
+    expect(getStatus(afterTick1)).toBe('dying'); // the kid died to the very first link
+
+    const afterTick2 = runTicks(state, 2);
+    expect(getStatus(afterTick2)).toBe('dying'); // Y's deferred blast is still resolving
+
+    const resolved = runTicks(state, 8); // comfortably past every explosion's lifetime
+    expect(getStatus(resolved)).toBe('dead');
+  });
+});

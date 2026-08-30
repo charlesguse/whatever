@@ -111,6 +111,13 @@ export function tick(state: CaveState, input: TickInput): CaveState {
 
   ageExplosions(ctx);
 
+  // FR-023: chain links queued by the previous tick's stamping are stamped
+  // first, in the order they were queued, before this tick's own scan can
+  // discover any new trigger.
+  for (const blast of state.pendingBlasts) {
+    stampBlast(ctx, blast.x, blast.y, blast.content);
+  }
+
   for (let y = 0; y < grid.height; y++) {
     for (let x = 0; x < grid.width; x++) {
       if (isMoved(grid, x, y)) continue;
@@ -191,7 +198,10 @@ function hasAnyExplosion(grid: Grid): boolean {
 // blast's content, including the kid's own cell if caught, which is how a
 // death blooms rather than freezing silently — a cell that held 'player'
 // while status was still 'inPlay' also moves the cave into the dying state
-// (FR-015) before being overwritten.
+// (FR-015) before being overwritten. A non-center cell holding an enemy
+// queues that enemy's own blast for the *next* tick (FR-012, FR-023) —
+// the center is excluded because it is the thing detonating now, not a
+// future link.
 function stampBlast(ctx: TickContext, cx: number, cy: number, content: 'empty' | 'diamond'): void {
   const grid = ctx.grid;
   for (let dy = -1; dy <= 1; dy++) {
@@ -205,6 +215,10 @@ function stampBlast(ctx: TickContext, cx: number, cy: number, content: 'empty' |
 
       if (id === 'player' && ctx.status === 'inPlay') {
         ctx.status = 'dying'; // FR-015
+      }
+
+      if ((id === 'firefly' || id === 'butterfly') && !(dx === 0 && dy === 0)) {
+        ctx.nextPendingBlasts.push({ x, y, content: ENEMY_BLAST_CONTENT[id] });
       }
 
       setCellIndex(grid, x, y, 'explosion');
