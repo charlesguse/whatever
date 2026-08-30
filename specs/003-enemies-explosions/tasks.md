@@ -142,9 +142,9 @@ Single front-end project (unchanged from features 001/002): sim code under `src/
 
 **Purpose**: Full-suite regression and determinism coverage across every story above
 
-- [ ] T030 [P] Extend `tests/sim/determinism.test.ts` so a full replay — same cave, seed, and ordered inputs — produces an identical grid, collected count, status, enemy positions/facings, and explosion state after a run of at least 100 ticks that includes patrols, a chain reaction, and a death (FR-040, SC-011)
-- [ ] T031 Re-run `tests/sim/movement.test.ts`, `falling.test.ts`, `rolling.test.ts`, `pushing.test.ts`, `grab.test.ts`, `stack-resolution.test.ts`, `grid.test.ts`, and `elements.test.ts` and confirm every assertion still passes unchanged against the new `Grid` fields and tick phases (FR-038, FR-039, SC-012)
-- [ ] T032 Run `npm test` (builds `dist/` first, then the full vitest suite) and confirm every case in FR-036/quickstart.md's checklist passes headless, with no browser/canvas/audio dependency and no per-tick allocation growth beyond the bounded `pendingBlasts` array (SC-013, SC-015)
+- [X] T030 [P] Extend `tests/sim/determinism.test.ts` so a full replay — same cave, seed, and ordered inputs — produces an identical grid, collected count, status, enemy positions/facings, and explosion state after a run of at least 100 ticks that includes patrols, a chain reaction, and a death (FR-040, SC-011)
+- [X] T031 Re-run `tests/sim/movement.test.ts`, `falling.test.ts`, `rolling.test.ts`, `pushing.test.ts`, `grab.test.ts`, `stack-resolution.test.ts`, `grid.test.ts`, and `elements.test.ts` and confirm every assertion still passes unchanged against the new `Grid` fields and tick phases (FR-038, FR-039, SC-012)
+- [X] T032 Run `npm test` (builds `dist/` first, then the full vitest suite) and confirm every case in FR-036/quickstart.md's checklist passes headless, with no browser/canvas/audio dependency and no per-tick allocation growth beyond the bounded `pendingBlasts` array (SC-013, SC-015)
 
 ---
 
