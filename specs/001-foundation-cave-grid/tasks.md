@@ -101,11 +101,11 @@ Single Svelte/Vite project at the repository root, per plan.md's Project Structu
 
 ### Tests for User Story 3
 
-- [ ] T023 [US3] Create the ASCII cave test harness in `tests/sim/helpers/ascii-cave.ts` — build-a-grid-from-inline-ASCII, run-N-ticks (optionally driven by a per-tick input sequence), and assert-ASCII-equals reporting failures as side-by-side readable actual/expected grids rather than raw cell values (FR-038–FR-040) (depends on T010, T011, T013)
-- [ ] T024 [P] [US3] Write grid construction tests in `tests/sim/grid.test.ts` (FR-041)
-- [ ] T025 [P] [US3] Write cave parsing tests in `tests/sim/cave-parsing.test.ts` covering every rejection case: unequal row lengths, row/column count disagreeing with declared dimensions, an unrecognized character, zero players, and more than one player, each asserting the error names the cave and the offending coordinates (FR-033, FR-041)
-- [ ] T026 [P] [US3] Write movement tests in `tests/sim/movement.test.ts` covering movement into empty, dirt, brick wall, steel wall, and the grid boundary; a tick with no input; a sustained run of the same direction over consecutive ticks standing in for a held key (FR-021); and a cave whose dimensions differ from the starter cave's, proving no size is hardcoded (FR-036, FR-041)
-- [ ] T027 [P] [US3] Write a determinism replay test in `tests/sim/determinism.test.ts` — the same starting cave, seed, and input sequence run twice over at least 100 ticks produces byte-for-byte identical grids at every tick (FR-010, SC-005, FR-041)
+- [X] T023 [US3] Create the ASCII cave test harness in `tests/sim/helpers/ascii-cave.ts` — build-a-grid-from-inline-ASCII, run-N-ticks (optionally driven by a per-tick input sequence), and assert-ASCII-equals reporting failures as side-by-side readable actual/expected grids rather than raw cell values (FR-038–FR-040) (depends on T010, T011, T013)
+- [X] T024 [P] [US3] Write grid construction tests in `tests/sim/grid.test.ts` (FR-041)
+- [X] T025 [P] [US3] Write cave parsing tests in `tests/sim/cave-parsing.test.ts` covering every rejection case: unequal row lengths, row/column count disagreeing with declared dimensions, an unrecognized character, zero players, and more than one player, each asserting the error names the cave and the offending coordinates (FR-033, FR-041)
+- [X] T026 [P] [US3] Write movement tests in `tests/sim/movement.test.ts` covering movement into empty, dirt, brick wall, steel wall, and the grid boundary; a tick with no input; a sustained run of the same direction over consecutive ticks standing in for a held key (FR-021); and a cave whose dimensions differ from the starter cave's, proving no size is hardcoded (FR-036, FR-041)
+- [X] T027 [P] [US3] Write a determinism replay test in `tests/sim/determinism.test.ts` — the same starting cave, seed, and input sequence run twice over at least 100 ticks produces byte-for-byte identical grids at every tick (FR-010, SC-005, FR-041)
 
 **Checkpoint**: `npm test` runs the full suite with no browser, canvas, or audio device, covering everything FR-041 lists (SC-007).
 
