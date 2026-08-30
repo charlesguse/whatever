@@ -2,7 +2,7 @@
   "issue": 1,
   "spec_dir": "specs/001-foundation-cave-grid",
   "feature_num": "001",
-  "stage": "tasks",
-  "iteration": 0,
+  "stage": "implement",
+  "iteration": 1,
   "spec_branch": "spec/001-foundation-cave-grid"
 }
