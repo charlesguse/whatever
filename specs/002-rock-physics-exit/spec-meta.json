@@ -2,7 +2,7 @@
   "issue": 2,
   "spec_dir": "specs/002-rock-physics-exit",
   "feature_num": "002",
-  "stage": "spec",
+  "stage": "plan",
   "iteration": 0,
-  "spec_branch": null
+  "spec_branch": "spec/002-rock-physics-exit"
 }
