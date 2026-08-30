@@ -110,13 +110,14 @@ describe('movement', () => {
     );
   });
 
-  it('leaves an inert element (firefly) unchanged and does not throw (FR-003)', () => {
-    // boulder/diamond graduated from inert to behavioral in feature 002
-    // (data-model.md Element) — firefly stays genuinely inert, so it's the
-    // element this pinning test now exercises.
+  it('leaves an inert element (amoeba) unchanged and does not throw (FR-003)', () => {
+    // boulder/diamond graduated from inert to behavioral in feature 002,
+    // firefly/butterfly/explosion in feature 003 (data-model.md Element) —
+    // amoeba stays genuinely inert (FR-039), so it's the element this
+    // pinning test now exercises.
     const state = caveFromLines(`
       ....
-      .P.F
+      .P.A
       ....
     `);
     const next = runTicks(state, 2, ['right', 'down']);
@@ -124,7 +125,7 @@ describe('movement', () => {
       next,
       `
       ....
-      ...F
+      ...A
       ..P.
     `
     );

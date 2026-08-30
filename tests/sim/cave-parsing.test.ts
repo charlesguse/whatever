@@ -107,6 +107,41 @@ describe('cave parsing rejections', () => {
     expect(() => parseCave(def)).toThrowError(/1 diamond/);
   });
 
+  it('accepts a quota exceeding the diamond count when within diamonds + 9*butterflies (FR-025)', () => {
+    const def = caveFromAscii({
+      name: CAVE_NAME,
+      seed: 1,
+      quota: 5, // exceeds the 1 diamond, but well within 1 + 9*1 = 10
+      rows: asciiLines(`
+        SSSS
+        SP*S
+        SYSS
+        SSSS
+      `),
+    });
+
+    expect(() => parseCave(def)).not.toThrow();
+  });
+
+  it('rejects a quota exceeding diamonds + 9*butterflies, naming the cave, quota, diamond count, and butterfly count (FR-025)', () => {
+    const def = caveFromAscii({
+      name: CAVE_NAME,
+      seed: 1,
+      quota: 11, // exceeds 1 + 9*1 = 10
+      rows: asciiLines(`
+        SSSS
+        SP*S
+        SYSS
+        SSSS
+      `),
+    });
+
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/quota 11/);
+    expect(() => parseCave(def)).toThrowError(/1 diamond/);
+    expect(() => parseCave(def)).toThrowError(/1 butterfly/i);
+  });
+
   it('rejects a cave with more than one exit, naming both coordinates', () => {
     const def = caveFromAscii({
       name: CAVE_NAME,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { caveFromAscii } from '../../src/sim/ascii';
-import { getCollected, getStatus, parseCave } from '../../src/sim/cave';
+import { getCollected, getStatus, isDoorOpen, parseCave } from '../../src/sim/cave';
 import { caveFromLines, expectAscii, runTicks } from './helpers/ascii-cave';
 
 describe('quota and door (FR-017–FR-018, FR-022–FR-027)', () => {
@@ -62,5 +62,31 @@ describe('quota and door (FR-017–FR-018, FR-022–FR-027)', () => {
     const state = caveFromLines('S.P.XS', { quota: 0 });
     const next = runTicks(state, 2, ['right', 'right']);
     expect(getStatus(next)).toBe('completed');
+  });
+
+  it('a gold star produced by a blast is collectible and counts toward quota, opening the door (FR-018, SC-009)', () => {
+    // The butterfly is boxed on three sides so it can't patrol away before
+    // the falling eraser reaches it; the kid waits clear of the blast, then
+    // walks around to one of the resulting gold stars once it has resolved.
+    const state = caveFromLines(
+      `
+      SSSSSSS
+      S..o..S
+      S.....S
+      S.SYS.S
+      S.SSS.S
+      S.....S
+      S....PS
+      SSSSSSS
+    `,
+      { quota: 1 }
+    );
+
+    const resolved = runTicks(state, 4); // fall, stamp, then the 2-tick lifetime
+    expect(isDoorOpen(resolved)).toBe(false);
+
+    const collected = runTicks(resolved, 5, ['up', 'up', 'up', 'up', 'left']);
+    expect(getCollected(collected)).toBe(1);
+    expect(isDoorOpen(collected)).toBe(true);
   });
 });

@@ -105,7 +105,7 @@ describe('falling (FR-001–FR-006)', () => {
     );
   });
 
-  it('kills the kid when a falling body lands on them', () => {
+  it('kills the kid when a falling body lands on them, in a bloom (amended by feature 003 FR-013)', () => {
     const state = caveFromLines(`
       SSSSS
       S.o.S
@@ -113,14 +113,17 @@ describe('falling (FR-001–FR-006)', () => {
       S.P.S
       SSSSS
     `);
-    const next = runTicks(state, 2);
+    // The crush now stamps a blast rather than moving the body onto the
+    // kid's cell — see tests/sim/crushing.test.ts for the full bloom timing
+    // and resolved-grid pin.
+    const next = runTicks(state, 4);
     expectAscii(
       next,
       `
       SSSSS
       S...S
       S...S
-      S.o.S
+      S...S
       SSSSS
     `
     );

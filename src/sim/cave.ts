@@ -2,14 +2,27 @@ import { CHAR_TO_ELEMENT, type ElementId } from './elements';
 import {
   createGrid,
   getCellIndex,
+  getExplosionRemaining,
+  getFacing,
   isFallingIndex,
   setCellIndex,
+  setFacing,
+  type Direction,
   type Grid,
   type Position,
 } from './grid';
 import { seedPrng, type PrngState } from './prng';
 
-export type CaveStatus = 'inPlay' | 'dead' | 'completed';
+export type CaveStatus = 'inPlay' | 'dying' | 'dead' | 'completed';
+
+// The chain queue (data-model.md Cave State: Pending detonation). Holds one
+// entry per enemy destroyed by a blast during the previous tick, each naming
+// the cell that enemy stood in and the content its own blast will leave.
+export interface PendingBlast {
+  readonly x: number;
+  readonly y: number;
+  readonly content: 'empty' | 'diamond';
+}
 
 export interface CaveDefinition {
   readonly name: string;
@@ -31,6 +44,7 @@ export interface CaveState {
   readonly collected: number;
   readonly quota: number;
   readonly status: CaveStatus;
+  readonly pendingBlasts: readonly PendingBlast[];
 }
 
 function fail(caveName: string, message: string): never {
@@ -60,6 +74,7 @@ export function parseCave(def: CaveDefinition): CaveState {
   const playerPositions: Position[] = [];
   const exitPositions: Position[] = [];
   let diamondCount = 0;
+  let butterflyCount = 0;
 
   for (let y = 0; y < height; y++) {
     const row = rows[y];
@@ -78,6 +93,9 @@ export function parseCave(def: CaveDefinition): CaveState {
       if (elementId === 'diamond') {
         diamondCount++;
       }
+      if (elementId === 'butterfly') {
+        butterflyCount++;
+      }
     }
   }
 
@@ -94,8 +112,15 @@ export function parseCave(def: CaveDefinition): CaveState {
     fail(name, `expected at most one exit character, found ${exitPositions.length} at ${coords}`);
   }
 
-  if (quota > diamondCount) {
-    fail(name, `quota ${quota} exceeds the ${diamondCount} diamond(s) found in the grid`);
+  // FR-025 (amends feature 002's FR-027): a butterfly's blast pays out 9
+  // gold stars, so quota may draw on that payout too — reject only when it
+  // exceeds diamonds already on the grid plus every butterfly's potential.
+  const butterflyPayout = 9 * butterflyCount;
+  if (quota > diamondCount + butterflyPayout) {
+    fail(
+      name,
+      `quota ${quota} exceeds the ${diamondCount} diamond(s) plus ${butterflyPayout} possible from ${butterflyCount} butterfly(ies) found in the grid`
+    );
   }
 
   playerPos = playerPositions[0];
@@ -107,6 +132,9 @@ export function parseCave(def: CaveDefinition): CaveState {
       const elementId = CHAR_TO_ELEMENT[row[x]];
       // Player occupies its cell as 'player' content, same as any other element.
       setCellIndex(grid, x, y, elementId);
+      if (elementId === 'firefly' || elementId === 'butterfly') {
+        setFacing(grid, x, y, 'left'); // FR-007: every enemy starts facing left
+      }
     }
   }
 
@@ -119,6 +147,7 @@ export function parseCave(def: CaveDefinition): CaveState {
     collected: 0,
     quota,
     status: 'inPlay',
+    pendingBlasts: [],
   };
 }
 
@@ -153,4 +182,16 @@ export function getStatus(state: CaveState): CaveStatus {
 
 export function isFalling(state: CaveState, x: number, y: number): boolean {
   return isFallingIndex(state.grid, x, y);
+}
+
+// FR-033: the only way anything outside src/sim/ may observe enemy facing or
+// explosion cells.
+export function getEnemyFacing(state: CaveState, x: number, y: number): Direction | undefined {
+  const id = getCellIndex(state.grid, x, y);
+  if (id !== 'firefly' && id !== 'butterfly') return undefined;
+  return getFacing(state.grid, x, y);
+}
+
+export function isExplosion(state: CaveState, x: number, y: number): boolean {
+  return getExplosionRemaining(state.grid, x, y) !== 0;
 }

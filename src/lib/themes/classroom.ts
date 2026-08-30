@@ -12,8 +12,10 @@ const elements: Record<ElementId, ThemeEntry> = {
   brickWall: { fillColor: '#b5502e', glyph: '▦', label: 'Cinder Brick Wall' },
   steelWall: { fillColor: '#8a93a0', glyph: '▥', label: 'Locker Door' },
   player: { fillColor: '#4c8bf5', glyph: '☺', label: 'Kid With A Backpack' },
-  firefly: { fillColor: '#ff8a3d', glyph: '✈', label: 'Paper Airplane' },
-  butterfly: { fillColor: '#c86dd7', glyph: '⚑', label: 'Hall Pass' },
+  // FR-029, FR-030: corrected from feature 001's placeholder labels now that
+  // both elements have behavior — appearance-only, no sim/render change.
+  firefly: { fillColor: '#ff8a3d', glyph: '✂', label: 'Pencil Sharpener' },
+  butterfly: { fillColor: '#c86dd7', glyph: '✈', label: 'Paper Airplane' },
   amoeba: { fillColor: '#8bc34a', glyph: '~', label: 'Spilled Glue' },
   magicWall: { fillColor: '#5c6bc0', glyph: '✦', label: 'Trophy Case' },
   expandingWall: { fillColor: '#795548', glyph: '▧', label: 'Bookshelf' },

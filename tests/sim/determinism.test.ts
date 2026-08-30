@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { asciiFromState } from '../../src/sim/ascii';
-import { getCollected, getStatus } from '../../src/sim/cave';
+import { getCollected, getEnemyFacing, getStatus, isExplosion } from '../../src/sim/cave';
 import { tick, type Direction } from '../../src/sim/tick';
 import { caveFromLines } from './helpers/ascii-cave';
 
@@ -91,6 +91,44 @@ describe('determinism', () => {
 
     // Sanity: the scripted scenario actually exercised what it claims to.
     expect(getCollected(stateA)).toBe(1);
+    expect(getStatus(stateA)).toBe('dead');
+  });
+
+  it('replays enemy patrols, a chain reaction, and a death identically, including facings and explosion state (FR-040, SC-011)', () => {
+    // Top: a firefly ring patrol, isolated from everything below it.
+    // Bottom: a kid adjacent to a firefly, itself adjacent to a butterfly,
+    // itself adjacent to a second firefly — a contact detonation on tick 1
+    // that cascades through both enemy types over the following ticks.
+    const cave = `
+      SSSSSSSSS
+      SF..SSSSS
+      S.S.SSSSS
+      S...SSSSS
+      SSSSSSSSS
+      S.......S
+      S...S...S
+      S.FYF...S
+      S.P.S...S
+      S.......S
+      SSSSSSSSS
+    `;
+    const inputs = buildInputSequence(TICK_COUNT);
+
+    let stateA = caveFromLines(cave, { seed: 11 });
+    let stateB = caveFromLines(cave, { seed: 11 });
+
+    for (let i = 0; i < TICK_COUNT; i++) {
+      stateA = tick(stateA, { direction: inputs[i] });
+      stateB = tick(stateB, { direction: inputs[i] });
+
+      expect(asciiFromState(stateA)).toBe(asciiFromState(stateB));
+      expect(getCollected(stateA)).toBe(getCollected(stateB));
+      expect(getStatus(stateA)).toBe(getStatus(stateB));
+      expect(getEnemyFacing(stateA, 1, 1)).toBe(getEnemyFacing(stateB, 1, 1));
+      expect(isExplosion(stateA, 3, 7)).toBe(isExplosion(stateB, 3, 7));
+    }
+
+    // Sanity: the scripted scenario actually exercised what it claims to.
     expect(getStatus(stateA)).toBe('dead');
   });
 });
