@@ -97,5 +97,5 @@ export function getCell(state: CaveState, x: number, y: number): ElementId {
 }
 
 export function getPlayerPosition(state: CaveState): Position {
-  return state.grid.playerPos;
+  return { ...state.grid.playerPos };
 }

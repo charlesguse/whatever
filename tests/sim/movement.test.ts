@@ -110,6 +110,23 @@ describe('movement', () => {
     );
   });
 
+  it('leaves an inert element (boulder) unchanged and does not throw (FR-003)', () => {
+    const state = caveFromLines(`
+      ....
+      .P.o
+      ....
+    `);
+    const next = runTicks(state, 2, ['right', 'down']);
+    expectAscii(
+      next,
+      `
+      ....
+      ...o
+      ..P.
+    `
+    );
+  });
+
   it('works on a cave whose dimensions differ from the starter cave, proving no size is hardcoded (FR-036)', () => {
     const state = caveFromLines(`
       SSSSS
