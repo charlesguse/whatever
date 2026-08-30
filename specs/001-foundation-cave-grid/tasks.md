@@ -29,12 +29,12 @@ Single Svelte/Vite project at the repository root, per plan.md's Project Structu
 
 **Purpose**: Stand up the project skeleton — this is the first feature in the repo, so there is no `src/`, `package.json`, or build yet.
 
-- [ ] T001 Create `package.json` with `dev`, `build`, and `test` scripts and dependencies limited to Svelte 5, Vite, `@sveltejs/vite-plugin-svelte`, `vite-plugin-singlefile`, vitest, and TypeScript (constitution Principle IV — no other runtime dependency)
-- [ ] T002 Create `vite.config.ts` wiring `@sveltejs/vite-plugin-svelte` and `vite-plugin-singlefile` for the build, and configuring vitest to run headless with no DOM/browser environment
-- [ ] T003 [P] Create `tsconfig.json` for a Svelte 5 + TypeScript project
-- [ ] T004 Create `index.html` as the Vite entry point that mounts the Svelte app
-- [ ] T005 [P] Create `src/main.ts` — Svelte app bootstrap that mounts `App.svelte`
-- [ ] T006 [P] Create `src/App.svelte` as an empty top-level shell skeleton (canvas element placeholder only; loops and input wired in later phases)
+- [X] T001 Create `package.json` with `dev`, `build`, and `test` scripts and dependencies limited to Svelte 5, Vite, `@sveltejs/vite-plugin-svelte`, `vite-plugin-singlefile`, vitest, and TypeScript (constitution Principle IV — no other runtime dependency)
+- [X] T002 Create `vite.config.ts` wiring `@sveltejs/vite-plugin-svelte` and `vite-plugin-singlefile` for the build, and configuring vitest to run headless with no DOM/browser environment
+- [X] T003 [P] Create `tsconfig.json` for a Svelte 5 + TypeScript project
+- [X] T004 Create `index.html` as the Vite entry point that mounts the Svelte app
+- [X] T005 [P] Create `src/main.ts` — Svelte app bootstrap that mounts `App.svelte`
+- [X] T006 [P] Create `src/App.svelte` as an empty top-level shell skeleton (canvas element placeholder only; loops and input wired in later phases)
 
 **Checkpoint**: `npm install`, `npm run build`, and `npm test` all run (even with nothing under test yet) before any sim code is written.
 
