@@ -86,8 +86,8 @@ Single Svelte/Vite project at the repository root, per plan.md's Project Structu
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Verify and, if needed, adjust `vite.config.ts` so the build emits exactly one self-contained `dist/index.html` with all JS/CSS inlined and no sibling script, style, image, font, or audio file referenced at play time (FR-043, SC-008)
-- [ ] T022 [US2] Add an automated build-output check at `tests/build/single-file.test.ts` that inspects the built `dist/index.html` and asserts it contains no external `<script src>`, `<link href>`, or other network-dependent resource reference (depends on T021)
+- [X] T021 [US2] Verify and, if needed, adjust `vite.config.ts` so the build emits exactly one self-contained `dist/index.html` with all JS/CSS inlined and no sibling script, style, image, font, or audio file referenced at play time (FR-043, SC-008)
+- [X] T022 [US2] Add an automated build-output check at `tests/build/single-file.test.ts` that inspects the built `dist/index.html` and asserts it contains no external `<script src>`, `<link href>`, or other network-dependent resource reference (depends on T021)
 
 **Checkpoint**: `npm run build` followed by opening `dist/index.html` from disk with the network disabled plays correctly (maintainer-verified per quickstart.md, since real `file://` playback needs a browser).
 
