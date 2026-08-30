@@ -5,8 +5,12 @@ self-contained `dist/index.html` (Svelte 5 + Vite + vite-plugin-singlefile)
 that must run via `file://`. The rules that govern every spec live in
 `.specify/memory/constitution.md` — read it before changing anything.
 
-- `npm test` — vitest suite (the merge gate; run it before any PR)
-- `npm run build` — single-file build into `dist/` (`public/` assets ride along)
+- `npm test` — the merge gate: builds, then runs the vitest suite. Run it before
+  any PR. It builds first on purpose — part of the suite asserts that `dist/`
+  holds exactly one self-contained `index.html`, and that check is worthless
+  against a stale or missing build.
+- `npm run test:unit` — the suite alone, for fast iteration on sim rules
+- `npm run build` — single-file build into `dist/`
 
 ## The two halves, and the line between them
 
