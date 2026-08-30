@@ -133,8 +133,8 @@ Single Svelte/Vite project at the repository root, per plan.md's Project Structu
 
 **Purpose**: Final verification across all stories.
 
-- [ ] T030 Run `npm run build` and `npm test` together as the merge gate and confirm both pass in an environment with no browser installed (FR-044, FR-045)
-- [ ] T031 Execute the maintainer's manual browser validation checklist from `specs/001-foundation-cave-grid/quickstart.md` — `file://` playback, movement feel, camera dead-zone/clamp feel, window resize, and backgrounded-tab recovery — and record results at review (spec's "Verified by the maintainer at review time")
+- [X] T030 Run `npm run build` and `npm test` together as the merge gate and confirm both pass in an environment with no browser installed (FR-044, FR-045) — 41/41 tests pass, build emits a single `dist/index.html`
+- [ ] T031 Execute the maintainer's manual browser validation checklist from `specs/001-foundation-cave-grid/quickstart.md` — `file://` playback, movement feel, camera dead-zone/clamp feel, window resize, and backgrounded-tab recovery — and record results at review (spec's "Verified by the maintainer at review time") — **left for the maintainer**: this run has no browser
 
 ---
 
