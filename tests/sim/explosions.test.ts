@@ -206,4 +206,48 @@ describe('an explosion cell blocks everything while it lasts (FR-021)', () => {
       `
     );
   });
+
+  // F(2,3)'s contact detonation is the trigger for both cases below — it
+  // also catches P(2,4) in the same blast, so the cave enters `dying`. That
+  // is incidental to what each case pins: the *other* enemy/body's reaction
+  // to the explosion cell the trigger leaves at (3,2)/(4,3).
+  it('blocks an enemy from stepping into it', () => {
+    const state = caveFromLines(`
+      SSSSSSSSS
+      S.......S
+      S....S..S
+      S..F.F..S
+      S..P.S..S
+      S.......S
+      SSSSSSSSS
+    `);
+
+    const stillBlocked = runTicks(state, 2); // the trigger fires tick 1; the blast lasts through tick 2
+    expect(isExplosion(stillBlocked, 4, 3)).toBe(true);
+    expect(getCell(stillBlocked, 5, 3)).toBe('firefly'); // never stepped off its own cell
+
+    const afterConvert = runTicks(state, 3); // the blast burns out; the path opens
+    expect(isExplosion(afterConvert, 4, 3)).toBe(false);
+    expect(getCell(afterConvert, 4, 3)).toBe('firefly'); // free to step once the block clears
+  });
+
+  it('a resting body on a roll surface does not roll onto an adjacent explosion cell', () => {
+    const state = caveFromLines(`
+      SSSSSSSSS
+      S...o...S
+      S....S..S
+      S.F.B...S
+      S.P.....S
+      S.......S
+      SSSSSSSSS
+    `);
+
+    const stillBlocked = runTicks(state, 2); // the trigger fires tick 1; the blast lasts through tick 2
+    expect(isExplosion(stillBlocked, 3, 2)).toBe(true);
+    expect(getCell(stillBlocked, 4, 2)).toBe('boulder'); // still resting where it landed
+
+    const afterConvert = runTicks(state, 3); // the blast burns out; the roll opens up
+    expect(isExplosion(afterConvert, 3, 2)).toBe(false);
+    expect(getCell(afterConvert, 3, 2)).toBe('boulder'); // rolls now that the cell is empty
+  });
 });

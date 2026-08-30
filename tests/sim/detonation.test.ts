@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getCell, getStatus, isExplosion } from '../../src/sim/cave';
-import { caveFromLines, runTicks } from './helpers/ascii-cave';
+import { caveFromLines, expectAscii, runTicks } from './helpers/ascii-cave';
 import type { ElementId } from '../../src/sim/elements';
 
 type Dir = 'up' | 'down' | 'left' | 'right';
@@ -146,6 +146,25 @@ describe('chain reactions (FR-012, FR-023, FR-024, SC-008, SC-016)', () => {
     expect(getCell(afterTick3, 2, 3)).not.toBe('firefly');
     expect(getCell(afterTick3, 3, 3)).not.toBe('butterfly');
     expect(getCell(afterTick3, 4, 3)).not.toBe('firefly');
+
+    // Once every explosion in the chain has fully converted, the resolved
+    // grid actually holds both kinds of blast content — gold stars where a
+    // butterfly's own blast was the last one to touch a cell, empty space
+    // where a firefly's was — not just a timing window (FR-036).
+    const resolved = runTicks(state, 5);
+    expect(getStatus(resolved)).toBe('dead');
+    expectAscii(
+      resolved,
+      `
+        SSSSSSSSS
+        S.......S
+        S*..S...S
+        S*......S
+        S...S...S
+        S.*.....S
+        SSSSSSSSS
+      `
+    );
   });
 
   it('the kid is caught in a blast started by something else, entering the dying state (FR-012, FR-015)', () => {
@@ -196,5 +215,21 @@ describe('chain reactions (FR-012, FR-023, FR-024, SC-008, SC-016)', () => {
 
     const resolved = runTicks(state, 8); // comfortably past every explosion's lifetime
     expect(getStatus(resolved)).toBe('dead');
+
+    // The cascade — including the kid's own cell — finished converting, not
+    // just the status transition (FR-036, SC-016).
+    expectAscii(
+      resolved,
+      `
+        SSSSSSS
+        S.....S
+        S.***.S
+        S.***.S
+        S.***.S
+        S.....S
+        S.....S
+        SSSSSSS
+      `
+    );
   });
 });

@@ -236,6 +236,6 @@ With multiple developers, after Foundational lands:
 
 **Purpose**: Close gaps found by comparing the implemented code against spec.md/FR-036's explicit test checklist, after the initial implementation pass
 
-- [ ] T033 Add a resolved-grid assertion to the mixed-type chain test in `tests/sim/detonation.test.ts` (or a new case) pinning that the fully-converted grid contains both gold stars and empty space at their respective enemy cells, not just `isExplosion` timing per FR-036 (partial)
-- [ ] T034 Add a final-resolved-grid assertion (`expectAscii` or targeted per-cell checks) to the "kid dying to the first link of a chain" test in `tests/sim/detonation.test.ts`, once the whole cascade has finished converting, per FR-036/SC-016 (partial)
-- [ ] T035 Add the two FR-021 sub-cases named in T023 but not yet covered — an enemy blocked from stepping into an active explosion cell, and a resting body on a roll surface not rolling onto an adjacent active explosion cell — as ASCII-cave tests in `tests/sim/explosions.test.ts` (partial)
+- [X] T033 Add a resolved-grid assertion to the mixed-type chain test in `tests/sim/detonation.test.ts` (or a new case) pinning that the fully-converted grid contains both gold stars and empty space at their respective enemy cells, not just `isExplosion` timing per FR-036 (partial)
+- [X] T034 Add a final-resolved-grid assertion (`expectAscii` or targeted per-cell checks) to the "kid dying to the first link of a chain" test in `tests/sim/detonation.test.ts`, once the whole cascade has finished converting, per FR-036/SC-016 (partial)
+- [X] T035 Add the two FR-021 sub-cases named in T023 but not yet covered — an enemy blocked from stepping into an active explosion cell, and a resting body on a roll surface not rolling onto an adjacent active explosion cell — as ASCII-cave tests in `tests/sim/explosions.test.ts` (partial)
