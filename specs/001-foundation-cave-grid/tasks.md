@@ -236,3 +236,13 @@ With multiple contributors, after Foundational completes:
 - Commit after each task or logical group.
 - Stop at any checkpoint to validate a story independently.
 - Avoid: literal colors/glyphs in drawing code, hardcoded 40×22 dimensions outside cave data, `Math.random`/`Date.now` inside `src/sim/`, and Svelte imports inside `src/sim/`.
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Close gaps found by assessing the implementation against spec.md, plan.md, data-model.md, and the constitution after Phases 1-7 landed.
+
+- [ ] T032 Return a defensive copy of the player position from `getPlayerPosition` in `src/sim/cave.ts` (or freeze `grid.playerPos`) so the value cannot be mutated by a caller outside `src/sim/`, per FR-005 (partial)
+- [ ] T033 Add a test in `tests/sim/` proving `tick()` leaves an inert element (e.g. a `boulder` placed in a small ASCII test cave) unchanged after one or more ticks and does not throw, per FR-003 / Edge Cases "A cave contains an element that has no behavior yet" (missing)
+- [ ] T034 Add a test asserting `CHAR_TO_ELEMENT` and `ELEMENT_TO_CHAR` in `src/sim/elements.ts` cover every declared `ElementId` exactly once (bijectively), per data-model.md's Character Mapping validation rules and FR-032 (missing)
