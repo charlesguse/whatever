@@ -14,7 +14,11 @@ export interface Grid {
   readonly height: number;
   readonly cells: Uint8Array;
   readonly movedThisTick: Uint8Array;
-  readonly playerPos: Position;
+  playerPos: Position;
+}
+
+export function setPlayerPosition(grid: Grid, pos: Position): void {
+  grid.playerPos = pos;
 }
 
 export function createGrid(width: number, height: number, playerPos: Position): Grid {

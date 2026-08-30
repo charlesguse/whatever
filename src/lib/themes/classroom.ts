@@ -1,0 +1,36 @@
+import { ELEMENT_IDS, type ElementId } from '../../sim/elements';
+import type { Theme, ThemeEntry } from './types';
+
+// The Classroom theme: one entry per declared element id (all 14, FR-026),
+// including the 9 with no sim behavior yet. Only appearance lives here —
+// element identity/behavior is fixed in src/sim/.
+const elements: Record<ElementId, ThemeEntry> = {
+  empty: { fillColor: '#e9e2cf', glyph: '', label: 'Hallway Floor' },
+  dirt: { fillColor: '#f5f1e3', glyph: '≡', label: 'Notebook Paper' },
+  boulder: { fillColor: '#c9a06b', glyph: '●', label: 'Rubber Eraser' },
+  diamond: { fillColor: '#ffd54a', glyph: '★', label: 'Gold Star Sticker' },
+  brickWall: { fillColor: '#b5502e', glyph: '▦', label: 'Cinder Brick Wall' },
+  steelWall: { fillColor: '#8a93a0', glyph: '▥', label: 'Locker Door' },
+  player: { fillColor: '#4c8bf5', glyph: '☺', label: 'Kid With A Backpack' },
+  firefly: { fillColor: '#ff8a3d', glyph: '✈', label: 'Paper Airplane' },
+  butterfly: { fillColor: '#c86dd7', glyph: '⚑', label: 'Hall Pass' },
+  amoeba: { fillColor: '#8bc34a', glyph: '~', label: 'Spilled Glue' },
+  magicWall: { fillColor: '#5c6bc0', glyph: '✦', label: 'Trophy Case' },
+  expandingWall: { fillColor: '#795548', glyph: '▧', label: 'Bookshelf' },
+  exit: { fillColor: '#43a047', glyph: '▢', label: 'Classroom Door' },
+  explosion: { fillColor: '#ffeb3b', glyph: '✺', label: 'Confetti Burst' },
+};
+
+export const classroomTheme: Theme = {
+  id: 'classroom',
+  elements,
+  background: '#cfc09a',
+};
+
+// Sanity check at module load: every declared element id must have an entry.
+// (Also exercised explicitly by tests/lib/themes/classroom.test.ts.)
+for (const id of ELEMENT_IDS) {
+  if (!(id in elements)) {
+    throw new Error(`Classroom theme is missing an entry for element id "${id}"`);
+  }
+}
