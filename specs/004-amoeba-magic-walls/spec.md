@@ -8,7 +8,9 @@
 
 **Input**: GitHub issue #4 — "Amoeba, magic wall, and expanding wall": the last
 three elements of the declared set, and the two most interesting decisions in
-the game.
+the game. Plus the clarification reply on the same issue, settling the amoeba's
+growth rate as a per-cell probability, the fate of a body converted with no room
+below the wall, and the Classroom name for the magic wall.
 
 The cave stops being a static puzzle and starts pushing back. A blob of spilled
 glue creeps through the notebook paper, eating the room a player was counting
@@ -27,9 +29,11 @@ decisions here — when to seal the glue, and what to feed the wall while it run
 
 ### User Story 1 - The glue spreads, and the player decides when to seal it (Priority: P1)
 
-A blob of spilled glue sits in the paper. Left alone it creeps outward, one cell
-at a time, eating paper and open floor at a rate the player can feel but not
-predict cell-by-cell. It is on a timer the player cannot see: wall it in with
+A blob of spilled glue sits in the paper. Left alone it creeps outward, eating
+paper and open floor at a rate the player can feel but not predict cell-by-cell
+— and every cell it gains is another cell taking its own chance to spread, so a
+blob left alone gets faster the bigger it is. It is on a timer the player cannot
+see: wall it in with
 erasers and dirt before it gets big and the whole blob turns to gold stars — the
 single biggest payout in the game. Let it grow past its limit and it turns to
 erasers instead, which is not a punishment so much as a consolation prize
@@ -88,8 +92,9 @@ its own.
 **Independent Test**: Drop an eraser into a wall and confirm a gold star lands
 below it; drop a gold star in and confirm an eraser lands below. Run the wall
 past its duration and confirm the next thing dropped in simply stops on top of
-it. Load a cave whose wall is never triggered and confirm it behaves as solid
-wall for the entire cave.
+it. Drop an eraser into an active wall with no room underneath and confirm the
+eraser is simply gone. Load a cave whose wall is never triggered and confirm it
+behaves as solid wall for the entire cave.
 
 **Acceptance Scenarios**:
 
@@ -108,6 +113,9 @@ wall for the entire cave.
    **When** the move is attempted, **Then** it is refused.
 7. **Given** a cave restarted after its wall ran out, **When** the fresh cave
    loads, **Then** the wall is dormant again.
+8. **Given** an active wall whose cell below is occupied, **When** a falling
+   eraser falls into it, **Then** the eraser is destroyed, nothing emerges
+   below, and the wall's countdown keeps running.
 
 ---
 
@@ -181,13 +189,16 @@ tick in each direction and stopped dead against the obstruction at each end.
 
 - **Two things fall into the wall on the same tick**: both convert, each
   emerging below its own column, resolved in the fixed scan order.
-- **The wall is active but the cell below it is blocked**: see FR-018 — this is
-  one of the open questions on this spec.
+- **The wall is active but the cell below it is blocked**: the body is destroyed
+  (FR-018a). It went in and nothing came out. The wall still spends the tick,
+  and a player who drops an eraser into a wall with no room underneath has lost
+  the eraser.
 - **The wall is several cells thick**: a body falling into the top comes out
   below the bottom of that unbroken vertical run of wall cells. Thickness
   changes nothing else.
 - **The wall is at the bottom edge of the grid**: there is no cell below it, so
-  the same rule as a blocked cell below applies (FR-018).
+  the same rule as a blocked cell below applies (FR-018a) — the body is
+  destroyed.
 - **A body is pushed sideways into a wall cell**: the push fails, because the
   cell beyond the eraser is not empty. Only falling bodies from directly above
   are converted — a pushed eraser is not falling and never enters the wall.
@@ -248,21 +259,30 @@ tick in each direction and stopped dead against the obstruction at each end.
   growth pass MUST get exactly one growth attempt, taken in the grid's existing
   fixed scan order.
 - **FR-005**: A growth attempt MUST consume the simulation's seeded generator
-  and MUST be [NEEDS CLARIFICATION: how should the per-cave growth rate be
-  expressed and applied? (a) a per-cell, per-tick probability — each amoeba cell
-  independently draws, so a bigger blob grows faster and the blob accelerates,
-  which is the classic dread; (b) a fixed number of cells added per N ticks
-  across the whole blob — growth stays linear and predictable no matter how big
-  it gets]. Whichever is chosen, the number of draws taken on a tick MUST depend
-  only on the grid's contents, never on wall-clock time or iteration order
-  differences, so the run stays replayable.
+  and MUST succeed with the cave's **amoeba growth rate**, expressed as a
+  **per-cell, per-tick probability**. Each amoeba cell draws independently, so a
+  larger blob spreads faster and growth accelerates as the blob grows.
+- **FR-005a**: Every amoeba cell present at the start of the growth pass MUST
+  take **exactly one growth draw**, in the grid's fixed scan order, whether or
+  not that cell has anywhere to grow. The pass MUST NOT exit early once some
+  cell has grown, MUST NOT skip a cell whose orthogonal neighbours are all
+  blocked, and MUST NOT visit the cells in any order but the grid's. The draws
+  taken on a tick are therefore a pure function of the grid's contents and the
+  generator's state, never of wall-clock time or of iteration-order differences,
+  and the run stays replayable. Skipping a draw that cannot change the grid is a
+  determinism bug, not an optimization, and FR-039's same-seed case exists to
+  catch it.
 - **FR-006**: A successful growth attempt MUST turn exactly one orthogonally
   adjacent cell into amoeba, and only if that cell holds **empty space or
   dirt**. Every other content — bodies, either wall, the door, the kid, an
   enemy, an explosion, another amoeba cell, the magic wall, the expanding wall,
-  and the grid boundary — MUST block growth. A cell created by growth MUST be
-  marked as having acted this tick, so it cannot itself grow until the following
-  tick.
+  and the grid boundary — MUST block growth. Where more than one orthogonal
+  neighbour is eligible, the target MUST be chosen by **one further draw** from
+  the same generator over that cell's eligible neighbours in a fixed direction
+  order, taken only on a successful attempt — so the draws a tick takes are
+  still settled entirely by the cave, the seed, and the inputs. A cell created
+  by growth MUST be marked as having acted this tick, so it cannot itself grow
+  until the following tick.
 - **FR-007**: At the end of each tick's growth pass, if the number of amoeba
   cells in the cave **exceeds** the cave's amoeba size limit, every amoeba cell
   MUST become a **boulder** on that tick.
@@ -314,15 +334,14 @@ tick in each direction and stopped dead against the obstruction at each end.
   the result in the first cell **below the unbroken vertical run of magic wall
   cells** beneath it, marked as falling and as having acted this tick, so it
   continues falling from the next tick by the ordinary rule. The body MUST never
-  occupy a magic wall cell itself. If that destination cell is off the grid or
-  holds anything other than empty space, then [NEEDS CLARIFICATION: what happens
-  to a body converted by an active wall when the cell below the wall is blocked?
-  (a) the body is destroyed — it went in and nothing came out, which is the
-  arcade original's behavior and keeps the wall a genuine gamble; (b) the body
-  is left resting on top of the wall unconverted, and the wall is not triggered
-  by it, so nothing is lost by a badly-aimed drop; (c) the body is left resting
-  on top and the wall still activates, so the attempt costs the wall but not the
-  eraser].
+  occupy a magic wall cell itself.
+- **FR-018a**: If that destination cell is off the grid or holds anything other
+  than empty space, the converted body MUST be **destroyed**: it is removed from
+  the cell above the wall, nothing emerges below, and no blast, sound, or other
+  effect is produced. The wall MUST still activate if it was dormant, and its
+  countdown MUST run as normal — the drop costs the player the body. A body goes
+  into the wall and nothing comes out; the wall is a gamble, and what sits under
+  it is part of the cave's design.
 - **FR-019**: Activation MUST set the countdown to the cave's **magic wall
   duration**, measured in ticks. The wall MUST convert on the activation tick
   and on each of the following (duration − 1) ticks, and MUST be dead from the
@@ -362,14 +381,16 @@ tick in each direction and stopped dead against the obstruction at each end.
 ### Cave data and parameters
 
 - **FR-028**: A cave definition MUST gain three optional parameters:
-  **amoeba growth rate** (per FR-005), **amoeba size limit** (a cell count), and
+  **amoeba growth rate** (a per-cell, per-tick probability, per FR-005),
+  **amoeba size limit** (a cell count), and
   **magic wall duration** (in ticks). All three MUST have documented defaults so
   that every existing cave and test loads unchanged, and each MUST be settable
   per cave without touching any other cave.
 - **FR-029**: Parsing MUST reject a cave whose amoeba size limit or magic wall
-  duration is not a positive whole number, or whose growth rate is outside its
-  valid range, naming the cave and the offending value and producing no partial
-  grid — the same failure discipline parsing already uses.
+  duration is not a positive whole number, or whose growth rate is not a
+  probability greater than zero and at most one, naming the cave and the
+  offending value and producing no partial grid — the same failure discipline
+  parsing already uses.
 - **FR-030**: The three elements MUST be placeable in cave data as the ASCII
   characters that already map to them. Adding, moving, or removing one MUST NOT
   touch any simulation file.
@@ -385,17 +406,13 @@ tick in each direction and stopped dead against the obstruction at each end.
 
 - **FR-032**: The Classroom theme MUST carry a label, glyph, and color for all
   three elements that read at the shipped cell size and are distinguishable from
-  each other and from every other element. The shipped labels are Spilled Glue,
-  Trophy Case, and Bookshelf. The originating request describes the magic wall
-  as a pencil sharpener, which is [NEEDS CLARIFICATION: the Classroom name
-  "Pencil Sharpener" already belongs to the firefly as of feature 003, so the
-  magic wall cannot also take it. (a) keep the shipped names — magic wall stays
-  "Trophy Case", firefly stays "Pencil Sharpener"; (b) rename the magic wall to
-  something closer to the request's image of a thing that turns erasers into
-  gold stars, e.g. "Sticker Machine", and leave the firefly alone; (c) rename
-  the firefly to something else and give "Pencil Sharpener" to the magic wall as
-  the request describes — the most faithful to the request and the most
-  disruptive, since feature 003 just settled those names].
+  each other and from every other element. The shipped labels are **Spilled
+  Glue** (amoeba), **Sticker Machine** (magic wall), and **Bookshelf**
+  (expanding wall). The originating request describes the magic wall as a pencil
+  sharpener, but "Pencil Sharpener" is the firefly's Classroom name as of
+  feature 003 and MUST keep it; the magic wall takes "Sticker Machine" instead —
+  a machine that eats erasers and dispenses gold star stickers carries the same
+  image, is one line of theme data, and re-settles none of feature 003's names.
 - **FR-033**: An **active** magic wall MUST be visually distinguishable from a
   dormant or dead one, so a player can see the clock running. That distinction
   MUST come from a new theme field — following the existing pattern for the open
@@ -405,6 +422,17 @@ tick in each direction and stopped dead against the obstruction at each end.
 - **FR-034**: A dormant magic wall and a dead one MUST be drawn identically. A
   player MUST NOT be able to tell from the wall alone whether it has already been
   spent — that uncertainty is part of the decision the wall exists to create.
+  [NEEDS CLARIFICATION: the clarification reply's aside on FR-032 asks that
+  dormant and spent be distinguishable, "since a player has to be able to tell
+  'not started yet' from 'already used up'", which contradicts this requirement
+  and the assumption behind it. Which stands? (a) keep FR-034 — dormant and dead
+  are drawn identically, the theme carries two magic wall entries (inert and
+  active), and the suspense is the point; (b) drop FR-034 — the theme carries
+  three entries (dormant, active, spent), FR-036's read-only phase accessor
+  already exposes all three, and the maintainer-verified criterion about a
+  dormant and a dead wall being indistinguishable is removed. Either way the
+  appearance stays theme data and the renderer MUST NOT branch on phase itself
+  beyond selecting the theme entry the accessor names.]
 - **FR-035**: Adding a further theme MUST still require only a new entry in the
   theme registry, these three elements and the active-wall field included, with
   no simulation and no drawing-logic change.
@@ -441,7 +469,13 @@ tick in each direction and stopped dead against the obstruction at each end.
   - a diamond or boulder created by an amoeba conversion not moving on the tick
     it appears, then falling normally afterwards;
   - amoeba growth being identical across two runs of the same cave and seed, and
-    differing between two different seeds;
+    differing between two different seeds, over enough ticks for a drift of one
+    draw to show;
+  - a fully enclosed blob still taking its one growth draw per cell (FR-005a),
+    pinned by a cave in which a push later in the same run resolves identically
+    whether the blob had anywhere to grow or not;
+  - a larger blob growing faster than a smaller one at the same rate (FR-005),
+    pinning that the probability is per cell and not per blob;
   - two disconnected blobs converting together as one collective;
   - a falling eraser detonating amoeba, and a resting one detonating nothing
     over many ticks;
@@ -453,7 +487,10 @@ tick in each direction and stopped dead against the obstruction at each end.
   - a magic wall expiring on the documented tick, and the next body falling in
     stopping on top of it unchanged;
   - a magic wall that is never activated behaving as solid wall for a long run;
-  - the blocked-destination case, per whichever answer FR-018 settles on;
+  - the blocked-destination case (FR-018a): a body falling into an active wall
+    whose destination cell is occupied, and one falling into a wall on the
+    bottom row, each destroyed with nothing emerging and the countdown running
+    on;
   - a magic wall two or more cells thick, with the body emerging below the run;
   - two bodies converting on the same tick in different columns;
   - the kid being blocked by a magic wall in each of its three phases;
@@ -525,12 +562,17 @@ tick in each direction and stopped dead against the obstruction at each end.
   above the limit.
 - **SC-004**: The same cave and seed produce identical amoeba growth on 100% of
   runs over at least 100 ticks; two different seeds produce different growth.
+  A growth pass takes one growth draw per amoeba cell present at its start, in
+  100% of ticks, including ticks on which no cell can grow — plus one direction
+  draw per successful attempt, and nothing else.
 - **SC-005**: A falling body landing on amoeba detonates it in 100% of attempts;
   a resting body above amoeba detonates it in 0% of attempts, verified over at
   least 100 ticks.
-- **SC-006**: An active magic wall converts 100% of bodies that fall into it,
-  boulder to diamond and diamond to boulder, with the result emerging below the
-  wall and falling on the following tick.
+- **SC-006**: An active magic wall converts 100% of bodies that fall into it
+  with an empty destination cell, boulder to diamond and diamond to boulder,
+  with the result emerging below the wall and falling on the following tick.
+  Where the destination cell is blocked or off the grid, the body is destroyed
+  and nothing emerges, in 100% of attempts.
 - **SC-007**: A magic wall converts on exactly the number of ticks its cave's
   duration specifies — no more, no fewer — and is dead thereafter in 100% of
   runs, including across a further 100 ticks of bodies dropped into it.
@@ -574,7 +616,9 @@ review knows what to look at:
   clock is ticking" rather than "this wall is a different color" — and its
   duration reads as "a few seconds" rather than as an instant or an eternity.
 - A dormant wall and a dead one are genuinely indistinguishable (FR-034), and
-  that reads as suspense rather than as a bug.
+  that reads as suspense rather than as a bug — subject to the open question on
+  FR-034, which may replace this with the opposite check: that a player can tell
+  "not started yet" from "already used up" at a glance.
 - Expanding wall growth at one cell per tick reads as menacing rather than
   either imperceptible or unfair.
 - The shipped cave teaches all three without a tutorial: the glue should be met
@@ -595,6 +639,20 @@ review knows what to look at:
   cannot enter the kid's cell, which is why the amoeba is an obstacle and not a
   hazard (FR-002) — and why the original never needed an "amoeba kills you"
   rule.
+- **Growth is a per-cell probability, so the blob accelerates** (FR-005), per
+  the clarification reply. A bigger blob spreads faster, which is what makes
+  waiting cost something and makes "seal it now or gamble on another few
+  seconds" a decision rather than a countdown a player learns once. The price is
+  that the draw count scales with the blob, so FR-005a fixes it at exactly one
+  draw per cell per tick regardless of whether the cell could grow — an
+  enclosed-cell early exit would be a determinism bug wearing an optimization's
+  clothes.
+- **A successful attempt picks its direction with a second draw** (FR-006). The
+  reply settles how often a cell grows, not which way; a fixed direction
+  preference would make blobs grow in a consistent visible slant, which reads as
+  a bug rather than as spilled glue. The second draw is taken only on success,
+  so the tick's draw sequence is still fixed by the cave, the seed, and the
+  inputs.
 - **The sealed check is instantaneous** (FR-008), so a body falling past the
   last gap can seal a blob for exactly one tick and cash it out. This is a
   deliberate keep, not an oversight: it is a real technique in the original and
@@ -626,13 +684,25 @@ review knows what to look at:
 - **The wall's output is below the whole vertical run of wall cells** (FR-018),
   so a two-thick wall behaves like a one-thick wall. Nothing in the game needs a
   body to stop inside a wall.
+- **A body with nowhere to land is destroyed** (FR-018a), per the clarification
+  reply. It is the arcade original's behavior, and it is the half of the wall's
+  question that makes the other half worth asking: if a badly-aimed drop cost
+  nothing, spending erasers to find out how much time is left on the wall would
+  be all upside and no decision. It also makes what sits under a wall a real
+  cave-design lever.
 - **The duration is measured in ticks and includes the activation tick**
   (FR-019). "A few seconds" at the shipped tick rate of 8 ticks per second makes
   the default 40 ticks — five seconds — which is the shipped default until
   review says otherwise.
 - **A dormant wall and a dead wall look the same** (FR-034). The request only
   distinguishes them by behavior, and the uncertainty is the interesting part:
-  a player who cannot tell whether a wall is spent has a decision to make.
+  a player who cannot tell whether a wall is spent has a decision to make. The
+  clarification reply's aside asks for the opposite, so this one is reopened as
+  the marker on FR-034 rather than silently flipped — it decides whether the
+  theme carries two magic wall entries or three.
+- **The magic wall is the Classroom's "Sticker Machine"** (FR-032), per the
+  clarification reply. The firefly keeps "Pencil Sharpener" from feature 003;
+  renaming it a feature later would churn the same theme data twice for no gain.
 - **The expanding wall grows in both directions** (FR-024). The request says
   "extends horizontally into an adjacent empty cell" without naming a side;
   growing only one way would need the cave to say which, and the original grows
@@ -641,9 +711,12 @@ review knows what to look at:
   request gives it a fixed rate of one cell per tick, unlike the amoeba, and a
   perfectly predictable wall is a useful contrast to a random blob.
 - **Default parameters** (FR-028): amoeba size limit 200 cells, magic wall
-  duration 40 ticks, and an amoeba growth rate slow enough that a single-cell
-  blob takes a couple of seconds to double at the shipped tick rate. All three
-  are dials for review, not rules, and the shipped cave sets them explicitly.
+  duration 40 ticks, and a default amoeba growth rate of a 3-in-100 chance per
+  cell per tick — slow enough that a single-cell blob takes a couple of seconds
+  to double at the shipped tick rate of 8 ticks per second, and fast enough that
+  a blob left alone reaches the size limit within a cave's natural span, since
+  under FR-005 the blob accelerates as it grows. All three are dials for review,
+  not rules, and the shipped cave sets them explicitly.
 - **Amoeba is the seeded generator's second consumer** (FR-037). Sharing one
   generator is what the constitution requires; the consequence is that in a cave
   with both an amoeba and a push, the push outcomes differ from what they would

@@ -13,7 +13,8 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [ ] No [NEEDS CLARIFICATION] markers remain — the three original markers are
+      resolved; one new marker on FR-034 is open (see Notes)
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,18 +32,34 @@
 
 ## Notes
 
-- Three [NEEDS CLARIFICATION] markers remain, deliberately, and are posted to
-  issue #4 for the maintainer rather than guessed at:
-  1. **FR-005** — how the per-cave amoeba growth rate is expressed: a per-cell
-     per-tick probability (accelerating blob) or a fixed number of cells per N
-     ticks (linear blob). This changes how the amoeba *feels* more than any
-     other decision in the feature.
-  2. **FR-018** — what happens to a body converted by an active magic wall when
-     the cell below the wall is blocked: destroyed, left resting unconverted, or
-     left resting with the wall still spent.
-  3. **FR-032** — the Classroom name for the magic wall. The request calls it a
-     pencil sharpener, but feature 003 settled "Pencil Sharpener" as the
-     firefly's name, so the two cannot both have it.
+- All three of the spec's original [NEEDS CLARIFICATION] markers are resolved by
+  the maintainer's reply on the originating issue, and each answer is folded
+  into the requirement it came from rather than left as a note:
+  1. **FR-005 — how is the amoeba growth rate expressed?** A per-cell, per-tick
+     probability, so the blob accelerates as it grows and waiting costs
+     something. The reply also pinned the determinism consequence, now **FR-005a**:
+     every cell draws exactly once per tick in scan order, with no early exit and
+     no skipping enclosed cells, so the draw count is a pure function of the grid.
+     FR-039 gains two cases for it — an enclosed blob still spending its draws,
+     and a larger blob growing faster than a smaller one at the same rate.
+  2. **FR-018 — what happens when the cell below an active wall is blocked?**
+     The body is destroyed, per the arcade original; the wall still activates and
+     still spends the tick. Split out as **FR-018a**, with the two edge-case
+     bullets and the FR-039 test case restated against it, and SC-006 extended.
+  3. **FR-032 — the Classroom name for the magic wall.** "Sticker Machine". The
+     firefly keeps "Pencil Sharpener" from feature 003; the magic wall gets the
+     image the request was reaching for without re-settling names one feature
+     later. One line of theme data, no simulation change.
+- One new [NEEDS CLARIFICATION] marker is opened, on **FR-034**, and it is the
+  only thing left blocking this spec. The reply's aside on FR-032 asks that a
+  dormant wall and a spent one be distinguishable, "since a player has to be able
+  to tell 'not started yet' from 'already used up'". That contradicts FR-034 and
+  the assumption behind it, which make the two deliberately identical because the
+  uncertainty is the decision the wall exists to create. It is reopened rather
+  than flipped silently because it is not a detail: it decides whether the theme
+  carries two magic wall entries or three, and it inverts one of the criteria the
+  maintainer verifies at review time. Either answer keeps the appearance in theme
+  data, so nothing downstream of the theme contract is blocked on it.
 - Every other ambiguity in the request was resolved by picking a behavior and
   recording it in Assumptions, per the constitution's instruction that a spec
   picks, states, and tests rather than leaving a rule to chance. Each pick has a
