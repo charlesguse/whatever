@@ -46,12 +46,12 @@ Single Svelte/Vite project at the repository root, per plan.md's Project Structu
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T007 [P] Create the element id vocabulary and the single shared character mapping in `src/sim/elements.ts` (all 14 declared element ids per FR-002; only 5 have behavior, the rest are valid, inert grid contents per FR-003)
-- [ ] T008 [P] Create the typed-array grid module in `src/sim/grid.ts` — cell contents, per-cell moved-this-tick flags cleared each tick (FR-004), and read-only accessors for cell contents and player position (FR-005), with dimensions read from cave data rather than hardcoded (FR-036)
-- [ ] T009 [P] Create the seeded PRNG in `src/sim/prng.ts` — a small deterministic generator (e.g. mulberry32/xorshift) owned entirely by the sim, seeded from cave data, with no `Math.random` (FR-008, FR-009)
-- [ ] T010 Create ASCII↔grid helpers in `src/sim/ascii.ts` — `caveFromAscii` and `asciiFromState` per `contracts/sim-api.md`, built on the character mapping from `src/sim/elements.ts` (FR-032) (depends on T007, T008)
-- [ ] T011 Create the cave definition parser/validator in `src/sim/cave.ts` — `parseCave` per `contracts/sim-api.md`, validating rectangular rows, declared-vs-actual dimensions, recognized characters, and exactly one player, throwing with cave name and offending coordinates on failure and never returning a partial grid (FR-031, FR-033) (depends on T007, T008, T009, T010)
-- [ ] T012 [P] Create the theme entry/theme contract types in `src/lib/themes/types.ts` — `ThemeEntry` (fill color, glyph, label) and `Theme` (per-element-id entries plus a cave background) per data-model.md (FR-025)
+- [X] T007 [P] Create the element id vocabulary and the single shared character mapping in `src/sim/elements.ts` (all 14 declared element ids per FR-002; only 5 have behavior, the rest are valid, inert grid contents per FR-003)
+- [X] T008 [P] Create the typed-array grid module in `src/sim/grid.ts` — cell contents, per-cell moved-this-tick flags cleared each tick (FR-004), and read-only accessors for cell contents and player position (FR-005), with dimensions read from cave data rather than hardcoded (FR-036)
+- [X] T009 [P] Create the seeded PRNG in `src/sim/prng.ts` — a small deterministic generator (e.g. mulberry32/xorshift) owned entirely by the sim, seeded from cave data, with no `Math.random` (FR-008, FR-009)
+- [X] T010 Create ASCII↔grid helpers in `src/sim/ascii.ts` — `caveFromAscii` and `asciiFromState` per `contracts/sim-api.md`, built on the character mapping from `src/sim/elements.ts` (FR-032) (depends on T007, T008)
+- [X] T011 Create the cave definition parser/validator in `src/sim/cave.ts` — `parseCave` per `contracts/sim-api.md`, validating rectangular rows, declared-vs-actual dimensions, recognized characters, and exactly one player, throwing with cave name and offending coordinates on failure and never returning a partial grid (FR-031, FR-033) (depends on T007, T008, T009, T010)
+- [X] T012 [P] Create the theme entry/theme contract types in `src/lib/themes/types.ts` — `ThemeEntry` (fill color, glyph, label) and `Theme` (per-element-id entries plus a cave background) per data-model.md (FR-025)
 
 **Checkpoint**: Foundation ready — `src/sim/` has a parseable, typed-array cave state with no tick behavior yet; user story implementation can now begin.
 

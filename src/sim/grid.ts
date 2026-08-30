@@ -1,0 +1,66 @@
+import { ELEMENT_ID_TO_INDEX, INDEX_TO_ELEMENT_ID, type ElementId } from './elements';
+
+export interface Position {
+  readonly x: number;
+  readonly y: number;
+}
+
+// The live, mutable-only-by-the-sim grid a tick operates on (FR-005). Cell
+// contents are stored as small integers in a typed array so the hot per-tick
+// scan is allocation-free; movedThisTick is a parallel flag array cleared at
+// the start of every tick (FR-004).
+export interface Grid {
+  readonly width: number;
+  readonly height: number;
+  readonly cells: Uint8Array;
+  readonly movedThisTick: Uint8Array;
+  readonly playerPos: Position;
+}
+
+export function createGrid(width: number, height: number, playerPos: Position): Grid {
+  return {
+    width,
+    height,
+    cells: new Uint8Array(width * height),
+    movedThisTick: new Uint8Array(width * height),
+    playerPos,
+  };
+}
+
+export function cloneGrid(grid: Grid): Grid {
+  return {
+    width: grid.width,
+    height: grid.height,
+    cells: grid.cells.slice(),
+    movedThisTick: grid.movedThisTick.slice(),
+    playerPos: { ...grid.playerPos },
+  };
+}
+
+export function inBounds(grid: Grid, x: number, y: number): boolean {
+  return x >= 0 && y >= 0 && x < grid.width && y < grid.height;
+}
+
+function index(grid: Grid, x: number, y: number): number {
+  return y * grid.width + x;
+}
+
+export function getCellIndex(grid: Grid, x: number, y: number): ElementId {
+  return INDEX_TO_ELEMENT_ID[grid.cells[index(grid, x, y)]];
+}
+
+export function setCellIndex(grid: Grid, x: number, y: number, id: ElementId): void {
+  grid.cells[index(grid, x, y)] = ELEMENT_ID_TO_INDEX[id];
+}
+
+export function isMoved(grid: Grid, x: number, y: number): boolean {
+  return grid.movedThisTick[index(grid, x, y)] !== 0;
+}
+
+export function setMoved(grid: Grid, x: number, y: number): void {
+  grid.movedThisTick[index(grid, x, y)] = 1;
+}
+
+export function clearMovedFlags(grid: Grid): void {
+  grid.movedThisTick.fill(0);
+}
