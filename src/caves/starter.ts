@@ -56,12 +56,36 @@ function buildRows(): string[] {
   setChar(rows, 34, 18, 'o');
 
   // Gold stars — five of them, one more than the quota, so there's a real
-  // choice about which one to skip.
+  // choice about which one to skip. Quota stays reachable from these alone,
+  // without ever detonating the butterfly below (FR-027).
   setChar(rows, 10, 6, '*');
   setChar(rows, 30, 6, '*');
   setChar(rows, 10, 15, '*');
   setChar(rows, 33, 17, '*');
   setChar(rows, 6, 10, '*');
+
+  // A firefly patrol loop (FR-026): a small ring carved out of the dirt near
+  // the player's start, easy to watch and learn on the way past. Far enough
+  // from (2, 2) that it is never orthogonally adjacent to the kid at tick
+  // zero (FR-028).
+  for (const [x, y] of [
+    [5, 5],
+    [6, 5],
+    [7, 5],
+    [7, 6],
+    [7, 7],
+    [6, 7],
+    [5, 7],
+    [5, 6],
+  ] as const) {
+    setChar(rows, x, y, '.');
+  }
+  setChar(rows, 5, 5, 'F');
+
+  // A butterfly one dirt cell below the eraser at (25, 12): digging that
+  // one cell of dirt lets the eraser fall onto the butterfly, detonating it
+  // into a 3x3 of gold stars — the signature scoring trick (FR-026).
+  setChar(rows, 25, 14, 'Y');
 
   // The classroom door, in the clearing — reachable once the quota is met.
   setChar(rows, WIDTH - 4, HEIGHT - 5, 'X');

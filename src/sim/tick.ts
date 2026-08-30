@@ -303,6 +303,16 @@ function processBody(ctx: TickContext, x: number, y: number): void {
     return;
   }
 
+  if (belowId === 'firefly' || belowId === 'butterfly') {
+    // FR-011: only a *falling* body detonates the enemy below it; a resting
+    // body above one is furniture, exactly like a resting body above the
+    // kid. The body is destroyed as part of the same blast, one row above.
+    if (isFallingIndex(grid, x, y)) {
+      stampBlast(ctx, x, y + 1, ENEMY_BLAST_CONTENT[belowId]);
+    }
+    return;
+  }
+
   const isRollSurface = belowId === 'boulder' || belowId === 'diamond' || belowId === 'brickWall';
   if (isRollSurface) {
     for (const dx of [-1, 1] as const) {

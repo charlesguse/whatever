@@ -84,16 +84,16 @@ Single front-end project (unchanged from features 001/002): sim code under `src/
 
 ### Tests for User Story 2
 
-- [ ] T016 [P] [US2] Add ASCII-cave tests to `tests/sim/detonation.test.ts` covering: a falling eraser detonating each enemy type, and a falling gold star doing the same (FR-011); a resting (non-falling) eraser above each enemy type detonating nothing over many ticks (FR-011)
-- [ ] T017 [P] [US2] Add ASCII-cave tests to `tests/sim/explosions.test.ts` covering: a butterfly's blast leaving exactly a 3x3 of gold stars, counted exactly; a firefly's blast leaving exactly a 3x3 of empty space (FR-018, SC-005)
-- [ ] T018 [P] [US2] Add an ASCII-cave test to `tests/sim/quota-and-door.test.ts` covering: gold stars produced by a blast are collectible and count toward quota exactly like drawn ones, opening the door (FR-018, SC-009)
-- [ ] T019 [P] [US2] Add cave-parsing tests to `tests/sim/cave-parsing.test.ts` covering: a cave whose quota exceeds its drawn gold stars but is within `diamondCount + 9 * butterflyCount` loads successfully; one that exceeds even that allowance is rejected at parse time with a message naming the cave, the quota, the diamond count, and the butterfly count (FR-025, SC-010)
+- [X] T016 [P] [US2] Add ASCII-cave tests to `tests/sim/detonation.test.ts` covering: a falling eraser detonating each enemy type, and a falling gold star doing the same (FR-011); a resting (non-falling) eraser above each enemy type detonating nothing over many ticks (FR-011)
+- [X] T017 [P] [US2] Add ASCII-cave tests to `tests/sim/explosions.test.ts` covering: a butterfly's blast leaving exactly a 3x3 of gold stars, counted exactly; a firefly's blast leaving exactly a 3x3 of empty space (FR-018, SC-005)
+- [X] T018 [P] [US2] Add an ASCII-cave test to `tests/sim/quota-and-door.test.ts` covering: gold stars produced by a blast are collectible and count toward quota exactly like drawn ones, opening the door (FR-018, SC-009)
+- [X] T019 [P] [US2] Add cave-parsing tests to `tests/sim/cave-parsing.test.ts` covering: a cave whose quota exceeds its drawn gold stars but is within `diamondCount + 9 * butterflyCount` loads successfully; one that exceeds even that allowance is rejected at parse time with a message naming the cave, the quota, the diamond count, and the butterfly count (FR-025, SC-010)
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] In `src/sim/tick.ts`'s `processBody`, add a sibling to the existing "is the cell below me the kid" check: when a falling body's target cell holds a `firefly`/`butterfly`, call `stampBlast` centered on the enemy's cell with that enemy's blast content instead of moving into it, and let the body be destroyed as part of the same blast (depends on T007; FR-011)
-- [ ] T021 [US2] In `src/sim/cave.ts`'s `parseCave`, tally a `butterflyCount` in the existing per-cell parse loop and change the quota validation to reject only when `quota > diamondCount + 9 * butterflyCount`, naming the cave, quota, diamond count, and butterfly count on failure (FR-025, amends feature 002's FR-027)
-- [ ] T022 [US2] Rework the shipped cave in `src/caves/starter.ts`: add at least one firefly on a patrol loop a player can watch and learn, and at least one butterfly positioned so a dug eraser can fall onto it; ensure no enemy starts orthogonally adjacent to the kid, and the quota remains reachable without detonating the butterfly (depends on T014, T020, T021; FR-026, FR-027, FR-028)
+- [X] T020 [US2] In `src/sim/tick.ts`'s `processBody`, add a sibling to the existing "is the cell below me the kid" check: when a falling body's target cell holds a `firefly`/`butterfly`, call `stampBlast` centered on the enemy's cell with that enemy's blast content instead of moving into it, and let the body be destroyed as part of the same blast (depends on T007; FR-011)
+- [X] T021 [US2] In `src/sim/cave.ts`'s `parseCave`, tally a `butterflyCount` in the existing per-cell parse loop and change the quota validation to reject only when `quota > diamondCount + 9 * butterflyCount`, naming the cave, quota, diamond count, and butterfly count on failure (FR-025, amends feature 002's FR-027)
+- [X] T022 [US2] Rework the shipped cave in `src/caves/starter.ts`: add at least one firefly on a patrol loop a player can watch and learn, and at least one butterfly positioned so a dug eraser can fall onto it; ensure no enemy starts orthogonally adjacent to the kid, and the quota remains reachable without detonating the butterfly (depends on T014, T020, T021; FR-026, FR-027, FR-028)
 
 **Checkpoint**: User Stories 1 AND 2 both work independently — the signature scoring trick is playable end to end.
 

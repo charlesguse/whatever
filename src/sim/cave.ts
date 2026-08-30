@@ -74,6 +74,7 @@ export function parseCave(def: CaveDefinition): CaveState {
   const playerPositions: Position[] = [];
   const exitPositions: Position[] = [];
   let diamondCount = 0;
+  let butterflyCount = 0;
 
   for (let y = 0; y < height; y++) {
     const row = rows[y];
@@ -92,6 +93,9 @@ export function parseCave(def: CaveDefinition): CaveState {
       if (elementId === 'diamond') {
         diamondCount++;
       }
+      if (elementId === 'butterfly') {
+        butterflyCount++;
+      }
     }
   }
 
@@ -108,8 +112,15 @@ export function parseCave(def: CaveDefinition): CaveState {
     fail(name, `expected at most one exit character, found ${exitPositions.length} at ${coords}`);
   }
 
-  if (quota > diamondCount) {
-    fail(name, `quota ${quota} exceeds the ${diamondCount} diamond(s) found in the grid`);
+  // FR-025 (amends feature 002's FR-027): a butterfly's blast pays out 9
+  // gold stars, so quota may draw on that payout too — reject only when it
+  // exceeds diamonds already on the grid plus every butterfly's potential.
+  const butterflyPayout = 9 * butterflyCount;
+  if (quota > diamondCount + butterflyPayout) {
+    fail(
+      name,
+      `quota ${quota} exceeds the ${diamondCount} diamond(s) plus ${butterflyPayout} possible from ${butterflyCount} butterfly(ies) found in the grid`
+    );
   }
 
   playerPos = playerPositions[0];

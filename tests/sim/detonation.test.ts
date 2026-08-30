@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { getStatus } from '../../src/sim/cave';
+import { getCell, getStatus, isExplosion } from '../../src/sim/cave';
 import { caveFromLines, runTicks } from './helpers/ascii-cave';
+import type { ElementId } from '../../src/sim/elements';
 
 type Dir = 'up' | 'down' | 'left' | 'right';
 
@@ -49,6 +50,64 @@ describe('contact detonation (FR-010, SC-003)', () => {
       SSSSS
     `);
     const next = runTicks(state, 20);
+    expect(getStatus(next)).toBe('inPlay');
+  });
+});
+
+const BODY_ELEMENT: Readonly<Record<string, ElementId>> = { o: 'boulder', '*': 'diamond' };
+const ENEMY_ELEMENT: Readonly<Record<string, ElementId>> = { F: 'firefly', Y: 'butterfly' };
+
+// The enemy at (3,3) is boxed on three sides so it can never patrol away
+// before the body reaches it; the falling body approaches down the only
+// open side (up), matching FR-011's "falling body reaches an enemy" trigger.
+function fallingOntoEnemyCave(bodyChar: string, enemyChar: string): string {
+  return [
+    'SSSSSSS',
+    `S..${bodyChar}..S`,
+    'S.....S',
+    `S.S${enemyChar}S.S`,
+    'S.SSS.S',
+    'S.....S',
+    'S....PS',
+    'SSSSSSS',
+  ].join('\n');
+}
+
+function restingOnEnemyCave(bodyChar: string, enemyChar: string): string {
+  return [
+    'SSSSSSS',
+    'S.....S',
+    `S..${bodyChar}..S`,
+    `S.S${enemyChar}S.S`,
+    'S.SSS.S',
+    'S.....S',
+    'S....PS',
+    'SSSSSSS',
+  ].join('\n');
+}
+
+describe('a falling body detonates an enemy it lands on (FR-011)', () => {
+  const cases: readonly [string, string][] = [
+    ['o', 'F'],
+    ['o', 'Y'],
+    ['*', 'F'],
+    ['*', 'Y'],
+  ];
+
+  it.each(cases)('a falling %s detonates a %s, and does not move into its cell', (bodyChar, enemyChar) => {
+    const state = caveFromLines(fallingOntoEnemyCave(bodyChar, enemyChar));
+    const next = runTicks(state, 2);
+    expect(isExplosion(next, 3, 3)).toBe(true); // the enemy's own cell
+    expect(isExplosion(next, 3, 2)).toBe(true); // the body's cell, consumed by the same blast
+    expect(getStatus(next)).toBe('inPlay'); // the kid is untouched by this blast
+  });
+
+  it.each(cases)('a resting %s above a %s never detonates it, over many ticks', (bodyChar, enemyChar) => {
+    const state = caveFromLines(restingOnEnemyCave(bodyChar, enemyChar));
+    const next = runTicks(state, 25);
+    expect(isExplosion(next, 3, 3)).toBe(false);
+    expect(getCell(next, 3, 3)).toBe(ENEMY_ELEMENT[enemyChar]);
+    expect(getCell(next, 3, 2)).toBe(BODY_ELEMENT[bodyChar]);
     expect(getStatus(next)).toBe('inPlay');
   });
 });
