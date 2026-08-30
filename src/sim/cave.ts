@@ -1,12 +1,22 @@
 import { CHAR_TO_ELEMENT, type ElementId } from './elements';
-import { createGrid, getCellIndex, setCellIndex, type Grid, type Position } from './grid';
+import {
+  createGrid,
+  getCellIndex,
+  isFallingIndex,
+  setCellIndex,
+  type Grid,
+  type Position,
+} from './grid';
 import { seedPrng, type PrngState } from './prng';
+
+export type CaveStatus = 'inPlay' | 'dead' | 'completed';
 
 export interface CaveDefinition {
   readonly name: string;
   readonly width: number;
   readonly height: number;
   readonly seed: number;
+  readonly quota: number;
   readonly rows: readonly string[];
 }
 
@@ -18,6 +28,9 @@ export interface CaveState {
   readonly tick: number;
   readonly grid: Grid;
   readonly rngState: PrngState;
+  readonly collected: number;
+  readonly quota: number;
+  readonly status: CaveStatus;
 }
 
 function fail(caveName: string, message: string): never {
@@ -28,7 +41,7 @@ function fail(caveName: string, message: string): never {
 // FR-033). Throws — never returns a partial grid — naming the cave and the
 // offending coordinate(s) on any failure.
 export function parseCave(def: CaveDefinition): CaveState {
-  const { name, width, height, seed, rows } = def;
+  const { name, width, height, seed, quota, rows } = def;
 
   if (rows.length !== height) {
     fail(name, `declared height ${height} but got ${rows.length} row(s)`);
@@ -45,6 +58,8 @@ export function parseCave(def: CaveDefinition): CaveState {
 
   let playerPos: Position | undefined;
   const playerPositions: Position[] = [];
+  const exitPositions: Position[] = [];
+  let diamondCount = 0;
 
   for (let y = 0; y < height; y++) {
     const row = rows[y];
@@ -57,6 +72,12 @@ export function parseCave(def: CaveDefinition): CaveState {
       if (elementId === 'player') {
         playerPositions.push({ x, y });
       }
+      if (elementId === 'exit') {
+        exitPositions.push({ x, y });
+      }
+      if (elementId === 'diamond') {
+        diamondCount++;
+      }
     }
   }
 
@@ -66,6 +87,15 @@ export function parseCave(def: CaveDefinition): CaveState {
   if (playerPositions.length > 1) {
     const coords = playerPositions.map((p) => `(${p.x}, ${p.y})`).join(', ');
     fail(name, `expected exactly one player character, found ${playerPositions.length} at ${coords}`);
+  }
+
+  if (exitPositions.length > 1) {
+    const coords = exitPositions.map((p) => `(${p.x}, ${p.y})`).join(', ');
+    fail(name, `expected at most one exit character, found ${exitPositions.length} at ${coords}`);
+  }
+
+  if (quota > diamondCount) {
+    fail(name, `quota ${quota} exceeds the ${diamondCount} diamond(s) found in the grid`);
   }
 
   playerPos = playerPositions[0];
@@ -86,6 +116,9 @@ export function parseCave(def: CaveDefinition): CaveState {
     tick: 0,
     grid,
     rngState: seedPrng(seed),
+    collected: 0,
+    quota,
+    status: 'inPlay',
   };
 }
 
@@ -98,4 +131,26 @@ export function getCell(state: CaveState, x: number, y: number): ElementId {
 
 export function getPlayerPosition(state: CaveState): Position {
   return { ...state.grid.playerPos };
+}
+
+export function getCollected(state: CaveState): number {
+  return state.collected;
+}
+
+export function getQuota(state: CaveState): number {
+  return state.quota;
+}
+
+// Derived, not stored — collected only ever increases, so this comparison
+// is already permanent once true (FR-025, data-model.md Cave State).
+export function isDoorOpen(state: CaveState): boolean {
+  return state.collected >= state.quota;
+}
+
+export function getStatus(state: CaveState): CaveStatus {
+  return state.status;
+}
+
+export function isFalling(state: CaveState, x: number, y: number): boolean {
+  return isFallingIndex(state.grid, x, y);
 }

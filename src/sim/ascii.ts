@@ -4,6 +4,7 @@ import { getCell, type CaveDefinition, type CaveState } from './cave';
 export interface AsciiCave {
   readonly name: string;
   readonly seed: number;
+  readonly quota?: number;
   readonly rows: readonly string[];
 }
 
@@ -18,6 +19,7 @@ export function caveFromAscii(ascii: AsciiCave): CaveDefinition {
     width,
     height,
     seed: ascii.seed,
+    quota: ascii.quota ?? 0,
     rows: ascii.rows,
   };
 }

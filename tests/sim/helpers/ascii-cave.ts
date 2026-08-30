@@ -10,6 +10,7 @@ import { tick, type Direction } from '../../../src/sim/tick';
 export interface CaveOptions {
   readonly name?: string;
   readonly seed?: number;
+  readonly quota?: number;
 }
 
 // Strips a template literal's common leading indentation and its
@@ -41,22 +42,35 @@ export function caveFromLines(rows: string[] | string, options: CaveOptions = {}
   const def = caveFromAscii({
     name: options.name ?? 'test-cave',
     seed: options.seed ?? 1,
+    quota: options.quota ?? 0,
     rows: lines,
   });
   return parseCave(def);
 }
 
-// Runs `count` ticks. `inputs`, if given, supplies one direction (or
-// undefined) per tick, by index; ticks beyond the end of `inputs` get no
-// input.
+// One tick's worth of input: a bare direction (or undefined, for no input),
+// or a richer { direction, grab } pair for tests that need to drive a held
+// grab alongside movement.
+export type TickInputLike = Direction | undefined | { direction?: Direction; grab?: boolean };
+
+function toTickInput(input: TickInputLike): { direction?: Direction; grab?: boolean } {
+  if (input === undefined || typeof input === 'string') {
+    return { direction: input };
+  }
+  return input;
+}
+
+// Runs `count` ticks. `inputs`, if given, supplies one input per tick, by
+// index — either a bare direction or a { direction, grab } pair; ticks
+// beyond the end of `inputs` get no input.
 export function runTicks(
   state: CaveState,
   count: number,
-  inputs?: readonly (Direction | undefined)[]
+  inputs?: readonly TickInputLike[]
 ): CaveState {
   let next = state;
   for (let i = 0; i < count; i++) {
-    next = tick(next, { direction: inputs?.[i] });
+    next = tick(next, toTickInput(inputs?.[i]));
   }
   return next;
 }
