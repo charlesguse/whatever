@@ -89,4 +89,38 @@ describe('cave parsing rejections', () => {
     expect(() => parseCave(def)).toThrowError(/\(1, 1\)/);
     expect(() => parseCave(def)).toThrowError(/\(2, 2\)/);
   });
+
+  it('rejects a cave whose quota exceeds its diamond count, naming the cave and both numbers (FR-027)', () => {
+    const def = caveFromAscii({
+      name: CAVE_NAME,
+      seed: 1,
+      quota: 2,
+      rows: asciiLines(`
+        SSSS
+        SP*S
+        SSSS
+      `),
+    });
+
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/quota 2/);
+    expect(() => parseCave(def)).toThrowError(/1 diamond/);
+  });
+
+  it('rejects a cave with more than one exit, naming both coordinates', () => {
+    const def = caveFromAscii({
+      name: CAVE_NAME,
+      seed: 1,
+      rows: asciiLines(`
+        SSSS
+        SPXS
+        SX.S
+        SSSS
+      `),
+    });
+
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/\(2, 1\)/);
+    expect(() => parseCave(def)).toThrowError(/\(1, 2\)/);
+  });
 });
