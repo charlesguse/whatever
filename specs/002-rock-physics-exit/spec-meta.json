@@ -2,7 +2,8 @@
   "issue": 2,
   "spec_dir": "specs/002-rock-physics-exit",
   "feature_num": "002",
-  "stage": "implement",
+  "stage": "review",
   "iteration": 1,
-  "spec_branch": "spec/002-rock-physics-exit"
+  "spec_branch": "spec/002-rock-physics-exit",
+  "pending_re_review_from": []
 }
