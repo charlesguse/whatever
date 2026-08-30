@@ -119,11 +119,11 @@ Single Svelte/Vite project at the repository root, per plan.md's Project Structu
 
 ### Tests for User Story 4
 
-- [ ] T028 [US4] Write a theme-completeness test at `tests/lib/themes/classroom.test.ts` that iterates the full declared element set from `src/sim/elements.ts` and asserts the Classroom theme in `src/lib/themes/classroom.ts` has a `ThemeEntry` for every one, including the 9 with no behavior yet (FR-025, FR-026) (depends on T007, T017)
+- [X] T028 [US4] Write a theme-completeness test at `tests/lib/themes/classroom.test.ts` that iterates the full declared element set from `src/sim/elements.ts` and asserts the Classroom theme in `src/lib/themes/classroom.ts` has a `ThemeEntry` for every one, including the 9 with no behavior yet (FR-025, FR-026) (depends on T007, T017)
 
 ### Implementation for User Story 4
 
-- [ ] T029 [US4] Audit `src/lib/render/canvas.ts` and `src/App.svelte` for any literal color, glyph, or label value or any branch on which theme is active, and replace findings with theme-table lookups through `src/lib/themes/registry.ts` (FR-024, SC-009) (depends on T019)
+- [X] T029 [US4] Audit `src/lib/render/canvas.ts` and `src/App.svelte` for any literal color, glyph, or label value or any branch on which theme is active, and replace findings with theme-table lookups through `src/lib/themes/registry.ts` (FR-024, SC-009) (depends on T019) — audited: no theme branching in either file; the only literal colors are in `contrastingTextColor`, a theme-agnostic legibility fallback computed from the theme's own `fillColor`, not a per-element/per-theme hardcode
 
 **Checkpoint**: All four user stories are independently functional; a hypothetical second theme would require only a new registry entry (SC-009).
 
