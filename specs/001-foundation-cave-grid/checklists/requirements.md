@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -33,15 +33,33 @@
 
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`
 
-### On the three open clarifications
+### On the three clarifications — all resolved
 
-Three `[NEEDS CLARIFICATION]` markers remain by design — FR-021 (held-key
-repeat cadence), FR-029 (whole cave visible vs. scrolling view), and FR-036
-(standard cave dimensions). Each meets the bar for asking rather than guessing:
-all three change what a player sees or how much is built, and each has more
-than one defensible answer. They are posted to the originating issue as
-questions rather than blocking spec authoring. Every other gap was resolved
-with a documented default in the Assumptions section.
+The three `[NEEDS CLARIFICATION]` markers were answered on the originating
+issue and folded into the spec:
+
+- **FR-021 — held-key cadence**: a held key auto-repeats every tick at the
+  simulation's tick rate. The held direction is input-layer state derived from
+  key-down/key-up, never the OS repeat rate and never simulation state, so
+  per-tick input recordings replay identically.
+- **FR-029 — camera**: a scrolling viewport that follows the player, living
+  entirely in the rendering layer, following via a dead zone rather than
+  hard-centering, clamped at the cave boundary, and centered without scrolling
+  when a cave fits the window.
+- **FR-036 — cave size**: 40 by 22, the original's size, standardized across
+  the later caves — but read from cave data, never hardcoded, so a differently
+  sized cave later needs no change outside cave data.
+
+The knock-on edits are recorded in the spec: User Story 1 (narrative,
+independent test, scenarios 6-7), two edge cases, the new Camera entity, two
+Assumptions covering the tuning values left to review, FR-030 and FR-041,
+SC-006, the new SC-011, and the maintainer-review list. Every other gap was
+resolved with a documented default in the Assumptions section.
+
+Two tuning values remain deliberately open for the maintainer rather than the
+spec: the exact tick rate (already noted in Assumptions) and the camera's dead
+zone size. Neither is a clarification question — the required behavior around
+them is pinned.
 
 ### On "no implementation details"
 

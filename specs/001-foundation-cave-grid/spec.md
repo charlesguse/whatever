@@ -18,10 +18,13 @@ later physics feature will lean on. Deliberately no falling rocks.
 
 A player opens the game and sees a cave: a kid with a backpack standing in a
 field of notebook paper, walled in by lockers. Pressing an arrow key (or WASD)
-moves the kid exactly one cell in that direction. Walking into notebook paper
-tunnels through it, leaving an empty corridor that stays dug. Walking into a
-wall does nothing — the kid stays put. Movement is crisp, one-cell, grid-locked
-steps; it never slides or interpolates between cells.
+moves the kid exactly one cell in that direction, and holding the key keeps
+them walking a cell at a time. Walking into notebook paper tunnels through it,
+leaving an empty corridor that stays dug. Walking into a wall does nothing —
+the kid stays put. Movement is crisp, one-cell, grid-locked steps; it never
+slides or interpolates between cells. The cave is bigger than the window shows,
+so the view scrolls along to keep the kid on screen and stops at the cave's
+edges.
 
 **Why this priority**: This is the entire visible product of this feature. If
 only this ships, there is a thing on screen a person can play with, and every
@@ -29,7 +32,9 @@ later mechanic is an addition to it rather than a rewrite.
 
 **Independent Test**: Open the page, press each of the four direction keys, and
 confirm the kid steps one cell per step, clears dirt, leaves corridors behind,
-and is stopped by both wall types.
+and is stopped by both wall types. Then hold a key and confirm the kid keeps
+walking at a steady cadence, and walk toward a far corner to confirm the view
+scrolls along and stops at the cave boundary.
 
 **Acceptance Scenarios**:
 
@@ -49,8 +54,13 @@ and is stopped by both wall types.
    presses the direction key toward the edge, **Then** the kid does not leave
    the grid.
 6. **Given** the player holds a direction key down, **When** several ticks
-   elapse, **Then** the kid advances in whole-cell steps only — never a partial
-   cell, never diagonally.
+   elapse, **Then** the kid advances one cell per tick for as long as the key
+   is held, in whole-cell steps only — never a partial cell, never diagonally,
+   and at the same cadence on any machine.
+7. **Given** the kid walks toward a part of the cave that is off screen,
+   **When** they cross out of the middle of the view, **Then** the view scrolls
+   to follow them, and stops scrolling at the cave's boundary rather than
+   showing space outside the cave.
 
 ---
 
@@ -156,16 +166,22 @@ theme has an entry for every declared element id.
   check, not the border decoration, is what stops the player leaving the grid.
 - **Conflicting keys held at once** (e.g. left and right, or up and left): the
   resolution is fixed and deterministic — most recently pressed still-held
-  direction wins — so replays cannot diverge on it.
+  direction wins — so replays cannot diverge on it. Releasing that key while
+  another direction is still held resumes movement in the still-held direction.
 - **A key tapped and released entirely between two ticks**: the step still
   registers; the shell hands the simulation the most recent direction pressed
   since the last tick, so fast taps are not swallowed.
 - **The browser tab is backgrounded and later restored**: accumulated time is
   clamped so the simulation does not burst-run a large batch of catch-up ticks
   and teleport the player across the cave.
-- **The window is smaller than the cave, or is resized while playing**: the
-  view adapts without distorting cells into non-square shapes and without
-  changing simulation behavior.
+- **The window is smaller than the cave** — the ordinary case at 40 by 22 — **or
+  is resized while playing**: the view scrolls to follow the player and adapts
+  to the new size without distorting cells into non-square shapes and without
+  changing simulation behavior. A cave small enough to fit entirely is centered
+  and does not scroll.
+- **The player walks into a corner of the cave**: the camera stops at the
+  boundary, so the player is off-center near the edges and no space outside the
+  cave is ever drawn.
 - **A cave contains an element that has no behavior yet** (e.g. a boulder): it
   is placed as an inert cell and drawn from its theme entry; it does not move
   and does not crash the tick. The shipped starter cave uses only the elements
@@ -236,11 +252,16 @@ theme has an entry for every declared element id.
   tick, so a key tapped between ticks is not lost.
 - **FR-020**: When conflicting directions are held simultaneously, the most
   recently pressed still-held direction MUST win, deterministically.
-- **FR-021**: When a direction key is held continuously, the player MUST
-  [NEEDS CLARIFICATION: does a held direction key auto-repeat, and at what
-  cadence? Options: repeat every tick at the simulation's tick rate the way the
-  original game does; one cell per key press requiring release and re-press;
-  or an initial delay followed by repeat, like OS key repeat.]
+- **FR-021**: When a direction key is held continuously, the player MUST keep
+  moving one cell per tick, at the simulation's tick rate, for as long as the
+  key is held — no initial delay and no release-and-re-press requirement.
+  - The held direction MUST be tracked by the input layer from key-down and
+    key-up events and reported to the simulation as the per-tick direction of
+    FR-019. No repeat timer or key-repeat state may live in the simulation, so
+    a recorded list of per-tick directions replays identically.
+  - The operating system's own key-repeat MUST NOT be used as the cadence,
+    since OS repeat rates vary per machine and would make the game move at
+    different speeds on different computers.
 - **FR-022**: Keys the game uses for movement MUST NOT also scroll or
   otherwise act on the page while the game has focus.
 
@@ -263,15 +284,22 @@ theme has an entry for every declared element id.
   registry — no change to any simulation file and no change to drawing logic.
 - **FR-028**: All graphics MUST be drawn in code (shapes, gradients, text
   glyphs). No image files, font files, or audio files may be used.
-- **FR-029**: The view MUST show the cave such that
-  [NEEDS CLARIFICATION: is the whole cave always visible at once, or does the
-  view scroll to follow the player as in the original game? Options: fit the
-  entire cave on screen with no camera; a scrolling viewport that follows the
-  player; or fit-the-whole-cave now with a scrolling camera deferred to a later
-  feature.]
+- **FR-029**: The view MUST be a scrolling viewport that follows the player, as
+  in the original game, rather than fitting the whole cave on screen. The
+  camera:
+  - MUST live entirely in the rendering layer. The simulation MUST NOT be aware
+    that a camera exists, and camera position MUST NOT be an input to a tick or
+    affect simulation state in any way.
+  - MUST follow the player using a dead zone in the middle of the view — the
+    view scrolls only once the player moves out of that zone — rather than
+    hard-centering the player on every step.
+  - MUST clamp at the cave boundary: it never scrolls past an edge and never
+    shows space outside the cave.
+  - MUST, when the whole cave fits in the window, center the cave and not
+    scroll at all.
 - **FR-030**: Cells MUST be drawn as uniform squares, and the view MUST adapt
-  to the window size without distorting cell shape or changing simulation
-  behavior.
+  to the window size without distorting cell shape. How much of the cave is
+  visible MAY change with the window size; simulation behavior MUST NOT.
 
 #### The cave format
 
@@ -289,12 +317,12 @@ theme has an entry for every declared element id.
   it MUST be the cave shown when the page loads.
 - **FR-035**: The starter cave MUST be enclosed by an indestructible border so
   the player cannot reach the grid edge in normal play.
-- **FR-036**: The starter cave MUST have a dimension of
-  [NEEDS CLARIFICATION: what cave size should this project standardize on? This
-  is the size the eight later caves will also use. Options: the original game's
-  40 wide by 22 tall; a smaller grid such as 20 by 12 that fits comfortably in
-  a fixed view; or a size chosen to fill a typical laptop window at a readable
-  cell size.]
+- **FR-036**: The starter cave MUST be 40 cells wide by 22 cells tall — the
+  original game's cave size, which the later caves standardize on. Every
+  dimension MUST be read from the cave data: neither the simulation, the
+  renderer, nor the test harness may hardcode 40 by 22 or assume all caves
+  share one size, so a later cave of a different size needs no change outside
+  cave data.
 - **FR-037**: Adding or editing a cave MUST NOT require touching any
   simulation file.
 
@@ -309,8 +337,11 @@ theme has an entry for every declared element id.
   rather than raw cell values.
 - **FR-041**: The suite MUST cover, at minimum: grid construction; cave parsing
   including each rejection case in FR-033; player movement into empty, dirt,
-  brick wall, steel wall, and the grid boundary; a tick with no input; and the
-  determinism guarantee of FR-010 over a multi-tick input sequence.
+  brick wall, steel wall, and the grid boundary; a tick with no input; a
+  sustained run of the same direction over consecutive ticks, standing in for a
+  held key (FR-021); a cave whose dimensions differ from the starter cave's,
+  proving no size is hardcoded (FR-036); and the determinism guarantee of
+  FR-010 over a multi-tick input sequence.
 - **FR-042**: The suite MUST run without a browser, a canvas, an audio device,
   or any browser-automation tooling.
 
@@ -339,6 +370,10 @@ theme has an entry for every declared element id.
 - **Random generator**: The simulation's own seeded source of randomness, whose
   state is part of cave state so replays reproduce it exactly. Declared and
   seeded here; nothing in this feature consumes it yet.
+- **Camera**: The rendering layer's record of which part of the cave is on
+  screen, derived each frame from the player's position, the cave's dimensions,
+  and the window size. Purely a view concern — it is never read by the
+  simulation and never influences a tick.
 - **Theme**: A plain data table mapping every element id to appearance — fill
   color, glyph, label — plus a background for the cave. Classroom is the only
   entry in the registry for now.
@@ -362,8 +397,9 @@ theme has an entry for every declared element id.
 - **SC-005**: The same cave replayed with the same recorded inputs produces an
   identical grid on 100% of runs, verified over a sequence of at least 100
   ticks.
-- **SC-006**: The view holds a steady frame rate on a mid-range laptop at full
-  cave size — 60 frames per second target, never below 30.
+- **SC-006**: The view holds a steady frame rate on a mid-range laptop at the
+  full 40 by 22 cave size, including while the view is scrolling — 60 frames
+  per second target, never below 30.
 - **SC-007**: The automated suite passes in an environment with no browser and
   covers all of the cases listed in FR-041.
 - **SC-008**: The shipped artifact is exactly one file and makes zero network
@@ -371,15 +407,23 @@ theme has an entry for every declared element id.
 - **SC-009**: Introducing a second theme changes only theme data — zero
   simulation files and zero drawing-logic files — confirmed at review.
 - **SC-010**: Adding a new cave changes only cave data — zero simulation
-  files — confirmed at review.
+  files — confirmed at review, including a cave whose dimensions differ from
+  the starter cave's 40 by 22.
+- **SC-011**: The view never shows space outside the cave and never scrolls
+  past a boundary, in 100% of walks into each of the four edges and four
+  corners.
 
 ### Verified by the maintainer at review time
 
 The following cannot be checked without a browser and are called out here so
 review knows what to look at:
 
-- Movement feel: steps read as crisp and grid-locked, and the repeat cadence
-  when a key is held feels like Boulder Dash rather than sluggish or runaway.
+- Movement feel: steps read as crisp and grid-locked, and the one-cell-per-tick
+  cadence when a key is held feels like Boulder Dash rather than sluggish or
+  runaway — which is the same judgement as the tick rate itself.
+- Camera feel: the dead zone is wide enough that ordinary walking does not make
+  the cave lurch, and narrow enough that the player never walks off screen;
+  scrolling stops cleanly at the edges.
 - The Classroom theme reads as school supplies at a glance — notebook paper,
   cinder brick, lockers, a kid with a backpack — at the shipped cell size.
 - Frame rate holds at full cave size (SC-006), including after the tab has
@@ -401,6 +445,12 @@ review knows what to look at:
 - The simulation runs at a fixed tick rate in the neighborhood of 8 ticks per
   second — the original game's rough cadence — with the exact value tuned by
   the maintainer at review; it is not a free-running rate tied to frame rate.
+  Because a held key moves the player one cell per tick (FR-021), that tick
+  rate is also the player's walking speed.
+- The dead zone size and scroll behavior of the camera (FR-029) are tuning
+  values for the maintainer to settle at review, not fixed by this spec; only
+  the follow-with-a-dead-zone, clamp-at-the-edge, and center-if-it-fits rules
+  are required.
 - Ticks continue to advance while the player presses nothing; the simulation is
   not driven by input events.
 - Keyboard is the only input mode here. Touch and gamepad support, which the
