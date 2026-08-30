@@ -1,0 +1,69 @@
+name: "Wing Commander · 4 tasks"
+
+on:
+  pull_request:
+    types: [closed]
+    branches: ["spec/**"]
+    paths: ["specs/**"]
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "Spec slug (NNN-name) to (re)start task generation for"
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  # A merged plan PR (or manual restart) generates the task list.
+  tasks:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       startsWith(github.event.pull_request.head.ref, 'plan/'))
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+      id-token: write
+    uses: charlesguse/wing-commander/.github/workflows/tasks.yml@main
+    with:
+      mode: generate
+      head-ref: ${{ github.event.pull_request.head.ref }}
+      slug: ${{ inputs.slug }}
+      restart: ${{ github.event_name == 'workflow_dispatch' }}
+      tasks-review: ${{ vars.WING_COMMANDER_TASKS_REVIEW || 'auto' }}
+      next-workflow: wing-commander-5-implement.yml
+    secrets:
+      claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      speckit-app-id: ${{ secrets.WING_COMMANDER_APP_ID }}
+      speckit-app-private-key: ${{ secrets.WING_COMMANDER_APP_PRIVATE_KEY }}
+
+  # A merged tasks PR (pr review mode) is the acceptance signal — agent-free
+  # hand-off to implementation. The permissions grant must cover every job
+  # in the called workflow file (GitHub validates them all at startup, even
+  # `if`-skipped ones); the called job's own narrower declaration still
+  # scopes the actual token.
+  tasks-approved:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'tasks/')
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+      id-token: write
+    uses: charlesguse/wing-commander/.github/workflows/tasks.yml@main
+    with:
+      mode: approved
+      head-ref: ${{ github.event.pull_request.head.ref }}
+      next-workflow: wing-commander-5-implement.yml
+    secrets:
+      claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      speckit-app-id: ${{ secrets.WING_COMMANDER_APP_ID }}
+      speckit-app-private-key: ${{ secrets.WING_COMMANDER_APP_PRIVATE_KEY }}

@@ -1,0 +1,65 @@
+name: "Deploy to GitHub Pages"
+
+# Builds the single-file game and publishes it to GitHub Pages on every push
+# to main. Lives outside the Wing Commander pipeline because the pipeline's
+# GitHub App has no `workflows` permission and so can never create or edit
+# workflow files itself. Until the app scaffold (package.json) lands on main,
+# the run is a clean no-op.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      has_app: ${{ steps.check.outputs.has_app }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for app scaffold
+        id: check
+        run: |
+          if [ -f package.json ]; then
+            echo "has_app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_app=false" >> "$GITHUB_OUTPUT"
+            echo "No package.json yet — nothing to deploy." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.has_app == 'true'
+        with:
+          node-version: 22
+      - name: Build single-file page
+        if: steps.check.outputs.has_app == 'true'
+        run: |
+          npm ci
+          npm run build
+          test -f dist/index.html
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.check.outputs.has_app == 'true'
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.has_app == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

@@ -1,0 +1,38 @@
+name: "Wing Commander · 6 finalize"
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec_dir:
+        description: "Spec directory (e.g. specs/001-my-feature)"
+        required: true
+        type: string
+      issue:
+        description: "Lifecycle issue number"
+        required: true
+        type: string
+      converged:
+        description: "Whether the converge loop finished cleanly"
+        required: false
+        default: "true"
+        type: string
+
+permissions: {}
+
+jobs:
+  finalize:
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    uses: charlesguse/wing-commander/.github/workflows/finalize.yml@main
+    with:
+      spec-dir: ${{ inputs.spec_dir }}
+      issue-number: ${{ fromJSON(inputs.issue) }}
+      converged: ${{ fromJSON(inputs.converged) }}
+    secrets:
+      claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      speckit-app-id: ${{ secrets.WING_COMMANDER_APP_ID }}
+      speckit-app-private-key: ${{ secrets.WING_COMMANDER_APP_PRIVATE_KEY }}

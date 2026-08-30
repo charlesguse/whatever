@@ -1,0 +1,33 @@
+name: "Wing Commander · 2 clarify"
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+jobs:
+  clarify:
+    # Security gates, all must hold: a real issue in the spec-drafting stage,
+    # owned by the pipeline, and a human commenter who is a maintainer or the
+    # original requester.
+    if: >-
+      !github.event.issue.pull_request &&
+      contains(join(github.event.issue.labels.*.name, ','), 'spec:') &&
+      (contains(github.event.issue.labels.*.name, 'stage:spec') || contains(github.event.issue.labels.*.name, 'stage:clarify')) &&
+      github.event.comment.user.type != 'Bot' &&
+      (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) || github.event.comment.user.id == github.event.issue.user.id)
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    uses: charlesguse/wing-commander/.github/workflows/clarify.yml@main
+    with:
+      issue-number: ${{ github.event.issue.number }}
+      comment-id: ${{ github.event.comment.id }}
+    secrets:
+      claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      speckit-app-id: ${{ secrets.WING_COMMANDER_APP_ID }}
+      speckit-app-private-key: ${{ secrets.WING_COMMANDER_APP_PRIVATE_KEY }}

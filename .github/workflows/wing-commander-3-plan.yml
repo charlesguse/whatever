@@ -1,0 +1,44 @@
+name: "Wing Commander · 3 plan"
+
+on:
+  pull_request:
+    types: [closed]
+    paths: ["specs/**"]
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "Spec slug (NNN-name) to (re)start planning for"
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  plan:
+    # Gate: a draft spec PR merged into the default branch, or a manual
+    # restart. The head-prefix guard prevents unrelated PRs touching specs/**
+    # from false-triggering.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == 'main' &&
+       startsWith(github.event.pull_request.head.ref, 'spec-draft/'))
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+      id-token: write
+    uses: charlesguse/wing-commander/.github/workflows/plan.yml@main
+    with:
+      head-ref: ${{ github.event.pull_request.head.ref }}
+      slug: ${{ inputs.slug }}
+      merged: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged }}
+      pr-number: ${{ github.event.pull_request.number }}
+      plan-review: ${{ vars.WING_COMMANDER_PLAN_REVIEW || 'pr' }}
+      next-workflow: wing-commander-4-tasks.yml
+    secrets:
+      claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      speckit-app-id: ${{ secrets.WING_COMMANDER_APP_ID }}
+      speckit-app-private-key: ${{ secrets.WING_COMMANDER_APP_PRIVATE_KEY }}

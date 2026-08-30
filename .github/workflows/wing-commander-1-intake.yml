@@ -1,0 +1,25 @@
+name: "Wing Commander · 1 intake"
+
+on:
+  issues:
+    types: [labeled]
+
+permissions: {}
+
+jobs:
+  intake:
+    # Security gate: only the maintainer-applied approval label starts intake.
+    if: github.event.label.name == 'spec-request'
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    uses: charlesguse/wing-commander/.github/workflows/intake.yml@main
+    with:
+      issue-number: ${{ github.event.issue.number }}
+    secrets:
+      claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      speckit-app-id: ${{ secrets.WING_COMMANDER_APP_ID }}
+      speckit-app-private-key: ${{ secrets.WING_COMMANDER_APP_PRIVATE_KEY }}

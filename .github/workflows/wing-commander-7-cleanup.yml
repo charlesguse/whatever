@@ -1,0 +1,27 @@
+name: "Wing Commander · 7 cleanup"
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  cleanup:
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    uses: charlesguse/wing-commander/.github/workflows/cleanup.yml@main
+    with:
+      head-ref: ${{ github.event.pull_request.head.ref }}
+      base-ref: ${{ github.event.pull_request.base.ref }}
+      merged: ${{ github.event.pull_request.merged }}
+      pr-number: ${{ github.event.pull_request.number }}
+      merge-commit-sha: ${{ github.event.pull_request.merge_commit_sha || '' }}
+    secrets:
+      claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      speckit-app-id: ${{ secrets.WING_COMMANDER_APP_ID }}
+      speckit-app-private-key: ${{ secrets.WING_COMMANDER_APP_PRIVATE_KEY }}

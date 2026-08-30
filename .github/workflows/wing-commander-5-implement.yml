@@ -1,0 +1,44 @@
+name: "Wing Commander · 5 implement"
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec_dir:
+        description: "Spec directory (e.g. specs/001-my-feature)"
+        required: true
+        type: string
+      issue:
+        description: "Lifecycle issue number"
+        required: true
+        type: string
+      iteration:
+        description: "Implement/converge iteration (1-based)"
+        required: false
+        default: "1"
+        type: string
+
+permissions: {}
+
+jobs:
+  implement:
+    permissions:
+      contents: write
+      issues: write
+      actions: write
+      id-token: write
+    uses: charlesguse/wing-commander/.github/workflows/implement.yml@main
+    with:
+      spec-dir: ${{ inputs.spec_dir }}
+      issue-number: ${{ fromJSON(inputs.issue) }}
+      iteration: ${{ fromJSON(inputs.iteration) }}
+      max-iterations: ${{ fromJSON(vars.WING_COMMANDER_MAX_ITERATIONS || '5') }}
+      self-workflow: wing-commander-5-implement.yml
+      next-workflow: wing-commander-6-finalize.yml
+      # This project is a Svelte + Vite app: the implement/converge agents
+      # need the Node toolchain to install, build, and run vitest.
+      extra-allowed-tools: "Bash(npm:*),Bash(npx:*),Bash(node:*)"
+    secrets:
+      claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      speckit-app-id: ${{ secrets.WING_COMMANDER_APP_ID }}
+      speckit-app-private-key: ${{ secrets.WING_COMMANDER_APP_PRIVATE_KEY }}
