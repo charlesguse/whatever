@@ -2,7 +2,7 @@
   "issue": 5,
   "spec_dir": "specs/005-arcade-shell-caves",
   "feature_num": "005",
-  "stage": "spec",
+  "stage": "plan",
   "iteration": 0,
-  "spec_branch": null
+  "spec_branch": "spec/005-arcade-shell-caves"
 }
