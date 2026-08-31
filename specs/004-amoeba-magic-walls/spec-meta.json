@@ -2,7 +2,8 @@
   "issue": 4,
   "spec_dir": "specs/004-amoeba-magic-walls",
   "feature_num": "004",
-  "stage": "implement",
+  "stage": "review",
   "iteration": 1,
-  "spec_branch": "spec/004-amoeba-magic-walls"
+  "spec_branch": "spec/004-amoeba-magic-walls",
+  "pending_re_review_from": []
 }
