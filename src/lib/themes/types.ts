@@ -11,6 +11,9 @@ export interface ThemeEntry {
 
 export interface Theme {
   readonly id: string;
+  // The theme picker's label (FR-003) — distinct from id (never shown to
+  // the player) and from title (the in-game name on the title screen).
+  readonly displayName: string;
   readonly elements: Readonly<Record<ElementId, ThemeEntry>>;
   readonly background: string;
   // The door's open/flashing appearance (FR-038). elements.exit stays the

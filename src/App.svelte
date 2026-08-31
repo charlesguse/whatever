@@ -8,11 +8,23 @@
   import { readSave, writeSave } from './lib/storage/save';
   import { KeyboardInput } from './lib/input/keyboard';
   import { createRenderLoop, type RenderLoop } from './lib/render/canvas';
-  import { registerTheme, getTheme } from './lib/themes/registry';
-  import { classroomTheme } from './lib/themes/classroom';
+  import './lib/themes';
+  import { getTheme, listThemes } from './lib/themes/registry';
+  import { cycleThemeId, resolveStoredThemeId } from './lib/themes/selection';
 
-  registerTheme(classroomTheme);
-  const THEME_ID = 'classroom';
+  // FR-025: restores the stored theme id, falling back to Classroom for
+  // anything unregistered, non-string, or absent.
+  let activeThemeId: string = $state(
+    resolveStoredThemeId(readSave().themeId, listThemes().map((t) => t.id), 'classroom')
+  );
+
+  // FR-018: a no-op — no state change, no storage write — when reselecting
+  // the active id. FR-028: persisted at the moment of change.
+  function selectTheme(id: string): void {
+    if (id === activeThemeId) return;
+    activeThemeId = id;
+    writeSave({ themeId: id });
+  }
 
   const TICK_INTERVAL_MS = 1000 / TICK_RATE_HZ;
   // Clamp the accumulator so a backgrounded tab does not fire a burst of
@@ -67,6 +79,15 @@
   }
 
   function stepTickInner(): void {
+    // FR-020, FR-021, FR-035: consumed unconditionally, before any
+    // session.screen branch — including the 'title' branch's start/
+    // direction/grab checks below — so a cycleTheme press reaches every
+    // screen and is never also evaluated as a start/direction/grab press
+    // (CYCLE_THEME_KEYS is disjoint from those actions' keys).
+    if (keyboard.consumeCycleTheme()) {
+      selectTheme(cycleThemeId(activeThemeId, listThemes().map((t) => t.id)));
+    }
+
     // FR-027: restart works from playing, paused, caveIntro, and lifeLost,
     // at any point in a frame — a no-op (via restartAttempt's own screen
     // gate) everywhere else, so it is always safe to check first.
@@ -136,7 +157,7 @@
 
   // FR-044: reads the sim/session through accessors every frame — no local
   // tracking of any value. FR-046: every string comes from theme data.
-  let theme = $derived(getTheme(THEME_ID));
+  let theme = $derived(getTheme(activeThemeId));
 
   // FR-002, FR-040: read fresh whenever the title screen is showing — never
   // held stale from a previous game.
@@ -224,7 +245,7 @@
       renderLoop = createRenderLoop({
         canvas,
         getState: () => session.caveState,
-        getThemeId: () => THEME_ID,
+        getThemeId: () => activeThemeId,
       });
       renderLoop.start();
     }
@@ -249,6 +270,21 @@
 {/if}
 {#if statusMessage}
   <div class="status-banner">{statusMessage}</div>
+{/if}
+{#if listThemes().length > 1}
+  <div class="theme-picker">
+    {#each listThemes() as themeOption (themeOption.id)}
+      <button
+        type="button"
+        class="theme-option"
+        class:active={themeOption.id === activeThemeId}
+        aria-pressed={themeOption.id === activeThemeId}
+        onclick={() => selectTheme(themeOption.id)}
+      >
+        {themeOption.displayName}
+      </button>
+    {/each}
+  </div>
 {/if}
 
 <style>
@@ -282,5 +318,29 @@
     border-radius: 0.5rem;
     pointer-events: none;
     text-align: center;
+  }
+
+  .theme-picker {
+    position: fixed;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.35rem;
+  }
+
+  .theme-option {
+    padding: 0.25rem 0.6rem;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font: 0.9rem sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 0.3rem;
+    cursor: pointer;
+  }
+
+  .theme-option.active {
+    background: rgba(255, 255, 255, 0.85);
+    color: #111;
+    border-color: #fff;
   }
 </style>

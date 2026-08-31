@@ -29,6 +29,7 @@ const elements: Record<ElementId, ThemeEntry> = {
 
 export const classroomTheme: Theme = {
   id: 'classroom',
+  displayName: 'Classroom',
   elements,
   background: '#cfc09a',
   // Visibly distinct from elements.exit (the closed-door/locker look).

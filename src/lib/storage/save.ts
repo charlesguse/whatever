@@ -14,6 +14,10 @@ const MAX_CAVE = 8;
 export interface SaveRecord {
   readonly highScore: number;
   readonly furthestCave: number;
+  // FR-025: validated here only as "is this a string" — whether it names
+  // a *registered* theme is resolveStoredThemeId's job (src/lib/themes/
+  // selection.ts), keeping this module theme-registry-agnostic.
+  readonly themeId?: string;
 }
 
 const DEFAULT_SAVE: SaveRecord = { highScore: 0, furthestCave: MIN_CAVE };
@@ -56,13 +60,14 @@ export function readSave(storage: StorageLike | undefined = defaultStorage()): S
     if (raw === null) return DEFAULT_SAVE;
 
     const parsed: unknown = JSON.parse(raw);
-    const record = parsed as { highScore?: unknown; furthestCave?: unknown } | null;
+    const record = parsed as { highScore?: unknown; furthestCave?: unknown; themeId?: unknown } | null;
 
     return {
       highScore: isValidHighScore(record?.highScore) ? record.highScore : DEFAULT_SAVE.highScore,
       furthestCave: isValidFurthestCave(record?.furthestCave)
         ? record.furthestCave
         : DEFAULT_SAVE.furthestCave,
+      themeId: typeof record?.themeId === 'string' ? record.themeId : undefined,
     };
   } catch {
     return DEFAULT_SAVE;
@@ -70,18 +75,21 @@ export function readSave(storage: StorageLike | undefined = defaultStorage()): S
 }
 
 // FR-039: highScore only ever grows via Math.max(stored, finalScore);
-// furthestCave only ever grows via Math.max(stored, caveNumber). Never
-// throws to its caller (FR-041).
+// furthestCave only ever grows via Math.max(stored, caveNumber). FR-027:
+// themeId is last-write-wins, not grow-only — a call that omits it leaves
+// the stored value untouched; a call that passes one always replaces it.
+// Never throws to its caller (FR-041).
 export function writeSave(
-  record: SaveRecord,
+  record: Partial<SaveRecord>,
   storage: StorageLike | undefined = defaultStorage()
 ): void {
   try {
     if (!storage) return;
     const current = readSave(storage);
     const next: SaveRecord = {
-      highScore: Math.max(current.highScore, record.highScore),
-      furthestCave: Math.max(current.furthestCave, record.furthestCave),
+      highScore: Math.max(current.highScore, record.highScore ?? current.highScore),
+      furthestCave: Math.max(current.furthestCave, record.furthestCave ?? current.furthestCave),
+      themeId: record.themeId ?? current.themeId,
     };
     storage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {

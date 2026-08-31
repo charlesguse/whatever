@@ -67,6 +67,41 @@ describe('a throwing storage degrades silently (FR-041)', () => {
   });
 });
 
+describe('themeId (FR-025, FR-027)', () => {
+  it('readSave() returns themeId: undefined for a missing stored value', () => {
+    expect(readSave(memoryStorage()).themeId).toBeUndefined();
+  });
+
+  it('readSave() returns themeId: undefined for an unreadable/non-string stored value', () => {
+    const number = memoryStorage();
+    number.setItem('recess-rocks:save', JSON.stringify({ highScore: 0, furthestCave: 1, themeId: 5 }));
+    expect(readSave(number).themeId).toBeUndefined();
+
+    const object = memoryStorage();
+    object.setItem('recess-rocks:save', JSON.stringify({ highScore: 0, furthestCave: 1, themeId: { id: 'classic' } }));
+    expect(readSave(object).themeId).toBeUndefined();
+
+    const nullValue = memoryStorage();
+    nullValue.setItem('recess-rocks:save', JSON.stringify({ highScore: 0, furthestCave: 1, themeId: null }));
+    expect(readSave(nullValue).themeId).toBeUndefined();
+  });
+
+  it('writeSave merges themeId per-field, not as a full-record overwrite', () => {
+    const storage = memoryStorage();
+    writeSave({ themeId: 'a' }, storage);
+    writeSave({ highScore: 5 }, storage); // no themeId in this call
+    expect(readSave(storage).themeId).toBe('a');
+    expect(readSave(storage).highScore).toBe(5);
+  });
+
+  it('writeSave is last-write-wins for themeId, not Math.max-shaped', () => {
+    const storage = memoryStorage();
+    writeSave({ themeId: 'z-later' }, storage);
+    writeSave({ themeId: 'a-earlier' }, storage);
+    expect(readSave(storage).themeId).toBe('a-earlier');
+  });
+});
+
 describe('invalid or out-of-range stored values are treated as absent (FR-042)', () => {
   it('a missing key reads as absent', () => {
     expect(readSave(memoryStorage())).toEqual({ highScore: 0, furthestCave: 1 });
