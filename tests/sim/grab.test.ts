@@ -32,6 +32,13 @@ describe('grab (FR-019–FR-021)', () => {
     expectAscii(next, ['S.PA.S']);
   });
 
+  it('does nothing against a magic wall — never grabs or pushes (research.md Decision 7)', () => {
+    const state = caveFromLines('S.PM.S');
+    const next = runTicks(state, 1, [{ direction: 'right', grab: true }]);
+    expect(getPlayerPosition(next)).toEqual({ x: 2, y: 0 });
+    expectAscii(next, ['S.PM.S']);
+  });
+
   it('does nothing against a wall', () => {
     const state = caveFromLines('S.PS.S');
     const next = runTicks(state, 1, [{ direction: 'right', grab: true }]);

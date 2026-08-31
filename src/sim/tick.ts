@@ -460,6 +460,11 @@ function processBody(ctx: TickContext, x: number, y: number): void {
     return;
   }
 
+  if (belowId === 'magicWall') {
+    processMagicWallEntry(ctx, x, y);
+    return;
+  }
+
   const isRollSurface = belowId === 'boulder' || belowId === 'diamond' || belowId === 'brickWall';
   if (isRollSurface) {
     for (const dx of [-1, 1] as const) {
@@ -475,6 +480,49 @@ function processBody(ctx: TickContext, x: number, y: number): void {
   }
 
   clearFallingIndex(grid, x, y);
+}
+
+// Magic wall conversion (FR-016–FR-020, FR-018a, research.md Decision 6),
+// entered only when a *falling* boulder/diamond's cell below holds
+// magicWall — a body that is not falling never triggers any of this
+// (magicWall is never a roll surface in any phase, FR-013).
+function processMagicWallEntry(ctx: TickContext, x: number, y: number): void {
+  const grid = ctx.grid;
+  if (!isFallingIndex(grid, x, y)) return;
+
+  if (ctx.magicWallPhase === 'dead') {
+    clearFallingIndex(grid, x, y);
+    return;
+  }
+
+  // FR-016, FR-017: activation is unconditional on entry, decided before the
+  // destination is even computed — so a body destroyed by FR-018a still
+  // activated the wall and its countdown still runs.
+  if (ctx.magicWallPhase === 'dormant') {
+    ctx.magicWallPhase = 'active';
+    ctx.magicWallCountdown = ctx.magicWallDuration;
+  }
+
+  const bodyId = getCellIndex(grid, x, y);
+  const opposite = bodyId === 'boulder' ? 'diamond' : 'boulder';
+
+  // Walk down through the unbroken run of magicWall cells at the moment of
+  // entry (research.md Decision 6) to find the destination.
+  let ty = y + 1;
+  while (inBounds(grid, x, ty) && getCellIndex(grid, x, ty) === 'magicWall') {
+    ty++;
+  }
+
+  setCellIndex(grid, x, y, 'empty');
+  clearFallingIndex(grid, x, y);
+
+  if (!inBounds(grid, x, ty) || getCellIndex(grid, x, ty) !== 'empty') {
+    return; // FR-018a: destroyed, nothing emerges
+  }
+
+  setCellIndex(grid, x, ty, opposite);
+  setFallingIndex(grid, x, ty);
+  setMoved(grid, x, ty);
 }
 
 function movePlayer(ctx: TickContext, x: number, y: number, input: TickInput): void {

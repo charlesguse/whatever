@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getPlayerPosition, getStatus } from '../../src/sim/cave';
+import { getMagicWallPhase, getPlayerPosition, getStatus } from '../../src/sim/cave';
 import { caveFromLines, expectAscii, runTicks } from './helpers/ascii-cave';
 
 describe('movement', () => {
@@ -122,6 +122,32 @@ describe('movement', () => {
     const next = runTicks(state, 2, [undefined, 'right']);
     expect(getPlayerPosition(next)).toEqual({ x: 1, y: 1 });
     expect(getStatus(next)).toBe('inPlay');
+  });
+
+  it('is blocked by a magic wall cell in each of its three phases — dormant, active, and dead (FR-014)', () => {
+    // The player sits directly right of the wall the whole run; a separate
+    // boulder falls into the wall to drive it through its phases while the
+    // player repeatedly presses toward the (always-blocking) wall cell.
+    let next = caveFromLines(
+      ['SSSSS', 'S.o.S', 'S...S', 'S.MPS', 'S...S', 'SSSSS'],
+      { magicWallDuration: 2 }
+    );
+    // Tick 1: boulder falls one row; wall still dormant — blocked.
+    next = runTicks(next, 1, ['left']);
+    expect(getPlayerPosition(next)).toEqual({ x: 3, y: 3 });
+    expect(getMagicWallPhase(next)).toBe('dormant');
+    // Tick 2: boulder enters and activates the wall this same tick — blocked.
+    next = runTicks(next, 1, ['left']);
+    expect(getPlayerPosition(next)).toEqual({ x: 3, y: 3 });
+    expect(getMagicWallPhase(next)).toBe('active');
+    // Tick 3: still active (duration 2 covers this tick too) — blocked.
+    next = runTicks(next, 1, ['left']);
+    expect(getPlayerPosition(next)).toEqual({ x: 3, y: 3 });
+    expect(getMagicWallPhase(next)).toBe('active');
+    // Tick 4: countdown reaches zero before the scan — dead — still blocked.
+    next = runTicks(next, 1, ['left']);
+    expect(getPlayerPosition(next)).toEqual({ x: 3, y: 3 });
+    expect(getMagicWallPhase(next)).toBe('dead');
   });
 
   it('works on a cave whose dimensions differ from the starter cave, proving no size is hardcoded (FR-036)', () => {

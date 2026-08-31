@@ -89,4 +89,20 @@ describe('quota and door (FR-017–FR-018, FR-022–FR-027)', () => {
     expect(getCollected(collected)).toBe(1);
     expect(isDoorOpen(collected)).toBe(true);
   });
+
+  it('a diamond produced by a magic-wall conversion counts toward quota once collected, opening the door (FR-022)', () => {
+    // The decoy diamond at (4,2) satisfies the quota-vs-diamonds-on-the-grid
+    // validation without ever being reachable from the player's path — the
+    // door only opens once the wall-produced diamond is actually collected.
+    const state = caveFromLines(
+      ['SSSSSS', 'S.o..S', 'S...*S', 'S.M..S', 'SP...S', 'SSSSSS'],
+      { quota: 1 }
+    );
+    const beforeCollect = runTicks(state, 3); // fall, convert+emerge, rest
+    expect(isDoorOpen(beforeCollect)).toBe(false);
+
+    const collected = runTicks(beforeCollect, 1, ['right']);
+    expect(getCollected(collected)).toBe(1);
+    expect(isDoorOpen(collected)).toBe(true);
+  });
 });
