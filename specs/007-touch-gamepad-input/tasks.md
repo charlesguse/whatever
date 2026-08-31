@@ -240,3 +240,13 @@ With multiple developers, after Foundational lands:
 - [Story] labels map every phase-3+ task to its user story for traceability
 - This feature adds zero new `TickInput` fields, zero new `SessionState` fields, and touches zero files under `src/sim/` — no task in this list names a path under `src/sim/` (FR-033)
 - `src/lib/input/keyboard.ts` is never edited by any task in this list (FR-034) — every new source is an additional file, never a modification to the existing one
+
+---
+
+## Maintainer Feedback
+
+### Landscape touch layout must use two margins, not one (FR-031)
+
+- [ ] In `src/lib/input/touch/layout.ts`, rework the landscape branch of `computeTouchControlLayout` so the reserved area is split into **two** margins carved from `insetBox` — a left band holding the pad, a right band holding grab/pause/restart — with `caveRect` as the strip between them, per FR-031's "margins beside it" (plural in landscape) and the issue #7 clarification that spare landscape width sits "on the left and right, exactly where thumbs are." The portrait branch (pad left, buttons right, inside one bottom band) already matches the spec and needs no change.
+- [ ] Confirm `containRect` and the complementary-rect invariant (`reservedRect`/`caveRect` never overlapping, both fully inside `insetBox`) carry over unchanged to the two-margin shape.
+- [ ] Add a landscape-only test to `tests/lib/input/touch/layout.test.ts` that pins the two-thumb property directly: the pad's center x and the grab button's center x fall on opposite sides of `caveRect`'s horizontal midpoint, so a future tuning pass cannot silently collapse this back into one band.
