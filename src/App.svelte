@@ -8,6 +8,7 @@
   import { readSave, writeSave } from './lib/storage/save';
   import { KeyboardInput } from './lib/input/keyboard';
   import { TouchInput } from './lib/input/touch/TouchInput';
+  import { GamepadInput } from './lib/input/gamepad/GamepadInput';
   import { computeOrientation, computeTouchControlLayout, type InsetBox } from './lib/input/touch/layout';
   import { nextLastInputSource, shouldShowTouchControls, type LastInputSource } from './lib/input/visibility';
   import { orAll, resolveDirection } from './lib/input/merge';
@@ -54,6 +55,7 @@
 
   const keyboard = new KeyboardInput();
   const touch = new TouchInput();
+  const gamepad = new GamepadInput();
   let renderLoop: RenderLoop | undefined;
   let tickHandle: number | undefined;
   let lastTime: number | undefined;
@@ -62,6 +64,9 @@
   // FR-029: a capability read only — no UA/device/screen-size sniff — read
   // once, since it cannot change for the life of the page.
   const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  // FR-028: gates whether gamepad.poll() is ever called — no listener side
+  // effect, no error, when the API is absent.
+  const gamepadSupported = typeof navigator.getGamepads === 'function';
 
   // FR-027a: advanced only by window-level keydown/click/touchstart
   // listeners below — no fourth listener, so pointer movement structurally
@@ -152,6 +157,8 @@
   // never runs except via tickSession while screen === 'playing' (FR-011,
   // FR-028).
   function stepTick(): void {
+    // FR-017: polled once per tick, before any consume*() call.
+    if (gamepadSupported) gamepad.poll();
     const previousScreen = session.screen;
     stepTickInner();
     saveOnTransition(previousScreen, session.screen);
@@ -164,16 +171,15 @@
     // screen and is never also evaluated as a start/direction/grab press
     // (CYCLE_THEME_KEYS is disjoint from those actions' keys). Every
     // source's consume*() is computed before orAll/resolveDirection run,
-    // never inside a short-circuiting `||` (contracts/input-merge-api.md);
-    // the gamepad argument is a placeholder until US2 (T021) wires it in.
-    if (orAll(keyboard.consumeCycleTheme(), touch.consumeCycleTheme(), false)) {
+    // never inside a short-circuiting `||` (contracts/input-merge-api.md).
+    if (orAll(keyboard.consumeCycleTheme(), touch.consumeCycleTheme(), gamepad.consumeCycleTheme())) {
       selectTheme(cycleThemeId(activeThemeId, listThemes().map((t) => t.id)));
     }
 
     // FR-027: restart works from playing, paused, caveIntro, and lifeLost,
     // at any point in a frame — a no-op (via restartAttempt's own screen
     // gate) everywhere else, so it is always safe to check first.
-    if (orAll(keyboard.consumeRestart(), touch.consumeRestart(), false)) {
+    if (orAll(keyboard.consumeRestart(), touch.consumeRestart(), gamepad.consumeRestart())) {
       session = restartAttempt(session);
     }
 
@@ -181,10 +187,12 @@
       // Any of the start key, a movement key, or grab starts the game
       // (spec Edge Cases) — that same keypress is not also delivered to
       // the kid on the first tick, since startGame() lands on 'caveIntro',
-      // not 'playing', and tickSession is gated on 'playing'.
-      const direction = resolveDirection(keyboard.consumeDirection(), touch.consumeDirection(), undefined);
-      const grab = orAll(keyboard.consumeGrab(), touch.consumeGrab(), false);
-      const start = orAll(keyboard.consumeStart(), touch.consumeStart(), false);
+      // not 'playing', and tickSession is gated on 'playing'. Gamepad has
+      // no consumeStart() — its confirm route is the edge-triggered
+      // consumeConfirm() instead (research.md's dual-read decision).
+      const direction = resolveDirection(keyboard.consumeDirection(), touch.consumeDirection(), gamepad.consumeDirection());
+      const grab = orAll(keyboard.consumeGrab(), touch.consumeGrab(), gamepad.consumeGrab());
+      const start = orAll(keyboard.consumeStart(), touch.consumeStart(), gamepad.consumeConfirm());
       if (start || direction !== undefined || grab) {
         session = startGame();
       }
@@ -192,15 +200,15 @@
     }
 
     if (session.screen === 'playing' || session.screen === 'paused') {
-      if (orAll(keyboard.consumePause(), touch.consumePause(), false)) {
+      if (orAll(keyboard.consumePause(), touch.consumePause(), gamepad.consumePause())) {
         session = pauseToggle(session);
         return; // the toggle itself is not also a play/freeze tick
       }
     }
 
     if (session.screen === 'playing') {
-      const direction = resolveDirection(keyboard.consumeDirection(), touch.consumeDirection(), undefined);
-      const grab = orAll(keyboard.consumeGrab(), touch.consumeGrab(), false);
+      const direction = resolveDirection(keyboard.consumeDirection(), touch.consumeDirection(), gamepad.consumeDirection());
+      const grab = orAll(keyboard.consumeGrab(), touch.consumeGrab(), gamepad.consumeGrab());
       session = tickSession(session, { direction, grab });
       return;
     }
@@ -212,10 +220,10 @@
     }
 
     // Every other screen (caveIntro, lifeLost, caveComplete, gameOver,
-    // won): a tap/keypress or the documented delay advances it, whichever
-    // comes first.
+    // won): a tap/keypress/confirm or the documented delay advances it,
+    // whichever comes first.
     const advanced = { ...session, screenTicks: session.screenTicks + 1 };
-    const advance = orAll(keyboard.consumeStart(), touch.consumeStart(), false);
+    const advance = orAll(keyboard.consumeStart(), touch.consumeStart(), gamepad.consumeConfirm());
     if (advance || advanced.screenTicks >= SCREEN_AUTO_ADVANCE_TICKS) {
       session = advanceScreen(advanced);
     } else {
