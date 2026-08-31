@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { asciiFromState } from '../../src/sim/ascii';
-import { getCollected, getEnemyFacing, getStatus, isExplosion } from '../../src/sim/cave';
+import {
+  getCollected,
+  getEnemyFacing,
+  getMagicWallPhase,
+  getStatus,
+  isExplosion,
+} from '../../src/sim/cave';
 import { tick, type Direction } from '../../src/sim/tick';
 import { caveFromLines } from './helpers/ascii-cave';
 
@@ -130,5 +136,68 @@ describe('determinism', () => {
 
     // Sanity: the scripted scenario actually exercised what it claims to.
     expect(getStatus(stateA)).toBe('dead');
+  });
+
+  it('replays amoeba growth, a magic-wall conversion, and expanding-wall growth identically across two runs of the same seed, and diverges on a different seed (FR-037, FR-042, FR-043, SC-004, SC-010)', () => {
+    // Three independent columns/regions so the boulder's fall-and-convert
+    // path never crosses the amoeba's growth pocket: a magic wall (with a
+    // boulder to drop into it) at x=2, a well-roomed amoeba seed around
+    // x=9, and an expanding wall seed at x=10 on its own row.
+    const width = 20;
+    const blank = (extra: ReadonlyArray<readonly [number, string]> = []): string => {
+      const arr = new Array(width).fill('.');
+      arr[0] = 'S';
+      arr[width - 1] = 'S';
+      for (const [i, ch] of extra) arr[i] = ch;
+      return arr.join('');
+    };
+    const cave = [
+      'S'.repeat(width),
+      blank([[2, 'P']]),
+      blank(),
+      blank([[2, 'o']]),
+      blank(),
+      blank([[2, 'M']]),
+      blank(),
+      blank([[8, '#'], [9, '#'], [10, '#']]),
+      blank([[7, '#'], [8, '#'], [9, 'A'], [10, '#'], [11, '#']]),
+      blank([[8, '#'], [9, '#'], [10, '#']]),
+      blank([[10, 'E']]),
+      blank(),
+      'S'.repeat(width),
+    ];
+    const inputs = buildInputSequence(TICK_COUNT);
+    const options = { seed: 13, amoebaGrowthRate: 0.4, amoebaSizeLimit: 60, magicWallDuration: 10 };
+
+    let stateA = caveFromLines(cave, options);
+    let stateB = caveFromLines(cave, options);
+    // A snapshot partway through, before growth can saturate the room and
+    // make every seed converge on the same fully-filled grid — this is
+    // where cross-seed divergence is actually checked below.
+    const DIVERGENCE_CHECK_TICK = 5;
+    let stateASnapshot = '';
+
+    for (let i = 0; i < TICK_COUNT; i++) {
+      stateA = tick(stateA, { direction: inputs[i] });
+      stateB = tick(stateB, { direction: inputs[i] });
+      expect(asciiFromState(stateA)).toBe(asciiFromState(stateB));
+      expect(getCollected(stateA)).toBe(getCollected(stateB));
+      expect(getStatus(stateA)).toBe(getStatus(stateB));
+      expect(getMagicWallPhase(stateA)).toBe(getMagicWallPhase(stateB));
+      if (i === DIVERGENCE_CHECK_TICK - 1) {
+        stateASnapshot = asciiFromState(stateA);
+      }
+    }
+
+    // Sanity: the scripted scenario actually exercised what it claims to —
+    // the wall activated, the amoeba grew, and the wall extended.
+    expect(getMagicWallPhase(stateA)).not.toBe('dormant');
+    expect(asciiFromState(stateA)).toContain('E');
+
+    let stateC = caveFromLines(cave, { ...options, seed: 21 });
+    for (let i = 0; i < DIVERGENCE_CHECK_TICK; i++) {
+      stateC = tick(stateC, { direction: inputs[i] });
+    }
+    expect(asciiFromState(stateC)).not.toBe(stateASnapshot);
   });
 });
