@@ -2,7 +2,8 @@
   "issue": 5,
   "spec_dir": "specs/005-arcade-shell-caves",
   "feature_num": "005",
-  "stage": "implement",
+  "stage": "review",
   "iteration": 2,
-  "spec_branch": "spec/005-arcade-shell-caves"
+  "spec_branch": "spec/005-arcade-shell-caves",
+  "pending_re_review_from": []
 }
