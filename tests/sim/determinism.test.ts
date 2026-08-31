@@ -4,6 +4,7 @@ import {
   getCollected,
   getEnemyFacing,
   getMagicWallPhase,
+  getRemainingSeconds,
   getStatus,
   isExplosion,
 } from '../../src/sim/cave';
@@ -28,13 +29,16 @@ describe('determinism', () => {
     `;
     const inputs = buildInputSequence(TICK_COUNT);
 
-    let stateA = caveFromLines(cave, { seed: 42 });
-    let stateB = caveFromLines(cave, { seed: 42 });
+    let stateA = caveFromLines(cave, { seed: 42, timeLimitSeconds: 100 });
+    let stateB = caveFromLines(cave, { seed: 42, timeLimitSeconds: 100 });
 
     for (let i = 0; i < TICK_COUNT; i++) {
       stateA = tick(stateA, { direction: inputs[i] });
       stateB = tick(stateB, { direction: inputs[i] });
       expect(asciiFromState(stateA)).toBe(asciiFromState(stateB));
+      // FR-051: the clock replays identically too — same seed and inputs
+      // produce the same remainingTimeTicks at every tick.
+      expect(getRemainingSeconds(stateA)).toBe(getRemainingSeconds(stateB));
     }
   });
 

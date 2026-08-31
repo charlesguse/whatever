@@ -264,3 +264,43 @@ describe('cave parameters (FR-028, FR-029)', () => {
     expect(() => parseCave(def)).toThrowError(/1\.5/);
   });
 });
+
+// FR-015: timeLimitSeconds, if present, must be a positive whole number.
+describe('cave clock parameter (FR-015)', () => {
+  it('accepts a positive whole timeLimitSeconds', () => {
+    const state = caveFromLines('S.P.S', { timeLimitSeconds: 30 });
+    expect(state.remainingTimeTicks).toBeDefined();
+  });
+
+  it('rejects a zero timeLimitSeconds, naming the cave and the offending value', () => {
+    const def = caveFromAscii({ name: CAVE_NAME, seed: 1, rows: ['S.P.S'], timeLimitSeconds: 0 });
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/timeLimitSeconds/);
+    expect(() => parseCave(def)).toThrowError(/0/);
+  });
+
+  it('rejects a negative timeLimitSeconds, naming the cave and the offending value', () => {
+    const def = caveFromAscii({ name: CAVE_NAME, seed: 1, rows: ['S.P.S'], timeLimitSeconds: -5 });
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/timeLimitSeconds/);
+    expect(() => parseCave(def)).toThrowError(/-5/);
+  });
+
+  it('rejects a fractional timeLimitSeconds, naming the cave and the offending value', () => {
+    const def = caveFromAscii({ name: CAVE_NAME, seed: 1, rows: ['S.P.S'], timeLimitSeconds: 2.5 });
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/timeLimitSeconds/);
+    expect(() => parseCave(def)).toThrowError(/2\.5/);
+  });
+
+  it('rejects a non-numeric timeLimitSeconds, naming the cave and the offending value', () => {
+    const def = caveFromAscii({
+      name: CAVE_NAME,
+      seed: 1,
+      rows: ['S.P.S'],
+      timeLimitSeconds: Number.NaN,
+    });
+    expect(() => parseCave(def)).toThrowError(/Room 9/);
+    expect(() => parseCave(def)).toThrowError(/timeLimitSeconds/);
+  });
+});

@@ -30,4 +30,40 @@ export interface Theme {
   readonly readout: {
     readonly template: string;
   };
+  // The game's name, shown on the title screen (FR-002).
+  readonly title: string;
+  // Names the cave and states its quota before play begins (FR-003), with
+  // "{name}"/"{quota}"-style placeholders, following the readout pattern.
+  readonly caveIntro: {
+    readonly template: string;
+  };
+  readonly lifeLost: {
+    readonly label: string;
+  };
+  readonly gameOver: {
+    readonly label: string;
+  };
+  readonly won: {
+    readonly label: string;
+  };
+  // The visible paused indicator (FR-028).
+  readonly paused: {
+    readonly label: string;
+  };
+  // HUD labels, following the readout.template placeholder pattern
+  // (FR-043, FR-046).
+  readonly hud: {
+    readonly lives: string;
+    readonly time: string;
+    readonly score: string;
+    // The title screen's persisted-value badges (FR-002, FR-038), blank
+    // when absent — not shown while any other screen is active.
+    readonly highScore: string;
+    readonly furthestCave: string;
+  };
+  // The bonus tally overlay, shown while screen === 'caveComplete' (FR-006,
+  // FR-019, FR-020) — the arithmetic is already final; this only labels it.
+  readonly caveComplete: {
+    readonly label: string;
+  };
 }

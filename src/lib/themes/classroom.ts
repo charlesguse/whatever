@@ -41,6 +41,22 @@ export const classroomTheme: Theme = {
     completed: 'You made it out the door!',
   },
   readout: { template: '{count} / {quota} Gold Stars' },
+  title: 'Recess Rocks',
+  caveIntro: { template: '{name} — collect {quota} gold stars!' },
+  // Distinct from the in-play messages.dead banner above — this is the
+  // full-screen state shown between the crash and the reload (FR-005).
+  lifeLost: { label: 'You lost a life! Get ready to try again.' },
+  gameOver: { label: 'Game over! No more lives left.' },
+  won: { label: 'You cleared every classroom! Recess Rocks champion!' },
+  paused: { label: 'Paused' },
+  hud: {
+    lives: 'Lives: {lives}',
+    time: 'Time: {seconds}',
+    score: 'Score: {score}',
+    highScore: 'Best: {score}',
+    furthestCave: 'Furthest Classroom: {cave}',
+  },
+  caveComplete: { label: 'Room cleared! Score: {score}' },
 };
 
 // Sanity check at module load: every declared element id must have an entry.

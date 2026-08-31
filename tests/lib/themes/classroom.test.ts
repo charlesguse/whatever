@@ -97,3 +97,58 @@ describe('classroom theme door/message/readout fields', () => {
     expect(classroomTheme.readout.template.length).toBeGreaterThan(0);
   });
 });
+
+// FR-002, FR-003, FR-005, FR-007, FR-046, SC-013: every full-screen/HUD
+// field this feature adds is present, non-empty, and distinguishable; the
+// existing messages.dead/messages.completed in-play banners are unchanged
+// and distinct from the new full-screen wording.
+describe('classroom theme title/caveIntro/lifeLost/gameOver/won/paused/HUD fields', () => {
+  it('supplies a non-empty title', () => {
+    expect(classroomTheme.title.length).toBeGreaterThan(0);
+  });
+
+  it('supplies a non-empty caveIntro template', () => {
+    expect(classroomTheme.caveIntro.template.length).toBeGreaterThan(0);
+  });
+
+  it('supplies a non-empty caveComplete label', () => {
+    expect(classroomTheme.caveComplete.label.length).toBeGreaterThan(0);
+  });
+
+  it('supplies a non-empty paused label', () => {
+    expect(classroomTheme.paused.label.length).toBeGreaterThan(0);
+  });
+
+  it('supplies non-empty lifeLost/gameOver/won labels, each mutually distinct and distinct from messages.dead/completed', () => {
+    const fullScreenLabels = [
+      classroomTheme.lifeLost.label,
+      classroomTheme.gameOver.label,
+      classroomTheme.won.label,
+    ];
+    for (const label of fullScreenLabels) {
+      expect(label.length).toBeGreaterThan(0);
+      expect(label).not.toBe(classroomTheme.messages.dead);
+      expect(label).not.toBe(classroomTheme.messages.completed);
+    }
+    expect(new Set(fullScreenLabels).size).toBe(fullScreenLabels.length);
+  });
+
+  it('leaves messages.dead/messages.completed unchanged from features 001–004', () => {
+    expect(classroomTheme.messages.dead).toBe('Ouch! Head back to the classroom and try again.');
+    expect(classroomTheme.messages.completed).toBe('You made it out the door!');
+  });
+
+  it('supplies non-empty hud.lives/hud.time/hud.score/hud.highScore/hud.furthestCave templates', () => {
+    const hudFields = [
+      classroomTheme.hud.lives,
+      classroomTheme.hud.time,
+      classroomTheme.hud.score,
+      classroomTheme.hud.highScore,
+      classroomTheme.hud.furthestCave,
+    ];
+    for (const field of hudFields) {
+      expect(field.length).toBeGreaterThan(0);
+    }
+    expect(new Set(hudFields).size).toBe(hudFields.length);
+  });
+});
