@@ -29,7 +29,7 @@ Single front-end project (unchanged from features 001–006): input sources and 
 
 **Purpose**: Confirm the branch is a clean base for this feature before any code changes
 
-- [ ] T001 Run `npm test` on the current branch (build + full vitest suite) and confirm the feature-001–006 baseline passes with no failures, establishing the pre-change state this feature's work is measured against
+- [X] T001 Run `npm test` on the current branch (build + full vitest suite) and confirm the feature-001–006 baseline passes with no failures, establishing the pre-change state this feature's work is measured against
 
 **Checkpoint**: Baseline confirmed green. No source files touched yet.
 
