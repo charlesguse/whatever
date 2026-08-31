@@ -245,6 +245,17 @@ describe('score survives a failed attempt (FR-017a, FR-021)', () => {
     // back (there is no per-attempt snapshot, only the running total).
     expect(session.score).toBe(25);
   });
+
+  it('a star collected earlier in the attempt stays scored after a voluntary restart', () => {
+    let session = advanceScreen(startGame());
+    session = { ...session, score: 25 };
+    session = restartAttempt(session);
+    // Same guarantee as the death path: restartAttempt() routes through
+    // endAttempt(), which never touches score — there is no per-attempt
+    // snapshot to roll back to.
+    expect(session.screen).toBe('playing');
+    expect(session.score).toBe(25);
+  });
 });
 
 describe('advanceScreen from caveComplete (FR-006, SC-001)', () => {

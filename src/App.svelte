@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { getCollected, getQuota, getRemainingSeconds, getStatus, TICK_RATE_HZ } from './sim/cave';
   import { advanceScreen, pauseToggle, restartAttempt, startGame, tickSession } from './lib/session/session';
+  import { bonusFor } from './lib/session/scoring';
   import { CAVES } from './caves';
   import type { Screen, SessionState } from './lib/session/types';
   import { readSave, writeSave } from './lib/storage/save';
@@ -171,6 +172,19 @@
     return [stars, time, score, lives].filter((part) => part !== undefined).join(' — ');
   });
 
+  // FR-020: the bonus is already final the instant 'caveComplete' is
+  // entered (session.ts adds it atomically) — this only animates the
+  // *display* toward it, counting up from the pre-bonus score as
+  // screenTicks advances. The arithmetic above is never touched, so a
+  // skip or an interruption always lands on the same total.
+  let caveCompleteDisplayScore = $derived.by(() => {
+    if (session.screen !== 'caveComplete') return session.score;
+    const bonus = bonusFor(getRemainingSeconds(session.caveState) ?? 0);
+    const preBonusScore = session.score - bonus;
+    const progress = Math.min(session.screenTicks / SCREEN_AUTO_ADVANCE_TICKS, 1);
+    return preBonusScore + Math.round(bonus * progress);
+  });
+
   let overlayText = $derived.by(() => {
     switch (session.screen) {
       case 'title':
@@ -186,7 +200,7 @@
       case 'won':
         return theme.won.label;
       case 'caveComplete':
-        return theme.caveComplete.label.replace('{score}', String(session.score));
+        return theme.caveComplete.label.replace('{score}', String(caveCompleteDisplayScore));
       case 'paused':
         return theme.paused.label;
       default:
