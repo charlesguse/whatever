@@ -309,3 +309,12 @@ With multiple developers, after Foundational lands:
 - Every task that changes the grid ships or updates an ASCII-cave test in the same story phase (FR-054); every session/score/persistence rule ships a plain unit test over plain data in the same story phase (FR-054)
 - Verify each new test fails before its paired implementation task, then passes after
 - Commit after each task or logical group; stop at any checkpoint to validate a story independently
+
+---
+
+## Phase 10: Convergence
+
+**Purpose**: Close gaps found by comparing the implemented code against spec.md, plan.md, and this task list after Phase 1–9 implementation.
+
+- [ ] T069 Animate the `caveComplete` overlay's bonus tally in `src/App.svelte` — a local ticking/counting value that converges to the already-final `session.score` while `screen === 'caveComplete'`, rather than the current static display of the final score, per FR-020 ("MUST be presented as the clock ticking down into the score") and T035's original instruction (partial)
+- [ ] T070 In `tests/lib/session/session.test.ts`, add a test that a star collected earlier in an attempt stays scored after `restartAttempt` (not just after a death), per FR-055's "the score after a failed attempt still including the stars collected during it, for a death and for a voluntary restart (FR-017a)" (partial)
