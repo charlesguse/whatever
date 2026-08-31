@@ -30,4 +30,22 @@ export interface Theme {
   readonly readout: {
     readonly template: string;
   };
+  // The game's name, shown on the title screen (FR-002).
+  readonly title: string;
+  // Names the cave and states its quota before play begins (FR-003), with
+  // "{name}"/"{quota}"-style placeholders, following the readout pattern.
+  readonly caveIntro: {
+    readonly template: string;
+  };
+  readonly lifeLost: {
+    readonly label: string;
+  };
+  readonly gameOver: {
+    readonly label: string;
+  };
+  // HUD labels, following the readout.template placeholder pattern
+  // (FR-043, FR-046).
+  readonly hud: {
+    readonly lives: string;
+  };
 }

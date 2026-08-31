@@ -97,3 +97,28 @@ describe('classroom theme door/message/readout fields', () => {
     expect(classroomTheme.readout.template.length).toBeGreaterThan(0);
   });
 });
+
+// FR-002, FR-003, FR-005, FR-007, FR-046: the new full-screen/HUD fields
+// this feature adds, distinct from the existing in-play messages.dead/
+// messages.completed banners.
+describe('classroom theme title/caveIntro/lifeLost/gameOver/HUD fields', () => {
+  it('supplies a non-empty title', () => {
+    expect(classroomTheme.title.length).toBeGreaterThan(0);
+  });
+
+  it('supplies a non-empty caveIntro template', () => {
+    expect(classroomTheme.caveIntro.template.length).toBeGreaterThan(0);
+  });
+
+  it('supplies non-empty lifeLost/gameOver labels, distinct from messages.dead', () => {
+    expect(classroomTheme.lifeLost.label.length).toBeGreaterThan(0);
+    expect(classroomTheme.gameOver.label.length).toBeGreaterThan(0);
+    expect(classroomTheme.lifeLost.label).not.toBe(classroomTheme.messages.dead);
+    expect(classroomTheme.gameOver.label).not.toBe(classroomTheme.messages.dead);
+    expect(classroomTheme.lifeLost.label).not.toBe(classroomTheme.gameOver.label);
+  });
+
+  it('supplies a non-empty hud.lives template', () => {
+    expect(classroomTheme.hud.lives.length).toBeGreaterThan(0);
+  });
+});

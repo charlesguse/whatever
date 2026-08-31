@@ -23,6 +23,11 @@ const GRAB_KEYS = new Set(['Shift']);
 // (FR-031).
 const RESTART_KEYS = new Set(['r', 'R']);
 
+// A one-shot start/confirm key (FR-048) — distinct from movement, grab, and
+// restart. Starts the game from the title screen and advances/skips every
+// non-playing screen this feature adds.
+const START_KEYS = new Set([' ', 'Enter']);
+
 // Tracks key-down/key-up state and reduces it to one direction-or-nothing
 // per tick (FR-018-FR-022). Held-key cadence is driven by the sim's tick
 // rate, never the OS key-repeat rate: repeat keydown events are ignored
@@ -33,6 +38,7 @@ export class KeyboardInput {
   private pendingTap: Direction | undefined;
   private grabHeld = false;
   private restartPending = false;
+  private startPending = false;
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (GRAB_KEYS.has(event.key)) {
@@ -44,6 +50,12 @@ export class KeyboardInput {
     if (RESTART_KEYS.has(event.key)) {
       event.preventDefault();
       if (!event.repeat) this.restartPending = true;
+      return;
+    }
+
+    if (START_KEYS.has(event.key)) {
+      event.preventDefault();
+      if (!event.repeat) this.startPending = true;
       return;
     }
 
@@ -107,6 +119,14 @@ export class KeyboardInput {
   consumeRestart(): boolean {
     if (!this.restartPending) return false;
     this.restartPending = false;
+    return true;
+  }
+
+  // Reports and clears a one-shot start/confirm request (FR-048) — a held
+  // key is reported only once until released, matching restart/grab (FR-049).
+  consumeStart(): boolean {
+    if (!this.startPending) return false;
+    this.startPending = false;
     return true;
   }
 }
