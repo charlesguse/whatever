@@ -29,6 +29,17 @@ than a discovery mid-implementation; and theme choice should join the existing
 `recess-rocks:save` record from feature 005 rather than opening a second
 storage key, following that module's existing silent-degradation pattern.
 
+Both clarifications raised on the issue are now resolved. Cave names stay
+theme-neutral game content (FR-030), with a per-theme override map recorded in
+Assumptions as a pre-designed migration path rather than something built now.
+The in-play control is an always-visible enumerated list driven by a dedicated
+cycle input during play (FR-020), which the maintainer's answer extended with
+three requirements: the cycle is a named input action rather than a raw key
+comparison, so the touch-and-gamepad feature binds it without reopening this
+code (FR-033); the visible list is pointer-operable as well as keyboard-operable
+(FR-034); and the cycle input is inert on the title screen's "any key starts the
+game" path, so it does not both cycle the theme and start a cave (FR-035).
+
 Constitution Principle III has required this since ratification — "the game
 ships at least two themes and an in-game theme selector that switches live,
 mid-cave, without restarting or perturbing the sim." Features 001–005 built the
@@ -79,6 +90,10 @@ output for a fixture cave is byte-identical either way.
 5. **Given** the theme control, **When** the player views it, **Then** it lists
    every registered theme by a readable display name, in a stable order, with
    the active one indicated.
+6. **Given** the theme control, **When** the player operates it with the
+   keyboard alone, **Then** every theme in the list is reachable and
+   selectable; and **When** they operate it with a pointer instead, **Then**
+   the same selections are available, neither input replacing the other.
 
 ---
 
@@ -119,6 +134,14 @@ identical to the same run with no switch at all.
    screen immediately and the screen's own state is unchanged.
 5. **Given** the active theme, **When** the player selects that same theme
    again, **Then** nothing changes and no visible flicker or reload occurs.
+6. **Given** the title screen, where any key starts the game, **When** the
+   player presses the theme-cycle input, **Then** the theme cycles and no cave
+   starts; **When** they press any other key, **Then** the game starts as it
+   does today.
+7. **Given** a cave in play with a movement key held, **When** the player
+   presses the theme-cycle input, **Then** the kid keeps moving on that key
+   through the switch — the cycle input never suppresses, delays, or consumes
+   a gameplay key.
 
 ---
 
@@ -208,6 +231,11 @@ passes for both shipped themes.
   shown as a one-option dead control (FR-019, Principle V).
 - **Rapid repeated switching within a single tick** — no tick is dropped,
   doubled, or re-run; the last selection wins.
+- **Theme-cycle input pressed on the title screen** — it cycles the theme and
+  does not start a cave, even though every other key does (FR-035).
+- **Theme-cycle input pressed past the last theme** — the cycle wraps to the
+  first registered theme in registration order (FR-005), so every theme is
+  reachable by repeated presses alone.
 - **A theme registered twice under the same id** — the registry rejects the
   duplicate rather than silently replacing the first, so a copy-paste mistake
   in a new theme is visible at build time.
@@ -284,18 +312,29 @@ passes for both shipped themes.
 - **FR-019**: If fewer than two themes are registered, the control MUST be
   hidden rather than shown with a single option or shown disabled.
 - **FR-020**: The theme control MUST be reachable while a cave is in play, and
-  operating it MUST NOT swallow, delay, or drop any gameplay input. Provisional
-  behavior for planning: the control is always visible in the shell chrome;
-  during play it is operated by a dedicated key that no gameplay action uses,
-  and it never takes keyboard focus away from the game while a cave is running.
-  [NEEDS CLARIFICATION: how should the in-play theme control be operated so that
-  it enumerates the registry without competing with gameplay keys — an
-  always-visible enumerated list plus a dedicated cycle key during play (the
-  provisional pick), a focusable list that suppresses gameplay keys only while
-  focused and closes on Escape, or an enumerated list only on non-play screens
-  with a cycle key during play?]
+  operating it MUST NOT swallow, delay, or drop any gameplay input. The control
+  is an **always-visible enumerated list** in the shell chrome; during play it
+  is driven by a **dedicated cycle input** that no gameplay action uses, and it
+  never takes keyboard focus away from the game while a cave is running. The
+  gameplay input set and the theme input set MUST be disjoint, so the
+  no-swallowed-input guarantee holds structurally rather than by careful
+  handling. A control that suppresses gameplay keys while it holds focus does
+  **not** satisfy this requirement: leaving the kid standing still while the
+  clock runs and the amoeba grows is swallowed gameplay input whether or not a
+  tick is dropped.
 - **FR-021**: The control MUST be available on the title, cave-intro, in-play,
   paused, life-lost, game-over, and win screens.
+- **FR-033**: The theme cycle MUST be a **named input action**, declared and
+  consumed the same way the existing restart and pause actions are, rather than
+  a raw key comparison at the call site. Binding it to a gamepad button or an
+  on-screen control in the later input feature must be a binding change, not a
+  change to this feature's code.
+- **FR-034**: The always-visible list MUST be operable by pointer as well as by
+  keyboard. Keyboard operation remains the guarantee (FR-017); pointer support
+  is additive, and no part of the control may be reachable by pointer alone.
+- **FR-035**: The theme-cycle input MUST be inert on the title screen's "any key
+  starts the game" path: pressing it there cycles the theme and MUST NOT start a
+  cave. Every other key still starts the game exactly as it does today.
 
 ### Switching is lossless
 
@@ -340,15 +379,12 @@ passes for both shipped themes.
 - **FR-030**: Cave names remain **game content shared by all themes**: each cave
   keeps its own mechanic-descriptive name, and every theme's cave-intro template
   interpolates that same name. A name describes what the cave teaches, which is
-  true under any costume, so it is not appearance and does not belong in the
-  theme contract. Consequently, no theme supplies a per-cave name list and no
-  theme is coupled to the number of caves.
-  [NEEDS CLARIFICATION: should cave names instead become themed, with each theme
-  supplying a per-cave name list so Classic can use the original's cave lettering
-  ("Cave A", "Cave B", …) and the cave definition keeps only an identifier? That
-  is more faithful and makes the contract genuinely complete, at the cost of
-  coupling theme data to the cave count — a new constraint on this feature and on
-  any later one that adds caves.]
+  true under any costume, so it is content — like the layout and the quota — not
+  appearance, and it does not belong in the theme contract. Consequently, no
+  theme supplies a per-cave name list, no theme is coupled to the number of
+  caves, and FR-029's completeness check does not grow a per-cave dimension.
+  Classic therefore does not use the original's cave lettering; a migration path
+  to per-theme cave names is recorded in Assumptions and is out of scope here.
 
 ### Preserved behavior
 
@@ -407,9 +443,18 @@ passes for both shipped themes.
   fails the build with a message naming the theme and the missing piece —
   demonstrated by an incomplete fixture theme that must fail the check.
 - **SC-009**: The theme control is fully usable with the keyboard alone, start
-  to finish, with no pointer, touch, or gamepad required.
+  to finish, with no pointer, touch, or gamepad required — and every theme it
+  offers is also selectable by pointer, with neither input reaching anything the
+  other cannot.
 - **SC-010**: The shipped artifact remains a single self-contained page that
   runs from `file://`, and the suite from features 001–005 passes unchanged.
+- **SC-011**: The theme-cycle input reaches every registered theme by repeated
+  presses alone, and shares no key with any gameplay action — checkable by
+  comparing the declared theme bindings against the declared gameplay bindings,
+  with an empty intersection required.
+- **SC-012**: Pressing the theme-cycle input on the title screen cycles the
+  theme and starts no cave, in 100% of trials, while any other key still starts
+  the game.
 
 ## Assumptions
 
@@ -437,19 +482,43 @@ passes for both shipped themes.
   merge is specific to numeric records and must not be applied to the theme id
   (FR-027) — this is the one place the existing pattern needs extending rather
   than copying.
-- **Cave names stay theme-neutral** (FR-030), which is the cheaper of the two
-  options the maintainer raised and the one that keeps theme data independent
-  of the cave count. Marked for confirmation because the maintainer asked for
-  the decision to be explicit, and because reversing it later means moving data
-  between two files rather than editing one.
+- **Cave names stay theme-neutral** (FR-030) — confirmed by the maintainer on
+  the issue rather than assumed. The deciding argument is coupling, not
+  faithfulness: per-theme cave names would make theme data depend on the cave
+  count, so every later feature that adds a cave would have to add a name to
+  every registered theme, and FR-029's check would need a second dimension to
+  catch the omission — otherwise a new cave ships nameless under some theme and
+  nobody notices until a player sees it. That is a standing tax on two things
+  this project keeps doing, adding caves and adding themes, paid to render
+  "Cave A" instead of a mechanic-descriptive name. The objection that the
+  contract is then one string short of complete is answered by what the contract
+  is for: appearance lives in theme data, and a cave's name says what the cave
+  teaches, which is true whether the falling thing is a boulder or an eraser.
+- **The migration path to themed cave names is pre-designed but not built.**
+  Recorded here so the question is not re-litigated from scratch: if a later
+  feature wants Classic lettering, the cheap move is an **optional per-cave
+  override map on the theme** that falls back to the cave's own name. A theme
+  with no overrides stays complete, adding a cave still touches no theme, and
+  the completeness check needs no new dimension. Building it now would be
+  machinery for a want nobody has expressed.
 - **Sound is still out of scope.** The constitution describes themes as
   carrying sounds, but no audio exists yet in the project, so the contract
   gains no sound field here; it arrives with the audio feature.
 - **Touch and gamepad remain unimplemented**, as of feature 005. FR-017 and
   FR-020 therefore specify keyboard operation as the reference and require that
   nothing about the control assumes the keyboard is the *only* possible input,
-  so the later input feature can add pointer, touch, and gamepad affordances
-  without redesigning it.
+  so the later input feature can add touch and gamepad affordances without
+  redesigning it. Two consequences the maintainer asked to be explicit about:
+  the cycle is a named action (FR-033) so that feature binds it rather than
+  reopening this one, and the visible list responds to a pointer today
+  (FR-034), which is nearly free while the chrome is being built and is one
+  fewer control to retrofit.
+- **A dedicated cycle input costs one reserved key.** That is a real cost,
+  accepted deliberately: it buys a guarantee that holds structurally rather
+  than by careful handling, because the gameplay key set and the theme key set
+  are disjoint and no amount of later input work can make them collide. The
+  exact key is the maintainer's pick at review; the requirement is only that no
+  gameplay action uses it.
 - **The completeness check runs in the existing browserless suite.** Nothing
   here needs a canvas, and the visual judgment of whether Classic "looks right"
   is the maintainer's at review time, per Principle VII.
@@ -461,7 +530,10 @@ passes for both shipped themes.
 - Per-theme sound, music, or any audio at all.
 - Any change to simulation behavior, cave layouts, quotas, time limits, scoring,
   or the arcade shell's flow.
-- Themed cave names, unless the FR-030 clarification is answered the other way.
+- Themed cave names, decided against in FR-030 — including the optional
+  per-cave override map recorded in Assumptions, which is a documented
+  migration path, not work for this feature.
+- A focusable, gameplay-key-suppressing theme list, rejected under FR-020.
 - Accessibility options beyond what the theme contract already carries — high
   contrast modes, colorblind palettes, or font scaling are a separate feature,
   though a future theme is the natural place for the first of them.
@@ -481,6 +553,8 @@ per Principle VII:
   genuinely indistinguishable from its steel wall.
 - Confirm the control is reachable and operable with the keyboard alone, mid-
   cave, without the game eating the keystrokes or the control eating the
-  gameplay keys.
+  gameplay keys — then confirm the same list also responds to a click.
+- Press the theme-cycle key on the title screen and confirm it cycles the theme
+  without starting a cave, and that any other key still starts one.
 - Read the diff and confirm it touches no file under `src/sim/` and contains no
   comparison against a theme id (FR-016).

@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain — **two remain by design** (FR-020, FR-030); see Notes
+- [x] No [NEEDS CLARIFICATION] markers remain — both were answered on issue #6; see Notes
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,26 +31,32 @@
 
 ## Notes
 
-- **Two [NEEDS CLARIFICATION] markers are open**, posted as questions on issue #6
-  rather than blocking. Both carry a provisional pick, so the spec is
-  implementable as written if neither is answered:
-  1. **FR-030 — are cave names themed or theme-neutral?** Raised explicitly by
-     the maintainer's comment on the issue, which asked for the decision to be
-     made at spec time rather than discovered mid-implementation. Provisional
-     pick: **theme-neutral, shared by both themes** — the cheaper option, and
-     the one that keeps theme data from being coupled to the cave count, which
-     would become a new constraint on every later feature that adds a cave. The
-     alternative (each theme supplies a per-cave name list, so Classic can use
-     "Cave A", "Cave B") is more faithful and makes the contract genuinely
-     complete. Reversing this later means moving one string per cave between two
-     files, so it is cheap to change but worth deciding once.
-  2. **FR-020 — how is the in-play theme control operated?** The issue requires
-     a control that *enumerates* the registry and a switch that drops no input,
-     and the constitution requires it to be fully reachable by keyboard alone.
-     Those three pull against each other during play: a focusable enumerated
-     list competes for the same keys the game uses. Provisional pick: an
-     always-visible enumerated list, driven during play by a dedicated key that
-     no gameplay action uses, never taking focus while a cave is running.
+- **Both [NEEDS CLARIFICATION] markers are resolved.** They were posted as
+  questions on issue #6 and answered there; each answer confirmed the spec's
+  provisional pick, and the reasoning and the extra requirements that came with
+  them are now folded into the spec rather than left in this note:
+  1. **FR-030 — are cave names themed or theme-neutral?** Answered:
+     **theme-neutral, shared by both themes.** The deciding argument is
+     coupling, not faithfulness — per-theme cave names would tie theme data to
+     the cave count, taxing every later feature that adds a cave and forcing
+     FR-029's completeness check to grow a per-cave dimension. Recorded in
+     Assumptions alongside the pre-designed migration path (an optional per-cave
+     override map on the theme, falling back to the cave's own name) so the
+     question is not re-litigated from scratch; that map is explicitly out of
+     scope here.
+  2. **FR-020 — how is the in-play theme control operated?** Answered: an
+     **always-visible enumerated list, driven during play by a dedicated cycle
+     input** that no gameplay action uses, never taking focus while a cave is
+     running. The rejected alternative — a focusable list that suppresses
+     gameplay keys while focused — contradicts FR-020 itself, since leaving the
+     kid standing still while the clock runs is swallowed gameplay input whether
+     or not a tick is dropped; that rejection is now stated in FR-020 and in Out
+     of Scope. The answer added three requirements, all new: FR-033 (the cycle
+     is a named input action, so the touch-and-gamepad feature binds it rather
+     than reopening this code), FR-034 (the visible list is pointer-operable as
+     well as keyboard-operable), and FR-035 (the cycle input is inert on the
+     title screen's "any key starts the game" path). SC-011 and SC-012 make the
+     disjoint-key and title-screen guarantees measurable.
 - **Everything else was decided rather than asked**, per the constitution's
   instruction that a spec picks a behavior, states it, and tests it. The picks
   with the widest reach are recorded in Assumptions: Classic ships within the
