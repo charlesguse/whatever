@@ -2,7 +2,7 @@
   "issue": 6,
   "spec_dir": "specs/006-classic-theme-switcher",
   "feature_num": "006",
-  "stage": "spec",
+  "stage": "plan",
   "iteration": 0,
-  "spec_branch": null
+  "spec_branch": "spec/006-classic-theme-switcher"
 }
