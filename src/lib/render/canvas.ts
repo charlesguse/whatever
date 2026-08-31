@@ -1,4 +1,4 @@
-import { getCell, getPlayerPosition, isDoorOpen, type CaveState } from '../../sim/cave';
+import { getCell, getMagicWallPhase, getPlayerPosition, isDoorOpen, type CaveState } from '../../sim/cave';
 import type { ElementId } from '../../sim/elements';
 import { getTheme } from '../themes/registry';
 import type { Theme, ThemeEntry } from '../themes/types';
@@ -43,10 +43,17 @@ function resolveEntry(
   theme: Theme,
   elementId: ElementId,
   doorOpen: boolean,
-  flashOpenFace: boolean
+  flashOpenFace: boolean,
+  magicWallActive: boolean
 ): ThemeEntry {
   if (elementId === 'exit' && doorOpen && flashOpenFace) {
     return theme.doorOpenEntry;
+  }
+  // FR-033, FR-034a: dormant and dead both resolve to the one inert entry —
+  // this is the renderer's only phase-shaped decision, keyed on the
+  // read-only accessor, never on theme identity.
+  if (elementId === 'magicWall' && magicWallActive) {
+    return theme.magicWallActiveEntry;
   }
   return theme.elements[elementId];
 }
@@ -128,11 +135,12 @@ export function createRenderLoop(options: RenderLoopOptions): RenderLoop {
     // from tick count or CaveState.
     const doorOpen = isDoorOpen(state);
     const flashOpenFace = Math.floor(performance.now() / DOOR_FLASH_INTERVAL_MS) % 2 === 0;
+    const magicWallActive = getMagicWallPhase(state) === 'active';
 
     for (let y = firstY; y <= lastY; y++) {
       for (let x = firstX; x <= lastX; x++) {
         const elementId = getCell(state, x, y);
-        const entry = resolveEntry(theme, elementId, doorOpen, flashOpenFace);
+        const entry = resolveEntry(theme, elementId, doorOpen, flashOpenFace, magicWallActive);
         const screenX = (x - cameraPos.offsetX) * cellSize;
         const screenY = (y - cameraPos.offsetY) * cellSize;
 

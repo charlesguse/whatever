@@ -19,7 +19,7 @@ import {
   type Direction,
   type Grid,
 } from './grid';
-import type { CaveState, CaveStatus, PendingBlast } from './cave';
+import type { CaveState, CaveStatus, MagicWallPhase, PendingBlast } from './cave';
 import { nextPrng, type PrngState } from './prng';
 
 export type { Direction } from './grid';
@@ -81,6 +81,11 @@ interface TickContext {
   // stamped at the very start of next tick (FR-023) — rebuilt fresh every
   // tick, never appended-to across ticks (data-model.md Cave State).
   readonly nextPendingBlasts: PendingBlast[];
+  readonly amoebaGrowthRate: number;
+  readonly amoebaSizeLimit: number;
+  readonly magicWallDuration: number;
+  magicWallPhase: MagicWallPhase;
+  magicWallCountdown: number;
 }
 
 // The tick function: (grid, input) -> next grid (FR-006, FR-007). Pure —
@@ -107,9 +112,18 @@ export function tick(state: CaveState, input: TickInput): CaveState {
     quota: state.quota,
     status: state.status,
     nextPendingBlasts: [],
+    amoebaGrowthRate: state.amoebaGrowthRate,
+    amoebaSizeLimit: state.amoebaSizeLimit,
+    magicWallDuration: state.magicWallDuration,
+    magicWallPhase: state.magicWallPhase,
+    magicWallCountdown: state.magicWallCountdown,
   };
 
   ageExplosions(ctx);
+
+  // FR-019: runs unconditionally, including while status is 'dying', before
+  // any falling body this tick can see the phase it decides.
+  ageMagicWall(ctx);
 
   // FR-023: chain links queued by the previous tick's stamping are stamped
   // first, in the order they were queued, before this tick's own scan can
@@ -131,9 +145,18 @@ export function tick(state: CaveState, input: TickInput): CaveState {
         if ((state.tick + 1) % 2 === 1) {
           stepEnemy(ctx, x, y, id);
         }
+      } else if (id === 'amoeba') {
+        growAmoeba(ctx, x, y);
+      } else if (id === 'expandingWall') {
+        growExpandingWall(ctx, x, y);
       }
     }
   }
+
+  // FR-007–FR-010: after the main scan, once — reads the grid growth and
+  // any same-tick detonations just left, then converts the whole collective
+  // if either the size limit or the sealed condition fires.
+  convertAmoebaCollective(ctx);
 
   // FR-015.3: the first tick that ends dying with no explosion cell left
   // anywhere in the grid settles into dead.
@@ -151,6 +174,11 @@ export function tick(state: CaveState, input: TickInput): CaveState {
     quota: state.quota,
     status: ctx.status,
     pendingBlasts: ctx.nextPendingBlasts,
+    amoebaGrowthRate: ctx.amoebaGrowthRate,
+    amoebaSizeLimit: ctx.amoebaSizeLimit,
+    magicWallDuration: ctx.magicWallDuration,
+    magicWallPhase: ctx.magicWallPhase,
+    magicWallCountdown: ctx.magicWallCountdown,
   };
 }
 
@@ -188,6 +216,121 @@ function hasAnyExplosion(grid: Grid): boolean {
     }
   }
   return false;
+}
+
+// The once-per-tick magic wall countdown pass (FR-019, research.md Decision
+// 2): while the phase is 'active', decrement the countdown by exactly 1; if
+// it reaches 0, the phase becomes 'dead' in this same pass, before the main
+// scan runs, so a body falling in this same tick sees 'dead' and is not
+// converted. Runs unconditionally, including while the cave is dying.
+function ageMagicWall(ctx: TickContext): void {
+  if (ctx.magicWallPhase !== 'active') return;
+  ctx.magicWallCountdown -= 1;
+  if (ctx.magicWallCountdown === 0) {
+    ctx.magicWallPhase = 'dead';
+  }
+}
+
+// Amoeba growth (FR-004–FR-006, FR-005a, research.md Decisions 4/5), run for
+// every `amoeba` cell the main scan visits. Exactly one PRNG draw always;
+// exactly one more on every successful attempt, regardless of how many
+// neighbors are eligible (research.md Decision 4) — the draw count is a pure
+// function of "how many amoeba cells existed" plus "how many attempts
+// succeeded," never of local grid geometry.
+function growAmoeba(ctx: TickContext, x: number, y: number): void {
+  const grid = ctx.grid;
+
+  const attempt = nextPrng(ctx.rngState);
+  ctx.rngState = attempt.state;
+  if (attempt.value >= ctx.amoebaGrowthRate) return;
+
+  const eligible: Array<readonly [number, number]> = [];
+  for (const dir of ORTHOGONAL_DIRS) {
+    const [dx, dy] = DIRECTION_DELTA[dir];
+    const nx = x + dx;
+    const ny = y + dy;
+    if (!inBounds(grid, nx, ny)) continue;
+    const id = getCellIndex(grid, nx, ny);
+    if (id === 'empty' || id === 'dirt') eligible.push([nx, ny]);
+  }
+
+  const direction = nextPrng(ctx.rngState);
+  ctx.rngState = direction.state;
+  if (eligible.length === 0) return;
+
+  const [tx, ty] = eligible[Math.floor(direction.value * eligible.length)];
+  setCellIndex(grid, tx, ty, 'amoeba');
+  setMoved(grid, tx, ty);
+}
+
+// Expanding wall growth (FR-024–FR-027), run for every `expandingWall` cell
+// the main scan visits: independently, the left and right neighbors each
+// become expandingWall if currently empty — both may happen the same tick
+// from the same source cell. No randomness, no cadence gating.
+function growExpandingWall(ctx: TickContext, x: number, y: number): void {
+  const grid = ctx.grid;
+
+  if (inBounds(grid, x - 1, y) && getCellIndex(grid, x - 1, y) === 'empty') {
+    setCellIndex(grid, x - 1, y, 'expandingWall');
+    setMoved(grid, x - 1, y);
+  }
+
+  if (inBounds(grid, x + 1, y) && getCellIndex(grid, x + 1, y) === 'empty') {
+    setCellIndex(grid, x + 1, y, 'expandingWall');
+    setMoved(grid, x + 1, y);
+  }
+}
+
+// The amoeba collective's end-of-scan conversion pass (FR-007–FR-010,
+// research.md Decision 3): two allocation-free linear scans, the second only
+// when the first finds a reason to convert. A cave with zero amoeba cells
+// does nothing and consumes no randomness (FR-010).
+function convertAmoebaCollective(ctx: TickContext): void {
+  const grid = ctx.grid;
+  let count = 0;
+  let hasEligibleNeighbor = false;
+
+  for (let y = 0; y < grid.height; y++) {
+    for (let x = 0; x < grid.width; x++) {
+      if (getCellIndex(grid, x, y) !== 'amoeba') continue;
+      count++;
+      if (hasEligibleNeighbor) continue;
+      for (const dir of ORTHOGONAL_DIRS) {
+        const [dx, dy] = DIRECTION_DELTA[dir];
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!inBounds(grid, nx, ny)) continue;
+        const id = getCellIndex(grid, nx, ny);
+        if (id === 'empty' || id === 'dirt') {
+          hasEligibleNeighbor = true;
+          break;
+        }
+      }
+    }
+  }
+
+  if (count === 0) return; // FR-010
+
+  if (count > ctx.amoebaSizeLimit) {
+    convertAllAmoeba(ctx, 'boulder'); // FR-007, FR-009
+    return;
+  }
+
+  if (!hasEligibleNeighbor) {
+    convertAllAmoeba(ctx, 'diamond'); // FR-008, FR-009
+  }
+}
+
+function convertAllAmoeba(ctx: TickContext, content: 'boulder' | 'diamond'): void {
+  const grid = ctx.grid;
+  for (let y = 0; y < grid.height; y++) {
+    for (let x = 0; x < grid.width; x++) {
+      if (getCellIndex(grid, x, y) !== 'amoeba') continue;
+      setCellIndex(grid, x, y, content);
+      clearFallingIndex(grid, x, y);
+      setMoved(grid, x, y); // does not fall/roll on its creation tick
+    }
+  }
 }
 
 // stampBlast (data-model.md Blast/Chain, FR-016–FR-018, FR-021): the one
@@ -327,6 +470,21 @@ function processBody(ctx: TickContext, x: number, y: number): void {
     return;
   }
 
+  if (belowId === 'amoeba') {
+    // FR-011, FR-012: only a *falling* body detonates the amoeba below it,
+    // via the existing stampBlast — the body is destroyed as part of the
+    // same blast, and the amoeba cell is never queued to chain.
+    if (isFallingIndex(grid, x, y)) {
+      stampBlast(ctx, x, y + 1, 'empty');
+    }
+    return;
+  }
+
+  if (belowId === 'magicWall') {
+    processMagicWallEntry(ctx, x, y);
+    return;
+  }
+
   const isRollSurface = belowId === 'boulder' || belowId === 'diamond' || belowId === 'brickWall';
   if (isRollSurface) {
     for (const dx of [-1, 1] as const) {
@@ -342,6 +500,49 @@ function processBody(ctx: TickContext, x: number, y: number): void {
   }
 
   clearFallingIndex(grid, x, y);
+}
+
+// Magic wall conversion (FR-016–FR-020, FR-018a, research.md Decision 6),
+// entered only when a *falling* boulder/diamond's cell below holds
+// magicWall — a body that is not falling never triggers any of this
+// (magicWall is never a roll surface in any phase, FR-013).
+function processMagicWallEntry(ctx: TickContext, x: number, y: number): void {
+  const grid = ctx.grid;
+  if (!isFallingIndex(grid, x, y)) return;
+
+  if (ctx.magicWallPhase === 'dead') {
+    clearFallingIndex(grid, x, y);
+    return;
+  }
+
+  // FR-016, FR-017: activation is unconditional on entry, decided before the
+  // destination is even computed — so a body destroyed by FR-018a still
+  // activated the wall and its countdown still runs.
+  if (ctx.magicWallPhase === 'dormant') {
+    ctx.magicWallPhase = 'active';
+    ctx.magicWallCountdown = ctx.magicWallDuration;
+  }
+
+  const bodyId = getCellIndex(grid, x, y);
+  const opposite = bodyId === 'boulder' ? 'diamond' : 'boulder';
+
+  // Walk down through the unbroken run of magicWall cells at the moment of
+  // entry (research.md Decision 6) to find the destination.
+  let ty = y + 1;
+  while (inBounds(grid, x, ty) && getCellIndex(grid, x, ty) === 'magicWall') {
+    ty++;
+  }
+
+  setCellIndex(grid, x, y, 'empty');
+  clearFallingIndex(grid, x, y);
+
+  if (!inBounds(grid, x, ty) || getCellIndex(grid, x, ty) !== 'empty') {
+    return; // FR-018a: destroyed, nothing emerges
+  }
+
+  setCellIndex(grid, x, ty, opposite);
+  setFallingIndex(grid, x, ty);
+  setMoved(grid, x, ty);
 }
 
 function movePlayer(ctx: TickContext, x: number, y: number, input: TickInput): void {
@@ -363,7 +564,15 @@ function movePlayer(ctx: TickContext, x: number, y: number, input: TickInput): v
 
   const destId = getCellIndex(grid, nx, ny);
 
-  if (destId === 'brickWall' || destId === 'steelWall') return; // FR-015
+  if (
+    destId === 'brickWall' ||
+    destId === 'steelWall' ||
+    destId === 'amoeba' ||
+    destId === 'magicWall' ||
+    destId === 'expandingWall'
+  ) {
+    return; // FR-015, FR-002, FR-014, FR-023
+  }
 
   if (destId === 'exit') {
     if (!isDoorOpenCtx(ctx)) return; // FR-023: closed door blocks exactly like steel wall

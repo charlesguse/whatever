@@ -15,6 +15,12 @@ import { seedPrng, type PrngState } from './prng';
 
 export type CaveStatus = 'inPlay' | 'dying' | 'dead' | 'completed';
 
+// FR-015: one cave-wide value shared by every magic wall cell — never
+// per-cell. 'dormant' until a falling boulder/diamond first enters a wall
+// cell; 'active' for magicWallDuration ticks; 'dead' permanently after,
+// indistinguishable in the theme from 'dormant' (FR-034/FR-034a).
+export type MagicWallPhase = 'dormant' | 'active' | 'dead';
+
 // The chain queue (data-model.md Cave State: Pending detonation). Holds one
 // entry per enemy destroyed by a blast during the previous tick, each naming
 // the cell that enemy stood in and the content its own blast will leave.
@@ -31,6 +37,12 @@ export interface CaveDefinition {
   readonly seed: number;
   readonly quota: number;
   readonly rows: readonly string[];
+  // FR-028: optional, validated cave-scoped parameters (FR-029). Documented
+  // defaults applied at parse time when omitted so every existing cave and
+  // test loads unchanged.
+  readonly amoebaGrowthRate?: number; // default 0.03
+  readonly amoebaSizeLimit?: number; // default 200
+  readonly magicWallDuration?: number; // default 40
 }
 
 // Opaque beyond width/height/tick — everything outside src/sim/ must go
@@ -45,7 +57,16 @@ export interface CaveState {
   readonly quota: number;
   readonly status: CaveStatus;
   readonly pendingBlasts: readonly PendingBlast[];
+  readonly amoebaGrowthRate: number;
+  readonly amoebaSizeLimit: number;
+  readonly magicWallDuration: number;
+  readonly magicWallPhase: MagicWallPhase;
+  readonly magicWallCountdown: number;
 }
+
+const DEFAULT_AMOEBA_GROWTH_RATE = 0.03;
+const DEFAULT_AMOEBA_SIZE_LIMIT = 200;
+const DEFAULT_MAGIC_WALL_DURATION = 40;
 
 function fail(caveName: string, message: string): never {
   throw new Error(`Cave "${caveName}": ${message}`);
@@ -123,6 +144,28 @@ export function parseCave(def: CaveDefinition): CaveState {
     );
   }
 
+  // FR-029: the three new cave-scoped parameters, if present, must be valid
+  // — checked with the same failure discipline as every rule above (throws
+  // naming the cave and the offending value, no partial grid).
+  if (
+    def.amoebaSizeLimit !== undefined &&
+    (!Number.isInteger(def.amoebaSizeLimit) || def.amoebaSizeLimit <= 0)
+  ) {
+    fail(name, `amoebaSizeLimit must be a positive whole number, got ${def.amoebaSizeLimit}`);
+  }
+  if (
+    def.magicWallDuration !== undefined &&
+    (!Number.isInteger(def.magicWallDuration) || def.magicWallDuration <= 0)
+  ) {
+    fail(name, `magicWallDuration must be a positive whole number, got ${def.magicWallDuration}`);
+  }
+  if (
+    def.amoebaGrowthRate !== undefined &&
+    !(def.amoebaGrowthRate > 0 && def.amoebaGrowthRate <= 1)
+  ) {
+    fail(name, `amoebaGrowthRate must be a number greater than 0 and at most 1, got ${def.amoebaGrowthRate}`);
+  }
+
   playerPos = playerPositions[0];
 
   const grid = createGrid(width, height, playerPos);
@@ -148,6 +191,11 @@ export function parseCave(def: CaveDefinition): CaveState {
     quota,
     status: 'inPlay',
     pendingBlasts: [],
+    amoebaGrowthRate: def.amoebaGrowthRate ?? DEFAULT_AMOEBA_GROWTH_RATE,
+    amoebaSizeLimit: def.amoebaSizeLimit ?? DEFAULT_AMOEBA_SIZE_LIMIT,
+    magicWallDuration: def.magicWallDuration ?? DEFAULT_MAGIC_WALL_DURATION,
+    magicWallPhase: 'dormant',
+    magicWallCountdown: 0,
   };
 }
 
@@ -194,4 +242,11 @@ export function getEnemyFacing(state: CaveState, x: number, y: number): Directio
 
 export function isExplosion(state: CaveState, x: number, y: number): boolean {
   return getExplosionRemaining(state.grid, x, y) !== 0;
+}
+
+// FR-036: the only way anything outside src/sim/ may observe the magic
+// wall's phase. Permitted use is choosing between the theme's inert and
+// active entries — never to distinguish 'dormant' from 'dead' (FR-034a).
+export function getMagicWallPhase(state: CaveState): MagicWallPhase {
+  return state.magicWallPhase;
 }

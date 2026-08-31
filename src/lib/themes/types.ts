@@ -16,6 +16,10 @@ export interface Theme {
   // The door's open/flashing appearance (FR-038). elements.exit stays the
   // door's closed appearance, visually identical to elements.steelWall.
   readonly doorOpenEntry: ThemeEntry;
+  // The magic wall's "running" appearance while active (FR-033), parallel
+  // to doorOpenEntry. elements.magicWall is the one inert entry, covering
+  // both dormant and dead (FR-034) — never a third entry.
+  readonly magicWallActiveEntry: ThemeEntry;
   readonly messages: {
     readonly dead: string;
     readonly completed: string;

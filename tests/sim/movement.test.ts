@@ -1,4 +1,5 @@
-import { describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { getMagicWallPhase, getPlayerPosition, getStatus } from '../../src/sim/cave';
 import { caveFromLines, expectAscii, runTicks } from './helpers/ascii-cave';
 
 describe('movement', () => {
@@ -110,25 +111,49 @@ describe('movement', () => {
     );
   });
 
-  it('leaves an inert element (amoeba) unchanged and does not throw (FR-003)', () => {
-    // boulder/diamond graduated from inert to behavioral in feature 002,
-    // firefly/butterfly/explosion in feature 003 (data-model.md Element) —
-    // amoeba stays genuinely inert (FR-039), so it's the element this
-    // pinning test now exercises.
+  it('is blocked from moving into an amoeba cell, and unharmed by adjacency or a blocked attempt (FR-002, FR-041)', () => {
+    // Feature 004 gives amoeba real behavior — this test now pins that the
+    // kid is blocked by it exactly like a wall, never harmed by touching it.
     const state = caveFromLines(`
       ....
-      .P.A
+      .PA.
       ....
     `);
-    const next = runTicks(state, 2, ['right', 'down']);
-    expectAscii(
-      next,
-      `
-      ....
-      ...A
-      ..P.
-    `
+    const next = runTicks(state, 2, [undefined, 'right']);
+    expect(getPlayerPosition(next)).toEqual({ x: 1, y: 1 });
+    expect(getStatus(next)).toBe('inPlay');
+  });
+
+  it('is blocked by a magic wall cell in each of its three phases — dormant, active, and dead (FR-014)', () => {
+    // The player sits directly right of the wall the whole run; a separate
+    // boulder falls into the wall to drive it through its phases while the
+    // player repeatedly presses toward the (always-blocking) wall cell.
+    let next = caveFromLines(
+      ['SSSSS', 'S.o.S', 'S...S', 'S.MPS', 'S...S', 'SSSSS'],
+      { magicWallDuration: 2 }
     );
+    // Tick 1: boulder falls one row; wall still dormant — blocked.
+    next = runTicks(next, 1, ['left']);
+    expect(getPlayerPosition(next)).toEqual({ x: 3, y: 3 });
+    expect(getMagicWallPhase(next)).toBe('dormant');
+    // Tick 2: boulder enters and activates the wall this same tick — blocked.
+    next = runTicks(next, 1, ['left']);
+    expect(getPlayerPosition(next)).toEqual({ x: 3, y: 3 });
+    expect(getMagicWallPhase(next)).toBe('active');
+    // Tick 3: still active (duration 2 covers this tick too) — blocked.
+    next = runTicks(next, 1, ['left']);
+    expect(getPlayerPosition(next)).toEqual({ x: 3, y: 3 });
+    expect(getMagicWallPhase(next)).toBe('active');
+    // Tick 4: countdown reaches zero before the scan — dead — still blocked.
+    next = runTicks(next, 1, ['left']);
+    expect(getPlayerPosition(next)).toEqual({ x: 3, y: 3 });
+    expect(getMagicWallPhase(next)).toBe('dead');
+  });
+
+  it('is blocked from moving into an expanding wall cell (FR-023)', () => {
+    const state = caveFromLines('S.PE.S');
+    const next = runTicks(state, 1, ['right']);
+    expect(getPlayerPosition(next)).toEqual({ x: 2, y: 0 });
   });
 
   it('works on a cave whose dimensions differ from the starter cave, proving no size is hardcoded (FR-036)', () => {

@@ -52,6 +52,30 @@ describe('classroom theme enemy labels', () => {
   });
 });
 
+// FR-032, FR-033, FR-034: the magic wall's relabel and its second, active
+// theme entry — visually distinguishable from every other entry, including
+// its own inert appearance.
+describe('classroom theme magic wall labels/entries', () => {
+  it('labels the magic wall entry exactly "Sticker Machine"', () => {
+    expect(classroomTheme.elements.magicWall.label).toBe('Sticker Machine');
+  });
+
+  it('carries a magicWallActiveEntry field distinct from elements.magicWall', () => {
+    const inert = classroomTheme.elements.magicWall;
+    const active = classroomTheme.magicWallActiveEntry;
+    expect(active).toBeDefined();
+    expect(active.glyph === inert.glyph && active.fillColor === inert.fillColor).toBe(false);
+  });
+
+  it('keeps magicWallActiveEntry distinguishable from every other entry at the shipped cell size', () => {
+    const active = classroomTheme.magicWallActiveEntry;
+    for (const id of ELEMENT_IDS) {
+      const other = classroomTheme.elements[id];
+      expect(active.glyph === other.glyph && active.fillColor === other.fillColor).toBe(false);
+    }
+  });
+});
+
 // FR-024, FR-038, FR-040: the closed door (elements.exit) must be visually
 // identical to a steel wall, and every theme must supply the door's open
 // appearance, both terminal messages, and the readout template.

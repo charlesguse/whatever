@@ -90,6 +90,34 @@ function buildRows(): string[] {
   // The classroom door, in the clearing — reachable once the quota is met.
   setChar(rows, WIDTH - 4, HEIGHT - 5, 'X');
 
+  // Spilled glue (amoeba, FR-031): a steel-ringed pocket well clear of the
+  // corridor, the spine, and the clearing — every cell the collective could
+  // ever reach is steel, so it can never spread onto a path the player
+  // needs, no matter how long the cave runs.
+  for (let y = 13; y <= 17; y++) {
+    for (let x = 2; x <= 6; x++) {
+      if (x === 2 || x === 6 || y === 13 || y === 17) {
+        setChar(rows, x, y, 'S');
+      }
+    }
+  }
+  setChar(rows, 4, 15, 'A');
+
+  // Sticker machine (magic wall) with an eraser a player can plausibly dig
+  // down into: the dirt at (18, 9) holds it until dug, then it drops
+  // straight into the two-cell-thick wall and emerges as a gold star below.
+  setChar(rows, 18, 8, 'o');
+  setChar(rows, 18, 10, 'M');
+  setChar(rows, 18, 11, 'M');
+  setChar(rows, 18, 12, '.');
+
+  // Bookshelf (expanding wall) in a small dead-end nook carved out of the
+  // dirt — it fills exactly this pocket and stops, dirt on every remaining
+  // side, never reaching a path the player needs.
+  setChar(rows, 12, 9, '.');
+  setChar(rows, 13, 9, 'E');
+  setChar(rows, 14, 9, '.');
+
   return rows;
 }
 
@@ -98,4 +126,7 @@ export const starterCave: CaveDefinition = caveFromAscii({
   seed: 20260830,
   quota: QUOTA,
   rows: buildRows(),
+  amoebaGrowthRate: 0.05,
+  amoebaSizeLimit: 30,
+  magicWallDuration: 30,
 });

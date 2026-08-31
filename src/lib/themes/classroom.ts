@@ -17,7 +17,9 @@ const elements: Record<ElementId, ThemeEntry> = {
   firefly: { fillColor: '#ff8a3d', glyph: '✂', label: 'Pencil Sharpener' },
   butterfly: { fillColor: '#c86dd7', glyph: '✈', label: 'Paper Airplane' },
   amoeba: { fillColor: '#8bc34a', glyph: '~', label: 'Spilled Glue' },
-  magicWall: { fillColor: '#5c6bc0', glyph: '✦', label: 'Trophy Case' },
+  // FR-032: relabeled now that the magic wall has behavior — this entry
+  // covers both the dormant and dead phases (FR-034), never distinguished.
+  magicWall: { fillColor: '#5c6bc0', glyph: '✦', label: 'Sticker Machine' },
   expandingWall: { fillColor: '#795548', glyph: '▧', label: 'Bookshelf' },
   // Closed-door appearance MUST match steelWall exactly (FR-024) — the
   // door is indistinguishable from a locker until the quota is met.
@@ -31,6 +33,9 @@ export const classroomTheme: Theme = {
   background: '#cfc09a',
   // Visibly distinct from elements.exit (the closed-door/locker look).
   doorOpenEntry: { fillColor: '#ffd54a', glyph: '▢', label: 'Open Classroom Door' },
+  // FR-033, FR-034: the wall's "running" look — distinct from the inert
+  // elements.magicWall entry and from every other entry (FR-034 test).
+  magicWallActiveEntry: { fillColor: '#26c6da', glyph: '✧', label: 'Sticker Machine (Running)' },
   messages: {
     dead: 'Ouch! Head back to the classroom and try again.',
     completed: 'You made it out the door!',
