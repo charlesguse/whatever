@@ -145,9 +145,16 @@ export function tick(state: CaveState, input: TickInput): CaveState {
         if ((state.tick + 1) % 2 === 1) {
           stepEnemy(ctx, x, y, id);
         }
+      } else if (id === 'amoeba') {
+        growAmoeba(ctx, x, y);
       }
     }
   }
+
+  // FR-007–FR-010: after the main scan, once — reads the grid growth and
+  // any same-tick detonations just left, then converts the whole collective
+  // if either the size limit or the sealed condition fires.
+  convertAmoebaCollective(ctx);
 
   // FR-015.3: the first tick that ends dying with no explosion cell left
   // anywhere in the grid settles into dead.
@@ -219,6 +226,90 @@ function ageMagicWall(ctx: TickContext): void {
   ctx.magicWallCountdown -= 1;
   if (ctx.magicWallCountdown === 0) {
     ctx.magicWallPhase = 'dead';
+  }
+}
+
+// Amoeba growth (FR-004–FR-006, FR-005a, research.md Decisions 4/5), run for
+// every `amoeba` cell the main scan visits. Exactly one PRNG draw always;
+// exactly one more on every successful attempt, regardless of how many
+// neighbors are eligible (research.md Decision 4) — the draw count is a pure
+// function of "how many amoeba cells existed" plus "how many attempts
+// succeeded," never of local grid geometry.
+function growAmoeba(ctx: TickContext, x: number, y: number): void {
+  const grid = ctx.grid;
+
+  const attempt = nextPrng(ctx.rngState);
+  ctx.rngState = attempt.state;
+  if (attempt.value >= ctx.amoebaGrowthRate) return;
+
+  const eligible: Array<readonly [number, number]> = [];
+  for (const dir of ORTHOGONAL_DIRS) {
+    const [dx, dy] = DIRECTION_DELTA[dir];
+    const nx = x + dx;
+    const ny = y + dy;
+    if (!inBounds(grid, nx, ny)) continue;
+    const id = getCellIndex(grid, nx, ny);
+    if (id === 'empty' || id === 'dirt') eligible.push([nx, ny]);
+  }
+
+  const direction = nextPrng(ctx.rngState);
+  ctx.rngState = direction.state;
+  if (eligible.length === 0) return;
+
+  const [tx, ty] = eligible[Math.floor(direction.value * eligible.length)];
+  setCellIndex(grid, tx, ty, 'amoeba');
+  setMoved(grid, tx, ty);
+}
+
+// The amoeba collective's end-of-scan conversion pass (FR-007–FR-010,
+// research.md Decision 3): two allocation-free linear scans, the second only
+// when the first finds a reason to convert. A cave with zero amoeba cells
+// does nothing and consumes no randomness (FR-010).
+function convertAmoebaCollective(ctx: TickContext): void {
+  const grid = ctx.grid;
+  let count = 0;
+  let hasEligibleNeighbor = false;
+
+  for (let y = 0; y < grid.height; y++) {
+    for (let x = 0; x < grid.width; x++) {
+      if (getCellIndex(grid, x, y) !== 'amoeba') continue;
+      count++;
+      if (hasEligibleNeighbor) continue;
+      for (const dir of ORTHOGONAL_DIRS) {
+        const [dx, dy] = DIRECTION_DELTA[dir];
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!inBounds(grid, nx, ny)) continue;
+        const id = getCellIndex(grid, nx, ny);
+        if (id === 'empty' || id === 'dirt') {
+          hasEligibleNeighbor = true;
+          break;
+        }
+      }
+    }
+  }
+
+  if (count === 0) return; // FR-010
+
+  if (count > ctx.amoebaSizeLimit) {
+    convertAllAmoeba(ctx, 'boulder'); // FR-007, FR-009
+    return;
+  }
+
+  if (!hasEligibleNeighbor) {
+    convertAllAmoeba(ctx, 'diamond'); // FR-008, FR-009
+  }
+}
+
+function convertAllAmoeba(ctx: TickContext, content: 'boulder' | 'diamond'): void {
+  const grid = ctx.grid;
+  for (let y = 0; y < grid.height; y++) {
+    for (let x = 0; x < grid.width; x++) {
+      if (getCellIndex(grid, x, y) !== 'amoeba') continue;
+      setCellIndex(grid, x, y, content);
+      clearFallingIndex(grid, x, y);
+      setMoved(grid, x, y); // does not fall/roll on its creation tick
+    }
   }
 }
 
@@ -355,6 +446,16 @@ function processBody(ctx: TickContext, x: number, y: number): void {
     // kid. The body is destroyed as part of the same blast, one row above.
     if (isFallingIndex(grid, x, y)) {
       stampBlast(ctx, x, y + 1, ENEMY_BLAST_CONTENT[belowId]);
+    }
+    return;
+  }
+
+  if (belowId === 'amoeba') {
+    // FR-011, FR-012: only a *falling* body detonates the amoeba below it,
+    // via the existing stampBlast — the body is destroyed as part of the
+    // same blast, and the amoeba cell is never queued to chain.
+    if (isFallingIndex(grid, x, y)) {
+      stampBlast(ctx, x, y + 1, 'empty');
     }
     return;
   }

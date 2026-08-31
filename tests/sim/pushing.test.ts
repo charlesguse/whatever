@@ -101,6 +101,13 @@ describe('pushing (FR-012–FR-016)', () => {
     expectAscii(afterBlockedFirst, [expected]);
   });
 
+  it('is blocked when the beyond-cell holds amoeba — no move (research.md Decision 7)', () => {
+    const state = caveFromLines('S.PoAS', { seed: SUCCEED_SEED });
+    const next = runTicks(state, 1, ['right']);
+    expect(getPlayerPosition(next)).toEqual({ x: 2, y: 0 });
+    expect(asciiFromState(next)[3]).toBe('o'); // the boulder never moved
+  });
+
   it('a pushed boulder falls on a later tick because nothing is under its new cell', () => {
     const state = caveFromLines(
       `
