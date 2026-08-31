@@ -41,7 +41,7 @@ Single front-end project (unchanged from features 001–005): theme data and the
 
 **⚠️ CRITICAL**: No user story task can start until this phase is complete
 
-- [ ] T002 In `src/lib/themes/registry.ts`, add `listThemes(): readonly Theme[]` returning `[...themes.values()]` (the internal `Map` already preserves insertion order, FR-001/FR-005), add `hasTheme(id: string): boolean` returning `themes.has(id)` (FR-004, non-throwing, total over any input), and change `registerTheme(theme)` to `throw new Error(...)` naming `theme.id` when that id is already registered, before the existing `.set()` call (FR-006), instead of silently overwriting. `getTheme(id)` stays unchanged.
+- [X] T002 In `src/lib/themes/registry.ts`, add `listThemes(): readonly Theme[]` returning `[...themes.values()]` (the internal `Map` already preserves insertion order, FR-001/FR-005), add `hasTheme(id: string): boolean` returning `themes.has(id)` (FR-004, non-throwing, total over any input), and change `registerTheme(theme)` to `throw new Error(...)` naming `theme.id` when that id is already registered, before the existing `.set()` call (FR-006), instead of silently overwriting. `getTheme(id)` stays unchanged.
 
 **Checkpoint**: Registry has the enumeration/existence/duplicate-guard surface a real registry needs. `classroomTheme` is still the only registered theme; the build still compiles and the existing `classroom.test.ts` still passes.
 
