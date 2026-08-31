@@ -150,6 +150,12 @@ describe('movement', () => {
     expect(getMagicWallPhase(next)).toBe('dead');
   });
 
+  it('is blocked from moving into an expanding wall cell (FR-023)', () => {
+    const state = caveFromLines('S.PE.S');
+    const next = runTicks(state, 1, ['right']);
+    expect(getPlayerPosition(next)).toEqual({ x: 2, y: 0 });
+  });
+
   it('works on a cave whose dimensions differ from the starter cave, proving no size is hardcoded (FR-036)', () => {
     const state = caveFromLines(`
       SSSSS

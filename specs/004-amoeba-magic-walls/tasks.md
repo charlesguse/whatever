@@ -112,13 +112,13 @@ Single front-end project (unchanged from features 001–003): sim code under `sr
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Write ASCII-cave tests in `tests/sim/expanding-wall.test.ts` covering: growth into empty space on both sides, exactly one cell per tick per side, stopping at a wall, an eraser, the kid, or the grid edge (FR-024, FR-025, SC-009); refusing to grow into dirt and refusing to grow vertically (FR-025); a cell created by growth not growing again until the following tick (FR-026)
-- [ ] T029 [P] [US3] Add a case to `tests/sim/movement.test.ts` confirming the kid is blocked by an expanding wall cell (FR-023)
-- [ ] T030 [P] [US3] Add a case to `tests/sim/pushing.test.ts` confirming a push toward an expanding wall cell fails, and a case to `tests/sim/grab.test.ts` confirming a grab toward an expanding wall cell is a no-op
+- [X] T028 [P] [US3] Write ASCII-cave tests in `tests/sim/expanding-wall.test.ts` covering: growth into empty space on both sides, exactly one cell per tick per side, stopping at a wall, an eraser, the kid, or the grid edge (FR-024, FR-025, SC-009); refusing to grow into dirt and refusing to grow vertically (FR-025); a cell created by growth not growing again until the following tick (FR-026)
+- [X] T029 [P] [US3] Add a case to `tests/sim/movement.test.ts` confirming the kid is blocked by an expanding wall cell (FR-023)
+- [X] T030 [P] [US3] Add a case to `tests/sim/pushing.test.ts` confirming a push toward an expanding wall cell fails, and a case to `tests/sim/grab.test.ts` confirming a grab toward an expanding wall cell is a no-op
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] In `src/sim/tick.ts`, implement `growExpandingWall(ctx, x, y)` and dispatch it from the main scan's `else if` chain for every `expandingWall` cell not yet moved this tick: independently, if the cell immediately to the left currently holds `empty`, it becomes `expandingWall` and is marked moved-this-tick; independently, if the cell immediately to the right currently holds `empty`, likewise; both may happen on the same tick from the same source cell; no randomness is consumed (FR-024–FR-027, research.md Decision 1)
+- [X] T031 [US3] In `src/sim/tick.ts`, implement `growExpandingWall(ctx, x, y)` and dispatch it from the main scan's `else if` chain for every `expandingWall` cell not yet moved this tick: independently, if the cell immediately to the left currently holds `empty`, it becomes `expandingWall` and is marked moved-this-tick; independently, if the cell immediately to the right currently holds `empty`, likewise; both may happen on the same tick from the same source cell; no randomness is consumed (FR-024–FR-027, research.md Decision 1)
 
 **Checkpoint**: All three user stories are independently functional.
 

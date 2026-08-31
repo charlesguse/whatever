@@ -147,6 +147,8 @@ export function tick(state: CaveState, input: TickInput): CaveState {
         }
       } else if (id === 'amoeba') {
         growAmoeba(ctx, x, y);
+      } else if (id === 'expandingWall') {
+        growExpandingWall(ctx, x, y);
       }
     }
   }
@@ -259,6 +261,24 @@ function growAmoeba(ctx: TickContext, x: number, y: number): void {
   const [tx, ty] = eligible[Math.floor(direction.value * eligible.length)];
   setCellIndex(grid, tx, ty, 'amoeba');
   setMoved(grid, tx, ty);
+}
+
+// Expanding wall growth (FR-024–FR-027), run for every `expandingWall` cell
+// the main scan visits: independently, the left and right neighbors each
+// become expandingWall if currently empty — both may happen the same tick
+// from the same source cell. No randomness, no cadence gating.
+function growExpandingWall(ctx: TickContext, x: number, y: number): void {
+  const grid = ctx.grid;
+
+  if (inBounds(grid, x - 1, y) && getCellIndex(grid, x - 1, y) === 'empty') {
+    setCellIndex(grid, x - 1, y, 'expandingWall');
+    setMoved(grid, x - 1, y);
+  }
+
+  if (inBounds(grid, x + 1, y) && getCellIndex(grid, x + 1, y) === 'empty') {
+    setCellIndex(grid, x + 1, y, 'expandingWall');
+    setMoved(grid, x + 1, y);
+  }
 }
 
 // The amoeba collective's end-of-scan conversion pass (FR-007–FR-010,

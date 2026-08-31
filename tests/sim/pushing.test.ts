@@ -114,6 +114,12 @@ describe('pushing (FR-012–FR-016)', () => {
     expectAscii(next, ['S.PoMS']);
   });
 
+  it('is blocked when the beyond-cell holds an expanding wall — no move (research.md Decision 7)', () => {
+    const state = caveFromLines('S.PoES', { seed: SUCCEED_SEED });
+    const next = runTicks(state, 1, ['right']);
+    expectAscii(next, ['S.PoES']);
+  });
+
   it('a pushed boulder falls on a later tick because nothing is under its new cell', () => {
     const state = caveFromLines(
       `
