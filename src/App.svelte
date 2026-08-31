@@ -10,16 +10,20 @@
   import { createRenderLoop, type RenderLoop } from './lib/render/canvas';
   import './lib/themes';
   import { getTheme, listThemes } from './lib/themes/registry';
-  import { cycleThemeId } from './lib/themes/selection';
+  import { cycleThemeId, resolveStoredThemeId } from './lib/themes/selection';
 
-  // US3/T021 extends this initializer to resolve a stored id instead of
-  // the literal 'classroom'.
-  let activeThemeId: string = $state('classroom');
+  // FR-025: restores the stored theme id, falling back to Classroom for
+  // anything unregistered, non-string, or absent.
+  let activeThemeId: string = $state(
+    resolveStoredThemeId(readSave().themeId, listThemes().map((t) => t.id), 'classroom')
+  );
 
-  // FR-018: a no-op — no state change — when reselecting the active id.
+  // FR-018: a no-op — no state change, no storage write — when reselecting
+  // the active id. FR-028: persisted at the moment of change.
   function selectTheme(id: string): void {
     if (id === activeThemeId) return;
     activeThemeId = id;
+    writeSave({ themeId: id });
   }
 
   const TICK_INTERVAL_MS = 1000 / TICK_RATE_HZ;

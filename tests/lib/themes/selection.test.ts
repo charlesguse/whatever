@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cycleThemeId } from '../../../src/lib/themes/selection';
+import { cycleThemeId, resolveStoredThemeId } from '../../../src/lib/themes/selection';
 
 describe('cycleThemeId', () => {
   it('returns the id immediately after currentId in order', () => {
@@ -18,5 +18,27 @@ describe('cycleThemeId', () => {
   it('returns currentId unchanged when order.length < 2', () => {
     expect(cycleThemeId('a', ['a'])).toBe('a');
     expect(cycleThemeId('a', [])).toBe('a');
+  });
+});
+
+describe('resolveStoredThemeId (FR-025)', () => {
+  const registeredIds = ['classroom', 'classic'];
+
+  it('returns a registered id unchanged', () => {
+    expect(resolveStoredThemeId('classic', registeredIds, 'classroom')).toBe('classic');
+  });
+
+  it('resolves an unregistered id to fallbackId', () => {
+    expect(resolveStoredThemeId('nonexistent', registeredIds, 'classroom')).toBe('classroom');
+  });
+
+  it('resolves a non-string value to fallbackId', () => {
+    expect(resolveStoredThemeId(5, registeredIds, 'classroom')).toBe('classroom');
+    expect(resolveStoredThemeId({ id: 'classic' }, registeredIds, 'classroom')).toBe('classroom');
+    expect(resolveStoredThemeId(null, registeredIds, 'classroom')).toBe('classroom');
+  });
+
+  it('resolves undefined to fallbackId', () => {
+    expect(resolveStoredThemeId(undefined, registeredIds, 'classroom')).toBe('classroom');
   });
 });

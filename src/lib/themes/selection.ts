@@ -10,3 +10,18 @@ export function cycleThemeId(currentId: string, order: readonly string[]): strin
   if (index === -1) return order[0];
   return order[(index + 1) % order.length];
 }
+
+// FR-025: returns stored unchanged only if it is a string present in
+// registeredIds; every other input — undefined, null, a number, an
+// object, or an unregistered string — resolves to fallbackId. Total,
+// never throws.
+export function resolveStoredThemeId(
+  stored: unknown,
+  registeredIds: readonly string[],
+  fallbackId: string
+): string {
+  if (typeof stored === 'string' && registeredIds.includes(stored)) {
+    return stored;
+  }
+  return fallbackId;
+}
