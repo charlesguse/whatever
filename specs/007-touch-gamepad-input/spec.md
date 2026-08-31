@@ -97,6 +97,10 @@ Notes).
     landscape, **When** the controls are shown, **Then** every control is fully
     within the safe area and fully reachable, and the theme control and the HUD
     readout remain visible and tappable.
+11. **Given** a cave in play with the controls shown, **When** the player rests
+    both thumbs on the pad and the grab button, **Then** no cave cell is
+    covered by a control or a thumb — the controls sit in their own reserved
+    area and the cave is drawn beside it, in both orientations.
 
 ---
 
@@ -167,11 +171,13 @@ V, and the thing most likely to be quietly broken by the other two stories. It
 is P3 only because it delivers no new capability — it protects an existing one.
 
 **Independent Test**: With no browser, assert that the visibility decision is a
-pure function of the reported platform capabilities: no touch capability yields
-no touch controls in the rendered output, and an absent Gamepad API yields no
-polling and no error. Separately, assert that the full keyboard binding table is
-unchanged from feature 006 and that every named action is reachable from the
-keyboard.
+pure function of the reported platform capabilities **and the last input
+source**: no touch capability yields no touch controls in the rendered output
+whatever the last input was; touch capability with no input yet, or with touch
+as the last input, yields controls; touch capability with a key or a click as
+the last input yields none. An absent Gamepad API yields no polling and no
+error. Separately, assert that the full keyboard binding table is unchanged from
+feature 006 and that every named action is reachable from the keyboard.
 
 **Acceptance Scenarios**:
 
@@ -190,6 +196,13 @@ keyboard.
 5. **Given** any platform, **When** touch or gamepad input arrives, **Then** it
    produces the same session and simulation effects as the equivalent keyboard
    input, with no action reachable from one mode alone.
+6. **Given** a touchscreen laptop, **When** the game loads, **Then** the touch
+   controls are shown; **When** the player presses a key or clicks, **Then**
+   they are gone instantly; **When** the player touches the screen again,
+   **Then** they are back instantly.
+7. **Given** a touchscreen laptop with the controls shown, **When** the pointer
+   merely moves across the page with no key, click, or touch, **Then** the
+   controls stay exactly as they are.
 
 ---
 
@@ -209,7 +222,8 @@ on it.
 into the gamepad source between ticks and assert: after connect, the next tick
 reads the new pad; after disconnect while a direction and grab were held, the
 next tick reports no direction and no grab; and the session state (score,
-lives, cave index, timer, tick count) is untouched by either event.
+lives, cave index, timer, pause state, tick count) is untouched by either
+event — in particular the disconnect does not pause.
 
 **Acceptance Scenarios**:
 
@@ -218,11 +232,12 @@ lives, cave index, timer, tick count) is untouched by either event.
    pause, and no lost or repeated tick.
 2. **Given** a cave in play with a controller holding a direction and grab,
    **When** the controller disconnects, **Then** the held direction and grab are
-   released immediately, the kid stops rather than continuing to move, and the
-   run continues.
+   released immediately, the kid stops rather than continuing to move, the cave
+   **keeps running** — it does not auto-pause — and the keyboard drives from the
+   next tick.
 3. **Given** a cave in play, **When** a controller connects or disconnects,
-   **Then** the score, lives, cave index, countdown timer, and simulation state
-   are exactly what they would have been without the event.
+   **Then** the score, lives, cave index, countdown timer, pause state, and
+   simulation state are exactly what they would have been without the event.
 4. **Given** a controller that disconnects and reconnects, **When** it comes
    back, **Then** it works again with no stale held input carried across the
    gap.
@@ -232,14 +247,19 @@ lives, cave index, timer, tick count) is untouched by either event.
 ### Edge Cases
 
 - **A touch-capable laptop or desktop** (touchscreen plus keyboard and mouse) —
-  the visibility rule must resolve it one way and say so; see FR-027.
+  the controls start visible, vanish on the first keydown or click, and come
+  back on the next touch (FR-027a). Pointer movement alone changes nothing.
 - **A stray touch during play** — drag, flick, pinch, double-tap, long-press,
   edge swipe, or two-finger scroll anywhere on the page: none of them scroll,
   zoom, bounce, select, or open a callout, and none of them reach the sim as a
   direction.
-- **Rotating the device mid-cave** — the controls relay out for the new
-  orientation, no tick is lost, held touches either continue against the new
-  layout or are released cleanly (never stuck down), and the run continues.
+- **Rotating the device mid-cave** — the controls and the cave both relay out
+  against the new orientation's reserved area (FR-031), no tick is lost, held
+  touches either continue against the new layout or are released cleanly (never
+  stuck down), and the run continues.
+- **A hybrid player alternating touch and keyboard rapidly** — the visibility
+  transition is instant in both directions and driven only by discrete inputs,
+  so it tracks the player rather than flickering on a stray pointer event.
 - **The on-screen keyboard or a system gesture bar appearing** — controls stay
   inside the safe area and remain reachable; nothing is stranded under a system
   affordance.
@@ -270,7 +290,12 @@ lives, cave index, timer, tick count) is untouched by either event.
 - **The Gamepad API present but returning an empty list forever** — no polling
   cost that matters, no UI, no error.
 - **Touch controls and the theme control competing for the same corner** —
-  neither may cover the other; both stay tappable (FR-015).
+  neither may cover the other; both stay tappable (FR-015), which the reserved
+  area makes structural.
+- **A very small screen where the reserved area leaves little room for the
+  cave** — the controls keep their minimum thumb-sized targets (FR-009) and the
+  cave is drawn smaller; the cave is never allowed to reclaim the band by
+  drawing under a control.
 
 ## Requirements *(mandatory)*
 
@@ -309,7 +334,8 @@ lives, cave index, timer, tick count) is untouched by either event.
 
 - **FR-008**: On a touch platform, the game MUST show an on-screen **four-way
   d-pad**, a **grab** button, a **pause** button, and a **restart** button while
-  a cave is playing or paused.
+  a cave is playing or paused — subject to the visibility rule in FR-027a, which
+  is the only other thing that can withhold them.
 - **FR-009**: Controls MUST be sized and placed for a thumb, not a pointer: each
   d-pad direction zone and the grab button present a touch target of at least
   **64 CSS pixels** in both dimensions, and pause and restart at least **44**.
@@ -333,13 +359,16 @@ lives, cave index, timer, tick count) is untouched by either event.
   else on the page. The theme control's own taps MUST continue to work.
 - **FR-013**: The layout MUST respect device **safe-area insets** on all four
   edges in both orientations, so no control is under a notch, a rounded corner,
-  or a home indicator, and none is clipped off-screen.
+  or a home indicator, and none is clipped off-screen. That inset box is the
+  origin of the whole layout, controls and cave alike (FR-031a).
 - **FR-014**: On a non-playing screen (title, cave intro, life lost, cave
   complete, game over, win), a tap on the playfield MUST act as
   **start/confirm**, so a player with no keyboard can start a game and advance
   every screen.
 - **FR-015**: The touch controls MUST NOT cover, overlap, or intercept taps
   destined for the theme control or the HUD readout, in either orientation.
+  With FR-031's reserved area this is a layout invariant rather than a
+  z-ordering argument: the theme control and the HUD are outside it.
 - **FR-016**: A touch platform MUST be able to reach every feature the keyboard
   reaches: start, move, grab, pause, restart, switch themes, and play all eight
   caves to the win screen.
@@ -381,10 +410,10 @@ lives, cave index, timer, tick count) is untouched by either event.
   the next tick with no reload and no lost tick; a controller that disconnects
   has all of its held inputs released immediately, so nothing stays stuck down.
   Neither event alters the score, lives, cave index, timer, pause state, or
-  simulation state. [NEEDS CLARIFICATION: on disconnect mid-cave, should the
-  game also auto-pause so a dead battery does not cost the run, or keep running
-  with inputs released (the provisional pick, since the keyboard is always
-  available to take over)?]
+  simulation state. In particular, a disconnect MUST NOT auto-pause: the cave
+  **keeps running** with the vanished controller's inputs released, and the
+  keyboard — always live per Principle V — takes over. A hardware event is never
+  allowed to mutate session state, which is what makes SC-009 checkable.
 - **FR-026**: The gamepad adds **no UI**. No on-screen affordance appears when a
   controller is connected, and nothing appears when one is not.
 
@@ -392,33 +421,51 @@ lives, cave index, timer, tick count) is untouched by either event.
 
 - **FR-027**: Touch controls MUST be **absent** — not present-and-hidden, not
   disabled, not greyed out — on a platform that reports no touch capability.
-  [NEEDS CLARIFICATION: on a device that reports **both** touch and a keyboard/
-  mouse (a touchscreen laptop, a tablet with a keyboard case), should the
-  controls always show whenever touch capability is reported (the provisional
-  pick — simple, purely capability-driven, at the cost of on-screen buttons a
-  laptop player does not want), or appear on the first touch and disappear on
-  the next key or mouse input (adaptive, better on hybrids, but a second
-  visibility state to specify and test)?]
+- **FR-027a**: On a platform that reports touch capability, visibility is
+  **adaptive** to the last input the player actually used, so a touchscreen
+  laptop driven from the keyboard is not left with permanent thumb controls:
+  - **The initial state is visible.** Before any input at all, a touch-capable
+    platform shows the controls. A tablet player must never have to discover
+    them by guessing; the adaptive rule only ever *hides* after a real key or
+    click.
+  - **Hide on a keydown or a click, and on nothing else.** Pointer *movement*
+    (`mousemove` and its equivalents) MUST NOT hide the controls — it fires
+    spuriously and hiding on it is the flicker this rule exists to avoid. Only
+    discrete inputs count.
+  - **Re-show on any touch.**
+  - **Both transitions are instant**, with no delay, debounce, or fade-out
+    grace period.
+  - While hidden, the controls are **absent** in exactly the sense FR-027 means
+    — not present-but-dead — so there is one rule for what "no controls" looks
+    like, whichever reason produced it.
 - **FR-028**: Where the Gamepad API is unavailable, the game MUST NOT poll,
   MUST NOT log, and MUST NOT error. Feature detection is a capability check, not
   a caught exception.
 - **FR-029**: Feature detection MUST NOT sniff user agents, device names, or
-  screen sizes. Only reported capabilities decide.
+  screen sizes. Only reported capabilities and the player's own last input
+  decide.
 - **FR-030**: The visibility decision MUST be expressible as a pure function of
-  reported capabilities, so it is testable without a browser.
+  **reported capabilities and the last input source** — no wider input than
+  that, no reads of live device state inside it — so it is testable without a
+  browser as a table of (touch capability, last input source) → shown or not.
 
 ### Layout
 
-- **FR-031**: The on-screen controls MUST work in portrait and landscape without
-  a reload, relaying out on rotation with no tick lost and no touch stuck down.
-  [NEEDS CLARIFICATION: may the controls sit as translucent overlays on top of
-  the playfield (the provisional pick — simplest, keeps the cave view as large
-  as possible, at the cost of a thumb occluding a corner of the cave), or must
-  they occupy a reserved band that shrinks the drawn cave so nothing is ever
-  covered?]
-- **FR-032**: The playfield MUST remain legible with the controls shown in both
-  orientations: the kid, the HUD readout, and the theme control are never
-  obscured to the point of being unusable.
+- **FR-031**: The on-screen controls MUST occupy a **reserved area** that the
+  drawn cave does not enter — never a translucent overlay on top of the
+  playfield. No control, and no thumb resting on one, can ever cover a cave
+  cell. The reserved area is defined **per orientation** from the start (a band
+  below the cave in portrait, margins beside it in landscape, where the space
+  already is), and the controls MUST relay out on rotation without a reload,
+  with no tick lost and no touch stuck down.
+- **FR-031a**: The reserved area and the drawn cave MUST both be laid out from
+  the **safe-area-inset box**, not the raw viewport: the cave-sizing calculation
+  consumes the same inset box the controls do (FR-013). Neither the band nor the
+  cave may extend under a notch, a rounded corner, or a home indicator.
+- **FR-032**: The playfield MUST remain **fully visible and legible** with the
+  controls shown in both orientations: every cave cell the camera is showing,
+  the kid, the HUD readout, and the theme control are drawn outside the reserved
+  area and are never covered by a control.
 
 ### Preserved behavior
 
@@ -453,14 +500,20 @@ lives, cave index, timer, tick count) is untouched by either event.
   devices; nothing downstream of them does.
 - **Merged input**: The single per-tick action set the session consumes,
   combining all sources by FR-005's direction precedence and FR-006's OR.
-- **Touch control layout**: Pure geometry — where the pad, its four zones, its
-  dead area, and the buttons are, given a viewport size, orientation, and safe-
-  area insets. Maps a touch coordinate to a control, or to nothing.
+- **Touch control layout**: Pure geometry — given the safe-area inset box and an
+  orientation, where the reserved control area is, where the pad, its four
+  zones, its dead area, and the buttons sit inside it, and what rectangle is
+  therefore left for the drawn cave. Maps a touch coordinate to a control, or to
+  nothing.
 - **Gamepad binding table**: Plain data mapping standard-layout button indices
   and stick axes to named actions, plus the deadzone thresholds. Editable
   without touching input logic.
 - **Platform capabilities**: What the environment reports — touch capability,
-  Gamepad API availability. The sole input to the visibility decision (FR-029).
+  Gamepad API availability. Together with the last input source, the sole input
+  to the visibility decision (FR-029, FR-030).
+- **Last input source**: Which discrete input the player most recently used —
+  touch, or a key/click — or nothing yet. Pointer movement never changes it.
+  The second argument to the visibility decision, and nothing else reads it.
 
 ## Success Criteria *(mandatory)*
 
@@ -483,20 +536,29 @@ lives, cave index, timer, tick count) is untouched by either event.
 - **SC-006**: A held one-shot button (pause, restart, confirm, cycle theme)
   fires exactly once per press, verified across a press spanning many ticks.
 - **SC-007**: On a platform reporting no touch capability, the rendered page
-  contains no on-screen control element at all; on a platform with no Gamepad
-  API, no polling occurs and no error is produced.
+  contains no on-screen control element at all, whatever the player's last
+  input was; on a platform with no Gamepad API, no polling occurs and no error
+  is produced.
 - **SC-008**: The keyboard path is unchanged: every keyboard test from features
   001–006 passes without modification, and the keyboard binding table is
   byte-identical apart from additions this feature does not make.
 - **SC-009**: Connecting or disconnecting a controller mid-cave leaves the
-  simulation state, score, lives, cave index, and timer identical to the same
-  run without the event, in 100% of trials, and leaves no input stuck down.
+  simulation state, score, lives, cave index, timer, and pause state identical
+  to the same run without the event, in 100% of trials, and leaves no input
+  stuck down. A disconnect never pauses.
 - **SC-010**: No touch gesture — drag, flick, pinch, double-tap, long-press,
   edge swipe — scrolls, zooms, bounces, or selects anything on the page during
   play, in 100% of the gestures the maintainer tries.
 - **SC-011**: Every control is fully inside the safe area and reachable in both
   portrait and landscape on a notched device, and rotation mid-cave loses no
   tick and leaves no touch stuck down.
+- **SC-011a**: The drawn cave and the reserved control area never intersect, for
+  every orientation and safe-area inset box the layout function is sampled with,
+  so no cave cell can be covered by a control or the thumb on it.
+- **SC-011b**: On a touch-capable platform, the controls are shown before any
+  input, hidden after a keydown or a click, and shown again after a touch, with
+  no intermediate state and no change from pointer movement alone — checked as a
+  table over (touch capability, last input source).
 - **SC-012**: Every named action is reachable from the keyboard alone, and no
   named action is reachable from touch or gamepad alone — checkable by comparing
   the three sources' declared action coverage, with the keyboard's required to
@@ -529,12 +591,37 @@ lives, cave index, timer, tick count) is untouched by either event.
 - **Grab and one-shots OR across sources** (FR-006) rather than following the
   direction precedence, because there is no conflict to resolve: a held grab
   from any thumb or any button means grab, and a press is a press.
-- **The provisional picks behind the three open questions are implementable as
-  written.** If none are answered, the spec still specifies a buildable feature:
-  capability-driven visibility (FR-027), keep-running-with-inputs-released on
-  disconnect (FR-025), and translucent overlay controls (FR-031). The questions
-  are raised because each alternative is defensible and changes real work, not
-  because the spec is blocked.
+- **The three open questions were answered on issue #7 and are now decided.**
+  1. **Adaptive visibility on hybrids** (FR-027a). A capability-only rule leaves
+     every Windows touchscreen laptop player with permanent thumb chrome they
+     never use — a cost that lands entirely on one common class of device.
+     Adaptive is still a pure function, just of one more argument, tested as the
+     same table; that is not a meaningful complexity jump. The fiddly parts are
+     pinned rather than left to the build: visible initially, hide on discrete
+     inputs only (never pointer movement, which fires spuriously), instant both
+     ways.
+  2. **Keep running on disconnect, releasing held inputs** (FR-025). The
+     deciding factor is an invariant, not the UX: a hardware event never
+     mutating session state closes the whole class of hotplug state bugs by
+     construction and keeps SC-009 verifiable. Auto-pause reopens it and leaves
+     every later feature touching pause reasoning about a pause no player asked
+     for. The dead-battery case costs seconds of one cave in a keyboard-first
+     game (Principle V) that hands out lives. The "pause only if the pad was
+     used recently" variant was rejected outright: a wall-clock branch in the
+     input path is unreproducible and untestable as a pure function, even in the
+     shell where `Date.now` is allowed.
+  3. **A reserved control area, never an overlay** (FR-031). The overlay's
+     supposed advantage is mostly illusory: a 40×22 cave is already letterboxed
+     in portrait, so a band below it costs blank space rather than cave until it
+     exceeds the existing letterbox; in landscape the cave is height-constrained
+     on a typical ~19.5:9 phone, leaving spare width on the left and right —
+     exactly where thumbs are. What remains is fairness, and it is decisive:
+     this is a game about a boulder falling on you, and a thumb over the cell a
+     boulder is about to drop into is an unfair death, worst on the smallest
+     screens. The reserved area is the version of FR-032 that cannot be
+     violated. The per-orientation split that the overlay-in-landscape variant
+     wanted is kept — the band is defined per orientation from the start, which
+     it had to be regardless — without a second layout mode.
 - **The default bindings are the maintainer's to retune at review.** FR-018 fixes
   that bindings are data and names sensible defaults; the exact face button or
   shoulder button is a taste call best made with a controller in hand, and
@@ -548,9 +635,12 @@ lives, cave index, timer, tick count) is untouched by either event.
   directions per tick, so an analog on-screen stick would add a magnitude the
   game cannot use. Zones also make FR-010's slide-to-re-target behavior trivially
   testable as geometry.
-- **Touch controls are shown only while playing or paused** (FR-008), with tap-
-  to-confirm covering the other screens (FR-014). Showing a d-pad on the title
-  screen would imply it does something there.
+- **Touch controls are shown only while playing or paused** (FR-008), and only
+  while the adaptive rule says so (FR-027a), with tap-to-confirm covering the
+  other screens (FR-014). Showing a d-pad on the title screen would imply it
+  does something there. Tap-to-confirm is a playfield tap, not a control, so it
+  works on a hybrid whose controls are currently hidden — and that same tap
+  makes touch the last input source, bringing the controls back for the cave.
 - **Sound remains out of scope**, as in features 005 and 006 — no audio exists
   yet, so nothing here needs a per-source sound.
 - **CI has no browser** (Principle VII), so every requirement here is written to
@@ -572,6 +662,10 @@ lives, cave index, timer, tick count) is untouched by either event.
   anything else is a different control scheme, not this one.
 - **A left-handed or player-configurable touch layout.** FR-009 fixes one
   reachable layout; mirroring it is a natural follow-up, not this feature.
+- **A persisted player setting that hides the touch controls.** Considered and
+  rejected as the answer to the hybrid question: it needs a new stored
+  preference and a new control in the chrome, which is a bigger scope than
+  FR-027a's adaptive rule and arguably its own feature.
 - **Mouse or trackpad gameplay control.** The theme control is pointer-operable
   from feature 006; the kid is not, and this feature does not make it so.
 - **Gamepad navigation of the theme list** beyond the cycle action (FR-018) —
@@ -602,6 +696,11 @@ check by hand at review time, per Principle VII:
 - Rotate the device mid-cave with a thumb down. Confirm no control is stranded
   under a notch or a home indicator, no touch is stuck down, and the run
   continues.
+- With both thumbs on the controls, confirm no part of the cave is behind a
+  control or a thumb, and that the cave still reads clearly at the size the
+  reserved area leaves it — in both orientations, and on the smallest device to
+  hand. That trade (a slightly smaller cave, nothing ever hidden) is the point
+  of FR-031; the sizing itself is the taste call to make here.
 - Tap a theme in the theme control mid-cave and confirm it switches and that the
   touch controls neither cover it nor eat the tap.
 - Confirm the whole game is finishable — title to win screen — without ever
@@ -615,10 +714,20 @@ check by hand at review time, per Principle VII:
   direction and does not jitter between two.
 - Hold pause; confirm it toggles once, not repeatedly.
 - Unplug the controller mid-fall with a direction held. Confirm the kid stops,
-  the run continues, and the keyboard immediately takes over. (Whether it should
-  instead auto-pause is open question 2.)
+  the run continues — it must *not* pause — and the keyboard immediately takes
+  over.
 - Plug in a second controller and confirm either one drives the game.
 - Confirm no on-screen control ever appears on the desktop.
+
+**On a touchscreen laptop (both touch and a keyboard):**
+
+- Load the game and confirm the touch controls are there before touching
+  anything. Press a key; confirm they vanish at once. Touch the screen; confirm
+  they are back at once.
+- Move the mouse and the trackpad around without clicking, with the controls
+  shown and with them hidden. Confirm nothing appears, disappears, or flickers.
+- Alternate touch and keyboard through a whole cave and confirm the switching
+  never eats an input or leaves a stale control on screen.
 
 **On a plain desktop with neither:**
 

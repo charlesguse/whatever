@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain — three remain, each with a stated provisional pick; see Notes
+- [x] No [NEEDS CLARIFICATION] markers remain — all three were answered on issue #7; see Notes
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,26 +31,34 @@
 
 ## Notes
 
-- **Three [NEEDS CLARIFICATION] markers remain**, the maximum this process
-  allows, and they are posted as questions on issue #7. Each names a
-  provisional pick, so the spec is buildable as written if none is answered;
-  each alternative is defensible and changes real work, which is why they are
-  asked rather than decided:
-  1. **FR-027 — hybrid devices.** A touchscreen laptop reports touch capability
-     *and* has a keyboard. Always show the on-screen controls whenever touch is
-     reported (provisional pick: purely capability-driven, one visibility state,
-     at the cost of buttons a laptop player does not want), or show them on the
-     first touch and hide them on the next key or mouse input (better on
-     hybrids, but a second visibility state to specify and test). Scope impact,
-     so it ranks first.
-  2. **FR-025 — controller disconnect mid-cave.** Keep running with held inputs
-     released (provisional pick: the keyboard is always available to take over,
-     per Principle V) or auto-pause so a dead battery does not cost the run.
-     User-experience impact on the failure path the issue calls out by name.
-  3. **FR-031 — touch layout.** Translucent overlays on the playfield
-     (provisional pick: largest cave view, at the cost of a thumb occluding a
-     corner) or a reserved band that shrinks the drawn cave so nothing is ever
-     covered. Affects the rendering and camera work the layout implies.
+- **All three clarifications are resolved.** They were posted on issue #7 and
+  [answered there](https://github.com/charlesguse/whatever/issues/7#issuecomment-5480274021)
+  with **B, A, B**. No [NEEDS CLARIFICATION] marker remains, and each answer is
+  folded into the requirements, scenarios, success criteria, and Maintainer
+  Review Notes rather than only recorded here:
+  1. **FR-027 — hybrid devices → adaptive.** New **FR-027a**: on a touch-capable
+     platform the controls are **visible initially**, hide on a **keydown or a
+     click only** (never on pointer movement, which fires spuriously), re-show on
+     **any touch**, and both transitions are **instant**. **FR-030** was reworded
+     accordingly — the visibility decision is a pure function of reported
+     capabilities *and the last input source*, still browser-free to test as a
+     two-argument table. FR-008, FR-029, US3 scenarios 6–7, SC-007, SC-011b, a
+     new **Last input source** entity, and a hybrid section in the Maintainer
+     Review Notes follow from it.
+  2. **FR-025 — controller disconnect → keep running.** The cave keeps running
+     with the vanished pad's inputs released and never auto-pauses, preserving
+     the invariant that a hardware event cannot mutate session state. US4
+     scenarios 2–3, SC-009, and the review note were tightened to say "must not
+     pause" outright. The time-based "paused only if recently used" variant is
+     recorded as rejected: a wall-clock branch in the input path is not testable
+     as a pure function.
+  3. **FR-031 — touch layout → reserved area.** Controls occupy a reserved area
+     the drawn cave never enters, defined **per orientation** from the start.
+     New **FR-031a** pins that the reserved area and the cave are both laid out
+     from the **safe-area-inset box**, not the raw viewport, so the cave-sizing
+     calculation consumes the same insets the controls do. FR-013, FR-015,
+     FR-032, US1 scenario 11, SC-011a, the **Touch control layout** entity, and
+     two edge cases follow.
 - **Everything else was decided rather than asked**, per the constitution's
   instruction that a spec picks a behavior, states it, and tests it. The picks
   with the widest reach are recorded in Assumptions: direction precedence is
