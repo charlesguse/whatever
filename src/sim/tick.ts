@@ -86,6 +86,7 @@ interface TickContext {
   readonly magicWallDuration: number;
   magicWallPhase: MagicWallPhase;
   magicWallCountdown: number;
+  remainingTimeTicks: number | undefined;
 }
 
 // The tick function: (grid, input) -> next grid (FR-006, FR-007). Pure —
@@ -117,6 +118,7 @@ export function tick(state: CaveState, input: TickInput): CaveState {
     magicWallDuration: state.magicWallDuration,
     magicWallPhase: state.magicWallPhase,
     magicWallCountdown: state.magicWallCountdown,
+    remainingTimeTicks: state.remainingTimeTicks,
   };
 
   ageExplosions(ctx);
@@ -124,6 +126,13 @@ export function tick(state: CaveState, input: TickInput): CaveState {
   // FR-019: runs unconditionally, including while status is 'dying', before
   // any falling body this tick can see the phase it decides.
   ageMagicWall(ctx);
+
+  // FR-011: gated on status === 'inPlay' read at the start of this step, so
+  // a cave already dying/dead/completed never has its clock touched this
+  // tick, and a no-limit cave (remainingTimeTicks undefined) is a no-op.
+  if (ctx.status === 'inPlay' && ctx.remainingTimeTicks !== undefined && ctx.remainingTimeTicks > 0) {
+    ctx.remainingTimeTicks -= 1;
+  }
 
   // FR-023: chain links queued by the previous tick's stamping are stamped
   // first, in the order they were queued, before this tick's own scan can
@@ -158,6 +167,15 @@ export function tick(state: CaveState, input: TickInput): CaveState {
   // if either the size limit or the sealed condition fires.
   convertAmoebaCollective(ctx);
 
+  // FR-013, FR-014: evaluated after the main scan, so a same-tick door-entry
+  // completion (which may have just set status = 'completed') already wins
+  // over expiry. No stampBlast, no cell touched — the existing closing
+  // check below resolves this straight to 'dead' since no explosion was
+  // ever stamped for it.
+  if (ctx.status === 'inPlay' && ctx.remainingTimeTicks === 0) {
+    ctx.status = 'dying';
+  }
+
   // FR-015.3: the first tick that ends dying with no explosion cell left
   // anywhere in the grid settles into dead.
   if (ctx.status === 'dying' && !hasAnyExplosion(grid)) {
@@ -178,6 +196,7 @@ export function tick(state: CaveState, input: TickInput): CaveState {
     amoebaSizeLimit: ctx.amoebaSizeLimit,
     magicWallDuration: ctx.magicWallDuration,
     magicWallPhase: ctx.magicWallPhase,
+    remainingTimeTicks: ctx.remainingTimeTicks,
     magicWallCountdown: ctx.magicWallCountdown,
   };
 }

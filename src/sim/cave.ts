@@ -48,6 +48,9 @@ export interface CaveDefinition {
   readonly amoebaGrowthRate?: number; // default 0.03
   readonly amoebaSizeLimit?: number; // default 200
   readonly magicWallDuration?: number; // default 40
+  // FR-009: whole seconds. Omitted means no clock — the cave behaves
+  // exactly as caves do today (FR-052).
+  readonly timeLimitSeconds?: number;
 }
 
 // Opaque beyond width/height/tick — everything outside src/sim/ must go
@@ -67,6 +70,11 @@ export interface CaveState {
   readonly magicWallDuration: number;
   readonly magicWallPhase: MagicWallPhase;
   readonly magicWallCountdown: number;
+  // FR-009–FR-011: undefined when the cave declares no time limit (never
+  // times out). Otherwise starts at timeLimitSeconds * TICK_RATE_HZ and is
+  // decremented by exactly 1 per tick while status === 'inPlay', never
+  // below 0.
+  readonly remainingTimeTicks: number | undefined;
 }
 
 const DEFAULT_AMOEBA_GROWTH_RATE = 0.03;
@@ -170,6 +178,14 @@ export function parseCave(def: CaveDefinition): CaveState {
   ) {
     fail(name, `amoebaGrowthRate must be a number greater than 0 and at most 1, got ${def.amoebaGrowthRate}`);
   }
+  // FR-015: whole seconds only — a zero, negative, fractional, or
+  // non-numeric time limit fails the same way every other rule above does.
+  if (
+    def.timeLimitSeconds !== undefined &&
+    (!Number.isInteger(def.timeLimitSeconds) || def.timeLimitSeconds <= 0)
+  ) {
+    fail(name, `timeLimitSeconds must be a positive whole number, got ${def.timeLimitSeconds}`);
+  }
 
   playerPos = playerPositions[0];
 
@@ -201,6 +217,9 @@ export function parseCave(def: CaveDefinition): CaveState {
     magicWallDuration: def.magicWallDuration ?? DEFAULT_MAGIC_WALL_DURATION,
     magicWallPhase: 'dormant',
     magicWallCountdown: 0,
+    // Both operands are whole numbers, so this is an exact integer (FR-010).
+    remainingTimeTicks:
+      def.timeLimitSeconds !== undefined ? def.timeLimitSeconds * TICK_RATE_HZ : undefined,
   };
 }
 
@@ -254,4 +273,14 @@ export function isExplosion(state: CaveState, x: number, y: number): boolean {
 // active entries — never to distinguish 'dormant' from 'dead' (FR-034a).
 export function getMagicWallPhase(state: CaveState): MagicWallPhase {
   return state.magicWallPhase;
+}
+
+// FR-012: the only way anything outside src/sim/ may observe the clock —
+// the shell's HUD and the bonus calculation both read only this, never
+// remainingTimeTicks directly (FR-044). undefined when the cave has no time
+// limit; otherwise never negative, and equal to the full timeLimitSeconds
+// at tick zero (an exact multiple, so the ceiling is exact).
+export function getRemainingSeconds(state: CaveState): number | undefined {
+  if (state.remainingTimeTicks === undefined) return undefined;
+  return Math.ceil(state.remainingTimeTicks / TICK_RATE_HZ);
 }

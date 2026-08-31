@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { getCollected, getQuota, getStatus, TICK_RATE_HZ } from './sim/cave';
+  import { getCollected, getQuota, getRemainingSeconds, getStatus, TICK_RATE_HZ } from './sim/cave';
   import { advanceScreen, startGame, tickSession } from './lib/session/session';
   import { CAVES } from './caves';
   import type { SessionState } from './lib/session/types';
@@ -102,7 +102,11 @@
       .replace('{count}', String(getCollected(session.caveState)))
       .replace('{quota}', String(getQuota(session.caveState)));
     const lives = theme.hud.lives.replace('{lives}', String(session.lives));
-    return `${stars} — ${lives}`;
+    // FR-043, FR-044: read fresh via the accessor every frame, shown only
+    // when the cave declares a time limit.
+    const remaining = getRemainingSeconds(session.caveState);
+    const time = remaining === undefined ? undefined : theme.hud.time.replace('{seconds}', String(remaining));
+    return [stars, time, lives].filter((part) => part !== undefined).join(' — ');
   });
 
   let overlayText = $derived.by(() => {

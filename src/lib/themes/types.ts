@@ -47,5 +47,6 @@ export interface Theme {
   // (FR-043, FR-046).
   readonly hud: {
     readonly lives: string;
+    readonly time: string;
   };
 }

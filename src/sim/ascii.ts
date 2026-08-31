@@ -9,6 +9,7 @@ export interface AsciiCave {
   readonly amoebaGrowthRate?: number;
   readonly amoebaSizeLimit?: number;
   readonly magicWallDuration?: number;
+  readonly timeLimitSeconds?: number;
 }
 
 // Derives width/height from the rows themselves — never hardcoded (FR-036)
@@ -27,6 +28,7 @@ export function caveFromAscii(ascii: AsciiCave): CaveDefinition {
     amoebaGrowthRate: ascii.amoebaGrowthRate,
     amoebaSizeLimit: ascii.amoebaSizeLimit,
     magicWallDuration: ascii.magicWallDuration,
+    timeLimitSeconds: ascii.timeLimitSeconds,
   };
 }
 
