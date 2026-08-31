@@ -3,7 +3,7 @@
   "spec_dir": "specs/006-classic-theme-switcher",
   "feature_num": "006",
   "stage": "implement",
-  "iteration": 2,
+  "iteration": 3,
   "spec_branch": "spec/006-classic-theme-switcher",
   "pending_re_review_from": []
 }
