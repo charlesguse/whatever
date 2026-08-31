@@ -140,6 +140,36 @@ Single front-end project (unchanged from features 001–005): theme data and the
 
 ---
 
+## Phase 8: Convergence
+
+**Purpose**: Iteration-2 findings from the maintainer's review of PR #20 (issue #6):
+the theme picker's keyboard operability is broken by an unscoped `preventDefault()`/
+`startPending` in the Start-key handler.
+
+- [ ] T026 CRITICAL Fix `src/lib/input/keyboard.ts`'s `onKeyDown` (or, per the maintainer's
+  mild preference, `App.svelte`'s theme-picker markup instead, leaving `keyboard.ts`
+  untouched) so that a Start-key (Space/Enter) press whose `event.target` is inside the
+  `.theme-picker` control neither calls `event.preventDefault()` nor sets `startPending`
+  — restoring the button's native Enter/Space activation (so `onclick`/`selectTheme` fires)
+  and preventing a cave from starting when the press targets a theme button — while every
+  other Start-key press (not targeting the picker) still sets `startPending` exactly as
+  today, and mid-play gameplay keys (direction, grab, restart, pause, cycleTheme) are
+  unaffected (FR-020) per FR-017, US1/AC6 (contradicts)
+- [ ] T027 [P] Add a regression test to `tests/lib/input/keyboard.test.ts` pinning that a
+  Start-key (Space/Enter) keydown whose `event.target` is inside the theme picker does not
+  set `startPending` (extend `fakeTarget()`'s `dispatch` to carry a `target` field on the
+  dispatched event), while confirming a Start-key press with no such target still sets
+  `startPending` exactly as before — per FR-017, US1/AC6 (missing). Depends on T026.
+- [ ] T028 [P] Update `specs/006-classic-theme-switcher/quickstart.md`'s `file://` playback
+  checklist (referenced by T025) to add: "Tab to a theme button, press Enter, confirm the
+  theme switches and no cave starts." — per Maintainer Review Notes (missing)
+
+**Checkpoint**: `npm test` green including T027's new case; the theme picker is reachable
+and fully activatable by keyboard alone (Tab + Enter/Space), and a Start-key press targeted
+at it never starts a cave; T025's manual checklist covers this case explicitly.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
