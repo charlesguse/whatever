@@ -154,9 +154,11 @@ depends on, now with two selectable themes and the theme control present.
     apply for that session, and no error or warning is ever shown.
 14. Confirm the same theme list also responds to a click/tap per entry,
     in addition to (never instead of) keyboard operation.
-15. Confirm the frame rate holds through a theme switch — no visible dip
+15. Tab to a theme button, press Enter, confirm the theme switches and no
+    cave starts.
+16. Confirm the frame rate holds through a theme switch — no visible dip
     or stutter, per the project's 30fps floor.
-16. Read the diff (or the PR description, FR-016) and confirm: zero files
+17. Read the diff (or the PR description, FR-016) and confirm: zero files
     under `src/sim/` changed; zero comparisons against a theme id anywhere
     in rendering or shell logic; adding Classic touched only theme data
     and the registration entry point, not the theme control or the

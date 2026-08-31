@@ -63,6 +63,12 @@ export class KeyboardInput {
     }
 
     if (START_KEYS.has(event.key)) {
+      // FR-017/FR-020: a Start-key press targeting the theme picker is the
+      // button's own native Enter/Space activation (selectTheme), not a
+      // game-start request — leave it alone so the button still activates
+      // and no cave starts underneath it.
+      const target = event.target as { closest?: (selector: string) => unknown } | null | undefined;
+      if (target?.closest?.('.theme-picker')) return;
       event.preventDefault();
       if (!event.repeat) this.startPending = true;
       return;

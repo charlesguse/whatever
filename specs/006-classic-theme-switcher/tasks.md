@@ -146,7 +146,7 @@ Single front-end project (unchanged from features 001–005): theme data and the
 the theme picker's keyboard operability is broken by an unscoped `preventDefault()`/
 `startPending` in the Start-key handler.
 
-- [ ] T026 CRITICAL Fix `src/lib/input/keyboard.ts`'s `onKeyDown` (or, per the maintainer's
+- [X] T026 CRITICAL Fix `src/lib/input/keyboard.ts`'s `onKeyDown` (or, per the maintainer's
   mild preference, `App.svelte`'s theme-picker markup instead, leaving `keyboard.ts`
   untouched) so that a Start-key (Space/Enter) press whose `event.target` is inside the
   `.theme-picker` control neither calls `event.preventDefault()` nor sets `startPending`
@@ -155,12 +155,12 @@ the theme picker's keyboard operability is broken by an unscoped `preventDefault
   other Start-key press (not targeting the picker) still sets `startPending` exactly as
   today, and mid-play gameplay keys (direction, grab, restart, pause, cycleTheme) are
   unaffected (FR-020) per FR-017, US1/AC6 (contradicts)
-- [ ] T027 [P] Add a regression test to `tests/lib/input/keyboard.test.ts` pinning that a
+- [X] T027 [P] Add a regression test to `tests/lib/input/keyboard.test.ts` pinning that a
   Start-key (Space/Enter) keydown whose `event.target` is inside the theme picker does not
   set `startPending` (extend `fakeTarget()`'s `dispatch` to carry a `target` field on the
   dispatched event), while confirming a Start-key press with no such target still sets
   `startPending` exactly as before — per FR-017, US1/AC6 (missing). Depends on T026.
-- [ ] T028 [P] Update `specs/006-classic-theme-switcher/quickstart.md`'s `file://` playback
+- [X] T028 [P] Update `specs/006-classic-theme-switcher/quickstart.md`'s `file://` playback
   checklist (referenced by T025) to add: "Tab to a theme button, press Enter, confirm the
   theme switches and no cave starts." — per Maintainer Review Notes (missing)
 

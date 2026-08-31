@@ -13,7 +13,10 @@ import {
 // with addEventListener/removeEventListener, satisfied by a plain stub
 // with no DOM (there is no DOM in this project's node-environment vitest
 // run, per CLAUDE.md).
-function fakeTarget(): { target: Window; dispatch(event: Partial<KeyboardEvent> & { type: 'keydown' | 'keyup' }): void } {
+function fakeTarget(): {
+  target: Window;
+  dispatch(event: Partial<KeyboardEvent> & { type: 'keydown' | 'keyup'; target?: unknown }): void;
+} {
   const listeners = new Map<string, Array<(event: unknown) => void>>();
   const target = {
     addEventListener: (type: string, handler: (event: unknown) => void) => {
@@ -35,6 +38,15 @@ function fakeTarget(): { target: Window; dispatch(event: Partial<KeyboardEvent> 
         handler(full);
       }
     },
+  };
+}
+
+// A minimal stand-in for a DOM element inside (or outside) the theme
+// picker — only `closest()` is exercised by keyboard.ts, so that is all
+// this stub implements (no real DOM in this project's test run).
+function elementStub(insideThemePicker: boolean): { closest(selector: string): unknown } {
+  return {
+    closest: (selector: string) => (insideThemePicker && selector === '.theme-picker' ? {} : null),
   };
 }
 
@@ -74,6 +86,32 @@ describe('KeyboardInput.consumeCycleTheme (FR-033)', () => {
 
     expect(keyboard.consumeDirection()).toBe('up');
     expect(keyboard.consumeCycleTheme()).toBe(true);
+  });
+});
+
+describe('Start-key presses targeting the theme picker (FR-017, US1/AC6)', () => {
+  it('does not set startPending when event.target is inside the theme picker', () => {
+    const { target, dispatch } = fakeTarget();
+    const keyboard = new KeyboardInput();
+    keyboard.attach(target);
+
+    dispatch({ type: 'keydown', key: 'Enter', target: elementStub(true) });
+    expect(keyboard.consumeStart()).toBe(false);
+
+    dispatch({ type: 'keydown', key: ' ', target: elementStub(true) });
+    expect(keyboard.consumeStart()).toBe(false);
+  });
+
+  it('still sets startPending exactly as before when there is no such target', () => {
+    const { target, dispatch } = fakeTarget();
+    const keyboard = new KeyboardInput();
+    keyboard.attach(target);
+
+    dispatch({ type: 'keydown', key: 'Enter', target: elementStub(false) });
+    expect(keyboard.consumeStart()).toBe(true);
+
+    dispatch({ type: 'keydown', key: ' ' });
+    expect(keyboard.consumeStart()).toBe(true);
   });
 });
 
