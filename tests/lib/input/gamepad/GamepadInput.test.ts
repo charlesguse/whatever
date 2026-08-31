@@ -116,3 +116,101 @@ describe('GamepadInput — one-shot edge-trigger across a held span (SC-006)', (
     expect(gamepad.consumePause()).toBe(false);
   });
 });
+
+// A minimal stub target for attach()/detach() — mirrors
+// tests/lib/input/keyboard.test.ts's fakeTarget() style, with a dispatch()
+// that constructs a synthetic GamepadEvent-shaped object.
+function fakeWindowTarget(): {
+  target: Window;
+  dispatch(type: 'gamepadconnected' | 'gamepaddisconnected', gamepad: Gamepad): void;
+} {
+  const listeners = new Map<string, Array<(event: unknown) => void>>();
+  const target = {
+    addEventListener: (type: string, handler: (event: unknown) => void) => {
+      const list = listeners.get(type) ?? [];
+      list.push(handler);
+      listeners.set(type, list);
+    },
+    removeEventListener: (type: string, handler: (event: unknown) => void) => {
+      const list = listeners.get(type) ?? [];
+      listeners.set(
+        type,
+        list.filter((h) => h !== handler)
+      );
+    },
+  } as unknown as Window;
+
+  return {
+    target,
+    dispatch(type, gamepad) {
+      for (const handler of listeners.get(type) ?? []) {
+        handler({ gamepad });
+      }
+    },
+  };
+}
+
+describe('GamepadInput — hotplug (US4)', () => {
+  it('a controller connected mid-run drives the game from the very next poll(), with no dependency on a gamepadconnected event ever firing', () => {
+    const gamepad = new GamepadInput();
+    let pads: Gamepad[] = [];
+    vi.stubGlobal('navigator', { getGamepads: () => pads });
+
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBeUndefined();
+
+    pads = [makePad(0, { pressedIndices: [DPAD_BUTTON_INDEX.up] })];
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBe('up');
+  });
+
+  it('disconnecting mid-run while a direction and grab are held releases both on the very next poll()', () => {
+    const gamepad = new GamepadInput();
+    const { target, dispatch } = fakeWindowTarget();
+    gamepad.attach(target);
+
+    let pads: Gamepad[] = [
+      makePad(0, { pressedIndices: [DPAD_BUTTON_INDEX.up, FACE_BUTTON_GRAB_CONFIRM_INDEX] }),
+    ];
+    vi.stubGlobal('navigator', { getGamepads: () => pads });
+
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBe('up');
+    expect(gamepad.consumeGrab()).toBe(true);
+
+    dispatch('gamepaddisconnected', pads[0]);
+    pads = [];
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBeUndefined();
+    expect(gamepad.consumeGrab()).toBe(false);
+  });
+
+  it('a reconnect under the same index after a disconnect carries no stale hysteresis or edge state (US4 AC4)', () => {
+    const gamepad = new GamepadInput();
+    const { target, dispatch } = fakeWindowTarget();
+    gamepad.attach(target);
+
+    // Engage 'up' on the stick so a previousStickDirection is recorded.
+    let pads: Gamepad[] = [makePad(0, { axes: [0, -0.6] })];
+    vi.stubGlobal('navigator', { getGamepads: () => pads });
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBe('up');
+
+    dispatch('gamepaddisconnected', pads[0]);
+    pads = [];
+    gamepad.poll();
+
+    // Reconnect at the same index with an exact-diagonal stick push — with
+    // no stale previous direction, this must fall through to horizontal
+    // (resolveDominantAxis's no-previous tie-break), not hold 'up'.
+    const diag = Math.SQRT1_2 * 0.6;
+    pads = [makePad(0, { axes: [diag, -diag] })];
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBe('right');
+  });
+
+  it('contains no reference to session state (US4 AC3, FR-025 — structural check)', () => {
+    const source = GamepadInput.toString();
+    expect(source).not.toMatch(/SessionState|session\.score|session\.lives|caveIndex|screenTicks/);
+  });
+});

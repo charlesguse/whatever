@@ -33,6 +33,31 @@ export class GamepadInput {
   private mergedPause = false;
   private mergedCycleTheme = false;
 
+  private readonly onGamepadDisconnected = (event: GamepadEvent): void => {
+    // US4 AC2/AC3: deletes the entry immediately, not waiting for the next
+    // poll() — navigator.getGamepads() also stops listing a disconnected
+    // pad, so the very next poll() naturally excludes it from the merge.
+    // Deleting here additionally prevents a later reconnect at the same
+    // index from ever reading its stale previousStickDirection/
+    // previousPressed (US4 AC4).
+    this.padStates.delete(event.gamepad.index);
+  };
+
+  // A no-op — poll()'s own lazy-creation scan already handles connect
+  // (including a pad present before this listener ever attaches), per
+  // contracts/gamepad-api.md's "poll()'s own scan is the source of truth".
+  private readonly onGamepadConnected = (): void => {};
+
+  attach(target: Window = window): void {
+    target.addEventListener('gamepadconnected', this.onGamepadConnected);
+    target.addEventListener('gamepaddisconnected', this.onGamepadDisconnected as EventListener);
+  }
+
+  detach(target: Window = window): void {
+    target.removeEventListener('gamepadconnected', this.onGamepadConnected);
+    target.removeEventListener('gamepaddisconnected', this.onGamepadDisconnected as EventListener);
+  }
+
   // FR-028: no-op — no navigator.getGamepads() call, no throw — when the
   // Gamepad API is unavailable.
   poll(): void {

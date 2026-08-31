@@ -333,6 +333,7 @@
   onMount(() => {
     keyboard.attach();
     touch.attach();
+    gamepad.attach();
     window.addEventListener('keydown', onAnyKeyDown);
     window.addEventListener('click', onAnyClick);
     window.addEventListener('touchstart', onAnyTouchStart);
@@ -353,6 +354,7 @@
   onDestroy(() => {
     keyboard.detach();
     touch.detach();
+    gamepad.detach();
     window.removeEventListener('keydown', onAnyKeyDown);
     window.removeEventListener('click', onAnyClick);
     window.removeEventListener('touchstart', onAnyTouchStart);
