@@ -15,6 +15,11 @@ import { seedPrng, type PrngState } from './prng';
 
 export type CaveStatus = 'inPlay' | 'dying' | 'dead' | 'completed';
 
+// The single seconds<->ticks conversion (research.md Decision 2), relocated
+// here from App.svelte's local constant so parseCave (seconds -> ticks at
+// parse time) and the shell's own tick-loop interval read the same number.
+export const TICK_RATE_HZ = 8;
+
 // FR-015: one cave-wide value shared by every magic wall cell — never
 // per-cell. 'dormant' until a falling boulder/diamond first enters a wall
 // cell; 'active' for magicWallDuration ticks; 'dead' permanently after,
