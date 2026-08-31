@@ -2,7 +2,7 @@
   "issue": 7,
   "spec_dir": "specs/007-touch-gamepad-input",
   "feature_num": "007",
-  "stage": "tasks",
-  "iteration": 0,
+  "stage": "implement",
+  "iteration": 1,
   "spec_branch": "spec/007-touch-gamepad-input"
 }
