@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TouchInput } from '../../../../src/lib/input/touch/TouchInput';
 import type { TouchControlLayout } from '../../../../src/lib/input/touch/layout';
 
@@ -10,11 +10,18 @@ interface FakeTouch {
   identifier: number;
   clientX: number;
   clientY: number;
+  target?: { closest(selector: string): unknown };
+}
+
+function elementStub(insideThemePicker: boolean): { closest(selector: string): unknown } {
+  return {
+    closest: (selector: string) => (insideThemePicker && selector === '.theme-picker' ? {} : null),
+  };
 }
 
 function fakeTarget(): {
   target: Document;
-  dispatch(event: { type: string; changedTouches?: FakeTouch[] }): void;
+  dispatch(event: { type: string; changedTouches?: FakeTouch[] }): { preventDefault: ReturnType<typeof vi.fn> };
 } {
   const listeners = new Map<string, Array<(event: unknown) => void>>();
   const target = {
@@ -35,10 +42,12 @@ function fakeTarget(): {
   return {
     target,
     dispatch(event) {
-      const full = { changedTouches: [], preventDefault: () => {}, ...event };
+      const preventDefault = vi.fn();
+      const full = { changedTouches: [], ...event, preventDefault };
       for (const handler of listeners.get(event.type) ?? []) {
         handler(full);
       }
+      return { preventDefault };
     },
   };
 }
@@ -55,6 +64,28 @@ function makeLayout(): TouchControlLayout {
     restartButton: { x: 400, y: 180, width: 60, height: 60 },
   };
 }
+
+describe('touchstart never calls preventDefault() (FR-012 — the theme picker\'s own tap must still synthesize a click)', () => {
+  it('does not suppress the browser\'s click synthesis on a control touch or a tap-to-confirm touch', () => {
+    const { target, dispatch } = fakeTarget();
+    const touch = new TouchInput();
+    touch.setLayout(makeLayout());
+    touch.attach(target);
+
+    const { preventDefault: onLayout } = dispatch({
+      type: 'touchstart',
+      changedTouches: [{ identifier: 1, clientX: 100, clientY: 100 }],
+    });
+    expect(onLayout).not.toHaveBeenCalled();
+
+    touch.setLayout(undefined);
+    const { preventDefault: onNoLayout } = dispatch({
+      type: 'touchstart',
+      changedTouches: [{ identifier: 2, clientX: 10, clientY: 10 }],
+    });
+    expect(onNoLayout).not.toHaveBeenCalled();
+  });
+});
 
 describe('touchstart — assigns each new identifier to its resolveTouchPoint result', () => {
   it('assigns pad, grab, pause, restart, and none correctly', () => {
@@ -204,6 +235,30 @@ describe('consumeStart() — set only by a touchstart while no layout is active 
 
     dispatch({ type: 'touchstart', changedTouches: [{ identifier: 1, clientX: 100, clientY: 100 }] });
     expect(touch.consumeStart()).toBe(false);
+  });
+
+  it('is not set by a touchstart targeting the theme picker (FR-017/FR-020, mirroring keyboard.ts)', () => {
+    const { target, dispatch } = fakeTarget();
+    const touch = new TouchInput();
+    touch.attach(target);
+
+    dispatch({
+      type: 'touchstart',
+      changedTouches: [{ identifier: 1, clientX: 10, clientY: 10, target: elementStub(true) }],
+    });
+    expect(touch.consumeStart()).toBe(false);
+  });
+
+  it('is still set by a touchstart with no such target, or one outside the theme picker', () => {
+    const { target, dispatch } = fakeTarget();
+    const touch = new TouchInput();
+    touch.attach(target);
+
+    dispatch({
+      type: 'touchstart',
+      changedTouches: [{ identifier: 1, clientX: 10, clientY: 10, target: elementStub(false) }],
+    });
+    expect(touch.consumeStart()).toBe(true);
   });
 });
 

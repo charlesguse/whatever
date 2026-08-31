@@ -27,12 +27,22 @@ export class TouchInput {
   }
 
   private readonly onTouchStart = (event: TouchEvent): void => {
-    event.preventDefault();
+    // No preventDefault() here (unlike touchmove/gesturestart/contextmenu/
+    // dblclick below) — calling it on touchstart would suppress the
+    // browser's synthesized click that follows on touchend, breaking the
+    // theme picker's own tap (FR-012's "theme control's own taps MUST
+    // continue to work"). touch-action: none on the relevant elements
+    // already suppresses scroll/zoom without it (contracts/touch-api.md).
     for (const touch of Array.from(event.changedTouches)) {
       if (this.layout === undefined) {
         // FR-014: no control to hit-test against — a tap-to-confirm
         // candidate, only ever consumed by App.svelte on screens with no
-        // layout at all.
+        // layout at all. FR-017/FR-020 (006, mirrored from keyboard.ts's
+        // START_KEYS handling): a tap targeting the theme picker is that
+        // button's own activation, not a start/confirm request — leave it
+        // alone so the picker still gets the tap.
+        const target = touch.target as { closest?: (selector: string) => unknown } | null | undefined;
+        if (target?.closest?.('.theme-picker')) continue;
         this.startPending = true;
         continue;
       }
