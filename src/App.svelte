@@ -97,6 +97,11 @@
   let theme = $derived(getTheme(THEME_ID));
 
   let hudText = $derived.by(() => {
+    // FR-021: the score is visible during play and on the terminal screens
+    // (game-over/won), not only mid-play.
+    if (session.screen === 'gameOver' || session.screen === 'won') {
+      return theme.hud.score.replace('{score}', String(session.score));
+    }
     if (session.screen !== 'playing') return undefined;
     const stars = theme.readout.template
       .replace('{count}', String(getCollected(session.caveState)))
@@ -106,7 +111,8 @@
     // when the cave declares a time limit.
     const remaining = getRemainingSeconds(session.caveState);
     const time = remaining === undefined ? undefined : theme.hud.time.replace('{seconds}', String(remaining));
-    return [stars, time, lives].filter((part) => part !== undefined).join(' — ');
+    const score = theme.hud.score.replace('{score}', String(session.score));
+    return [stars, time, score, lives].filter((part) => part !== undefined).join(' — ');
   });
 
   let overlayText = $derived.by(() => {
@@ -121,6 +127,8 @@
         return theme.lifeLost.label;
       case 'gameOver':
         return theme.gameOver.label;
+      case 'caveComplete':
+        return theme.caveComplete.label.replace('{score}', String(session.score));
       default:
         return undefined;
     }

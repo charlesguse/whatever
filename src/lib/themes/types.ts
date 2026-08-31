@@ -48,5 +48,11 @@ export interface Theme {
   readonly hud: {
     readonly lives: string;
     readonly time: string;
+    readonly score: string;
+  };
+  // The bonus tally overlay, shown while screen === 'caveComplete' (FR-006,
+  // FR-019, FR-020) — the arithmetic is already final; this only labels it.
+  readonly caveComplete: {
+    readonly label: string;
   };
 }

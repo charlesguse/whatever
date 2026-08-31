@@ -1,6 +1,7 @@
-import { getCollected, getStatus, parseCave } from '../../sim/cave';
+import { getCollected, getQuota, getRemainingSeconds, getStatus, parseCave } from '../../sim/cave';
 import { tick, type TickInput } from '../../sim/tick';
 import { CAVES } from '../../caves';
+import { bonusFor, starValue } from './scoring';
 import type { SessionState } from './types';
 
 // A new game always begins at cave one (FR-002) — startGame() never reads a
@@ -27,16 +28,31 @@ export function tickSession(session: SessionState, input: TickInput): SessionSta
   if (session.screen !== 'playing') return session;
 
   const preStatus = getStatus(session.caveState);
+  const preCollected = getCollected(session.caveState);
   const nextCaveState = tick(session.caveState, input);
   const nextStatus = getStatus(nextCaveState);
+  const postCollected = getCollected(nextCaveState);
 
-  // Scoring (star value, completion bonus) is wired in by User Story 3 —
-  // score is carried through unchanged here.
-  if (nextStatus === 'dead' && preStatus !== 'dead') {
-    return endAttempt({ ...session, caveState: nextCaveState }, 'death');
+  // FR-016–FR-018: a collection this tick scores starValue using the
+  // *pre-collection* count — the boundary star that first meets the quota
+  // reads 10, not 15. No other tick outcome adds to score.
+  let score = session.score;
+  if (postCollected > preCollected) {
+    score += starValue(preCollected, getQuota(nextCaveState));
   }
 
-  return { ...session, caveState: nextCaveState, screen: 'playing' };
+  if (nextStatus === 'dead' && preStatus !== 'dead') {
+    return endAttempt({ ...session, caveState: nextCaveState, score }, 'death');
+  }
+
+  if (nextStatus === 'completed' && preStatus !== 'completed') {
+    // FR-006, FR-014, FR-019, FR-020: the bonus is final the instant
+    // completion is detected — the tally screen only animates toward it.
+    score += bonusFor(getRemainingSeconds(nextCaveState) ?? 0);
+    return { ...session, caveState: nextCaveState, score, screen: 'caveComplete', screenTicks: 0 };
+  }
+
+  return { ...session, caveState: nextCaveState, score, screen: 'playing' };
 }
 
 // The shared attempt-over transition (research.md's endAttempt decision):

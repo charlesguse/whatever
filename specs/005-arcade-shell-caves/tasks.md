@@ -112,17 +112,17 @@ Single front-end project (unchanged from features 001–004): sim code under `sr
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Write `tests/lib/session/scoring.test.ts` covering `starValue(preCollected, quota)`: below quota → 10, at-or-above quota → 15, and the boundary star (`preCollected === quota - 1`) → 10, the pre-quota reading (FR-017, research.md's flagged boundary-star decision).
-- [ ] T029 [P] [US3] In the same file, cover `bonusFor(remainingSeconds)`: identity (`N` → `N`), and `0` → `0` (FR-019, spec Edge Cases).
-- [ ] T030 [P] [US3] In `tests/lib/session/session.test.ts`, add a test that `tickSession` adds `starValue(preCollected, quota)` to `score` on a collection during `'playing'` and adds nothing on any other tick outcome (FR-016–FR-018); and a test that on the tick `getStatus()` first reports `'completed'`, `score` rises by `bonusFor(getRemainingSeconds(...))` exactly once and `screen` becomes `'caveComplete'` (FR-006, FR-019, FR-020).
-- [ ] T031 [P] [US3] In the same file, add a test that a star collected during an attempt that ends in death stays scored — `score` is not rolled back to its value at attempt start (FR-017a) — and a test that `score` is unaffected by `caveIndex` changing across a cave transition (FR-021).
-- [ ] T032 [P] [US3] In the same file, add a test that the score at the moment `'caveComplete'` is entered already equals the full documented total (star points + bonus), so a skipped or interrupted tally can never disagree with one that ran to completion (FR-020).
+- [X] T028 [P] [US3] Write `tests/lib/session/scoring.test.ts` covering `starValue(preCollected, quota)`: below quota → 10, at-or-above quota → 15, and the boundary star (`preCollected === quota - 1`) → 10, the pre-quota reading (FR-017, research.md's flagged boundary-star decision).
+- [X] T029 [P] [US3] In the same file, cover `bonusFor(remainingSeconds)`: identity (`N` → `N`), and `0` → `0` (FR-019, spec Edge Cases).
+- [X] T030 [P] [US3] In `tests/lib/session/session.test.ts`, add a test that `tickSession` adds `starValue(preCollected, quota)` to `score` on a collection during `'playing'` and adds nothing on any other tick outcome (FR-016–FR-018); and a test that on the tick `getStatus()` first reports `'completed'`, `score` rises by `bonusFor(getRemainingSeconds(...))` exactly once and `screen` becomes `'caveComplete'` (FR-006, FR-019, FR-020).
+- [X] T031 [P] [US3] In the same file, add a test that a star collected during an attempt that ends in death stays scored — `score` is not rolled back to its value at attempt start (FR-017a) — and a test that `score` is unaffected by `caveIndex` changing across a cave transition (FR-021).
+- [X] T032 [P] [US3] In the same file, add a test that the score at the moment `'caveComplete'` is entered already equals the full documented total (star points + bonus), so a skipped or interrupted tally can never disagree with one that ran to completion (FR-020).
 
 ### Implementation for User Story 3
 
-- [ ] T033 [US3] Create `src/lib/session/scoring.ts`: `export function starValue(preCollected: number, quota: number): 10 | 15` and `export function bonusFor(remainingSeconds: number): number` per contracts/session-api.md.
-- [ ] T034 [US3] In `src/lib/session/session.ts`'s `tickSession`, add the scoring diff (`getCollected` before vs. after the sim `tick()` call → `starValue`, added to `score`) and the completion bonus (`getStatus` transitioning to `'completed'` → `bonusFor(getRemainingSeconds(...))`, added once, `screen: 'caveComplete'`, `screenTicks: 0`). Depends on T010, T023, T033.
-- [ ] T035 [US3] In `src/App.svelte`'s HUD (T011), add the score readout (FR-021, shown during play and on game-over/win); add a `caveComplete` screen overlay presenting the bonus tally, animating toward the already-final `score` from T034 (the arithmetic is not a side effect of the animation, FR-020), skippable on the start/confirm key; add the `hud.score` label field to `Theme`/`classroomTheme`. Depends on T011, T034.
+- [X] T033 [US3] Create `src/lib/session/scoring.ts`: `export function starValue(preCollected: number, quota: number): 10 | 15` and `export function bonusFor(remainingSeconds: number): number` per contracts/session-api.md.
+- [X] T034 [US3] In `src/lib/session/session.ts`'s `tickSession`, add the scoring diff (`getCollected` before vs. after the sim `tick()` call → `starValue`, added to `score`) and the completion bonus (`getStatus` transitioning to `'completed'` → `bonusFor(getRemainingSeconds(...))`, added once, `screen: 'caveComplete'`, `screenTicks: 0`). Depends on T010, T023, T033.
+- [X] T035 [US3] In `src/App.svelte`'s HUD (T011), add the score readout (FR-021, shown during play and on game-over/win); add a `caveComplete` screen overlay presenting the bonus tally, animating toward the already-final `score` from T034 (the arithmetic is not a side effect of the animation, FR-020), skippable on the start/confirm key; add the `hud.score` label field to `Theme`/`classroomTheme`. Depends on T011, T034.
 
 **Checkpoint**: Score arithmetic is complete and carries across a cave transition; the tally can never disagree with the final total.
 
