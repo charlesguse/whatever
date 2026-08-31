@@ -191,15 +191,15 @@ Single front-end project (unchanged from features 001–004): sim code under `sr
 
 ### Tests for User Story 6
 
-- [ ] T059 [P] [US6] Write `tests/lib/storage/save.test.ts`: a round-trip — `writeSave({ highScore, furthestCave })` then `readSave()` — returns the same values (FR-038).
-- [ ] T060 [P] [US6] In the same file, add tests that `highScore` is written only via `Math.max(stored, finalScore)` and `furthestCave` only via `Math.max(stored, caveNumber)` (FR-039).
-- [ ] T061 [P] [US6] In the same file, add a test using a storage stub that throws on every read and write: `readSave()` still returns absent values and `writeSave()` does not throw to its caller (FR-041).
-- [ ] T062 [P] [US6] In the same file, add tests that a stored value which is missing, negative, non-numeric, or (for `furthestCave`) outside `[1, 8]` is treated as absent — `highScore` defaults to `0`, `furthestCave` to `1` (FR-042).
+- [X] T059 [P] [US6] Write `tests/lib/storage/save.test.ts`: a round-trip — `writeSave({ highScore, furthestCave })` then `readSave()` — returns the same values (FR-038).
+- [X] T060 [P] [US6] In the same file, add tests that `highScore` is written only via `Math.max(stored, finalScore)` and `furthestCave` only via `Math.max(stored, caveNumber)` (FR-039).
+- [X] T061 [P] [US6] In the same file, add a test using a storage stub that throws on every read and write: `readSave()` still returns absent values and `writeSave()` does not throw to its caller (FR-041).
+- [X] T062 [P] [US6] In the same file, add tests that a stored value which is missing, negative, non-numeric, or (for `furthestCave`) outside `[1, 8]` is treated as absent — `highScore` defaults to `0`, `furthestCave` to `1` (FR-042).
 
 ### Implementation for User Story 6
 
-- [ ] T063 [US6] Create `src/lib/storage/save.ts`: `readSave()`/`writeSave(record)` over one JSON object under a single `localStorage` key, both wrapped in `try`/`catch`, with out-of-range/invalid values treated as absent (FR-038, FR-041, FR-042, data-model.md Saved Record).
-- [ ] T064 [US6] In `src/App.svelte`, call `writeSave` with the greater of the stored and final `score` whenever `screen` becomes `'gameOver'` or `'won'` (FR-039), and with the greater of the stored and current `caveIndex + 1` whenever a cave begins (`'caveIntro'`, FR-039); call `readSave` once at the title screen and show both values there, blank when absent (FR-040). Depends on T011, T063.
+- [X] T063 [US6] Create `src/lib/storage/save.ts`: `readSave()`/`writeSave(record)` over one JSON object under a single `localStorage` key, both wrapped in `try`/`catch`, with out-of-range/invalid values treated as absent (FR-038, FR-041, FR-042, data-model.md Saved Record).
+- [X] T064 [US6] In `src/App.svelte`, call `writeSave` with the greater of the stored and final `score` whenever `screen` becomes `'gameOver'` or `'won'` (FR-039), and with the greater of the stored and current `caveIndex + 1` whenever a cave begins (`'caveIntro'`, FR-039); call `readSave` once at the title screen and show both values there, blank when absent (FR-040). Depends on T011, T063.
 
 **Checkpoint**: The high score and furthest cave survive a reload and never crash or warn when storage is unavailable.
 

@@ -49,7 +49,13 @@ export const classroomTheme: Theme = {
   gameOver: { label: 'Game over! No more lives left.' },
   won: { label: 'You cleared every classroom! Recess Rocks champion!' },
   paused: { label: 'Paused' },
-  hud: { lives: 'Lives: {lives}', time: 'Time: {seconds}', score: 'Score: {score}' },
+  hud: {
+    lives: 'Lives: {lives}',
+    time: 'Time: {seconds}',
+    score: 'Score: {score}',
+    highScore: 'Best: {score}',
+    furthestCave: 'Furthest Classroom: {cave}',
+  },
   caveComplete: { label: 'Room cleared! Score: {score}' },
 };
 

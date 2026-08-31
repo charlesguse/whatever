@@ -3,7 +3,8 @@
   import { getCollected, getQuota, getRemainingSeconds, getStatus, TICK_RATE_HZ } from './sim/cave';
   import { advanceScreen, pauseToggle, restartAttempt, startGame, tickSession } from './lib/session/session';
   import { CAVES } from './caves';
-  import type { SessionState } from './lib/session/types';
+  import type { Screen, SessionState } from './lib/session/types';
+  import { readSave, writeSave } from './lib/storage/save';
   import { KeyboardInput } from './lib/input/keyboard';
   import { createRenderLoop, type RenderLoop } from './lib/render/canvas';
   import { registerTheme, getTheme } from './lib/themes/registry';
@@ -40,11 +41,31 @@
   let lastTime: number | undefined;
   let accumulator = 0;
 
+  // FR-039: writeSave only ever grows a stored value, so passing the other
+  // field's minimum here is a safe no-op on that field. Called only on the
+  // screen transitions the spec names: whenever a game ends (gameOver/won)
+  // and whenever a cave begins (caveIntro).
+  function saveOnTransition(previousScreen: Screen, nextScreen: Screen): void {
+    if (nextScreen === previousScreen) return;
+    if (nextScreen === 'gameOver' || nextScreen === 'won') {
+      writeSave({ highScore: session.score, furthestCave: 1 });
+    }
+    if (nextScreen === 'caveIntro') {
+      writeSave({ highScore: 0, furthestCave: session.caveIndex + 1 });
+    }
+  }
+
   // One tick's worth of session advancement: consumes this tick's input
   // exactly once, and always drives through the session module — the sim
   // never runs except via tickSession while screen === 'playing' (FR-011,
   // FR-028).
   function stepTick(): void {
+    const previousScreen = session.screen;
+    stepTickInner();
+    saveOnTransition(previousScreen, session.screen);
+  }
+
+  function stepTickInner(): void {
     // FR-027: restart works from playing, paused, caveIntro, and lifeLost,
     // at any point in a frame — a no-op (via restartAttempt's own screen
     // gate) everywhere else, so it is always safe to check first.
@@ -116,7 +137,22 @@
   // tracking of any value. FR-046: every string comes from theme data.
   let theme = $derived(getTheme(THEME_ID));
 
+  // FR-002, FR-040: read fresh whenever the title screen is showing — never
+  // held stale from a previous game.
+  let titleSave = $derived(session.screen === 'title' ? readSave() : undefined);
+
   let hudText = $derived.by(() => {
+    // FR-002, FR-038, FR-040: the title screen's persisted badges, blank
+    // (omitted) when absent.
+    if (session.screen === 'title') {
+      if (titleSave === undefined) return undefined;
+      const parts: string[] = [];
+      if (titleSave.highScore > 0) {
+        parts.push(theme.hud.highScore.replace('{score}', String(titleSave.highScore)));
+      }
+      parts.push(theme.hud.furthestCave.replace('{cave}', String(titleSave.furthestCave)));
+      return parts.join(' — ');
+    }
     // FR-021: the score is visible during play and on the terminal screens
     // (game-over/won), not only mid-play.
     if (session.screen === 'gameOver' || session.screen === 'won') {

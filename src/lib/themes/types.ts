@@ -56,6 +56,10 @@ export interface Theme {
     readonly lives: string;
     readonly time: string;
     readonly score: string;
+    // The title screen's persisted-value badges (FR-002, FR-038), blank
+    // when absent — not shown while any other screen is active.
+    readonly highScore: string;
+    readonly furthestCave: string;
   };
   // The bonus tally overlay, shown while screen === 'caveComplete' (FR-006,
   // FR-019, FR-020) — the arithmetic is already final; this only labels it.
