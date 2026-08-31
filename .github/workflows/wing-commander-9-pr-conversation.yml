@@ -1,0 +1,67 @@
+name: "Wing Commander · 9 pr conversation"
+
+# The review-feedback channel. Every other stage is dispatched by the stage
+# before it; this one is purely event-triggered, because its whole job is
+# reacting to a maintainer's review or comment on an implementation PR.
+#
+# It only qualifies on `spec/NNN-slug -> main` PRs. Spec-draft, plan, and
+# tasks PRs short-circuit with no reply, so reviewing those still works the
+# way it does today.
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+jobs:
+  pr-conversation:
+    # Bot-exclusion ONLY — do not add the OWNER/MEMBER/COLLABORATOR check
+    # here. A wrapper `if:` cannot post a reply, so gating on association at
+    # this level would silently skip the job and leave an unauthorized human
+    # commenter with no response at all. The association check belongs to the
+    # stage, whose classify-and-announce job runs it as its own first step and
+    # posts a notice-and-stop reply when it fails.
+    if: >-
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       github.event.comment.user.type != 'Bot') ||
+      (github.event_name == 'pull_request_review_comment' &&
+       github.event.comment.user.type != 'Bot') ||
+      (github.event_name == 'pull_request_review' &&
+       github.event.review.body != '' &&
+       github.event.review.user.type != 'Bot')
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+      id-token: write
+    uses: charlesguse/wing-commander/.github/workflows/pr-conversation.yml@main
+    with:
+      pr-number: ${{ github.event.pull_request.number || github.event.issue.number }}
+      event-kind: >-
+        ${{ github.event_name == 'pull_request_review' && 'review'
+          || github.event_name == 'pull_request_review_comment' && 'review-comment'
+          || 'issue-comment' }}
+      body: ${{ github.event.review.body || github.event.comment.body || '' }}
+      actor-login: ${{ github.event.review.user.login || github.event.comment.user.login }}
+      actor-association: ${{ github.event.review.author_association || github.event.comment.author_association }}
+      # An in-scope fold-in re-drives implement automatically, which is the
+      # whole point of adopting this stage: without it, a rejected PR costs a
+      # hand-edit of spec-meta.json's stage back to "implement" plus a manual
+      # dispatch.
+      implement-workflow: wing-commander-5-implement.yml
+      # Same reason as wrapper 5: the fold-in agent is working in a Svelte +
+      # Vite app and needs the Node toolchain to install, build, and run
+      # vitest before it commits.
+      extra-allowed-tools: "Bash(npm:*),Bash(npx:*),Bash(node:*)"
+    secrets:
+      claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      speckit-app-id: ${{ secrets.WING_COMMANDER_APP_ID }}
+      speckit-app-private-key: ${{ secrets.WING_COMMANDER_APP_PRIVATE_KEY }}
