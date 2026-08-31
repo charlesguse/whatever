@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { asciiFromState, caveFromAscii } from '../../../src/sim/ascii';
 import { getRemainingSeconds, parseCave, type CaveDefinition } from '../../../src/sim/cave';
 import type { SessionState } from '../../../src/lib/session/types';
-import { advanceScreen, startGame, tickSession } from '../../../src/lib/session/session';
+import { advanceScreen, pauseToggle, restartAttempt, startGame, tickSession } from '../../../src/lib/session/session';
 import { bonusFor, starValue } from '../../../src/lib/session/scoring';
 
 // A tiny fixture cave (the crushing.test.ts shape): a boulder falls twice,
@@ -278,5 +278,163 @@ describe('advanceScreen from caveComplete (FR-006, SC-001)', () => {
     const next = advanceScreen(session);
     expect(next.screen).toBe('won');
     expect(next.score).toBe(100);
+  });
+});
+
+describe('pauseToggle (FR-028–FR-030, SC-008)', () => {
+  it('toggles playing <-> paused and is a no-op from every other screen', () => {
+    const caveState = parseCave(FIXTURE_CAVE);
+    const playing: SessionState = {
+      screen: 'playing',
+      score: 0,
+      lives: 3,
+      caveIndex: 0,
+      caveState,
+      attemptEnded: false,
+      screenTicks: 0,
+    };
+    const paused = pauseToggle(playing);
+    expect(paused.screen).toBe('paused');
+    expect(pauseToggle(paused).screen).toBe('playing');
+
+    for (const screen of ['title', 'caveIntro', 'lifeLost', 'caveComplete', 'gameOver', 'won'] as const) {
+      const session = { ...playing, screen };
+      expect(pauseToggle(session)).toBe(session);
+    }
+  });
+
+  it('never calls tick() — caveState is byte-identical before and after any number of toggle cycles', () => {
+    const caveState = parseCave(FIXTURE_CAVE);
+    let session: SessionState = {
+      screen: 'playing',
+      score: 0,
+      lives: 3,
+      caveIndex: 0,
+      caveState,
+      attemptEnded: false,
+      screenTicks: 0,
+    };
+    for (let i = 0; i < 10; i++) {
+      session = pauseToggle(session); // -> paused
+      session = pauseToggle(session); // -> playing
+    }
+    expect(asciiFromState(session.caveState)).toBe(asciiFromState(caveState));
+    expect(session.caveState.tick).toBe(caveState.tick);
+  });
+});
+
+describe('restartAttempt (FR-005, FR-025, FR-027, FR-027a)', () => {
+  it('from playing costs exactly one life and reloads at once, skipping lifeLost', () => {
+    const session: SessionState = {
+      screen: 'playing',
+      score: 0,
+      lives: 3,
+      caveIndex: 0,
+      caveState: parseCave(FIXTURE_CAVE),
+      attemptEnded: false,
+      screenTicks: 0,
+    };
+    const next = restartAttempt(session);
+    expect(next.lives).toBe(2);
+    expect(next.screen).toBe('playing');
+    expect(asciiFromState(next.caveState)).toBe(asciiFromState(parseCave(FIXTURE_CAVE)));
+  });
+
+  it('from paused costs exactly one life and reloads straight into playing', () => {
+    const session: SessionState = {
+      screen: 'paused',
+      score: 0,
+      lives: 3,
+      caveIndex: 0,
+      caveState: parseCave(FIXTURE_CAVE),
+      attemptEnded: false,
+      screenTicks: 0,
+    };
+    const next = restartAttempt(session);
+    expect(next.lives).toBe(2);
+    expect(next.screen).toBe('playing');
+  });
+
+  it('while the cave is dying (screen still playing) costs exactly one life', () => {
+    let session = advanceScreen(startGame());
+    session = tickSession(session, {}); // falls
+    session = tickSession(session, {}); // crushes -> status 'dying', screen still 'playing'
+    expect(session.screen).toBe('playing');
+
+    const next = restartAttempt(session);
+    expect(next.lives).toBe(2);
+    expect(next.screen).toBe('playing');
+  });
+
+  it('from lifeLost costs nothing further, but still reaches playing at once', () => {
+    let session = advanceScreen(startGame());
+    session = runUntilNotPlaying(session); // death 1
+    expect(session.screen).toBe('lifeLost');
+    expect(session.lives).toBe(2);
+
+    const next = restartAttempt(session);
+    expect(next.lives).toBe(2); // unchanged
+    expect(next.screen).toBe('playing');
+  });
+
+  it('from caveIntro costs nothing further, but still reaches playing at once', () => {
+    const intro: SessionState = {
+      screen: 'caveIntro',
+      score: 0,
+      lives: 3,
+      caveIndex: 0,
+      caveState: parseCave(FIXTURE_CAVE),
+      attemptEnded: true,
+      screenTicks: 0,
+    };
+    const next = restartAttempt(intro);
+    expect(next.lives).toBe(3); // unchanged
+    expect(next.screen).toBe('playing');
+  });
+
+  it('a restart on the last life ends the game exactly as a death would', () => {
+    const session: SessionState = {
+      screen: 'playing',
+      score: 0,
+      lives: 1,
+      caveIndex: 0,
+      caveState: parseCave(FIXTURE_CAVE),
+      attemptEnded: false,
+      screenTicks: 0,
+    };
+    const next = restartAttempt(session);
+    expect(next.lives).toBe(0);
+    expect(next.screen).toBe('gameOver');
+  });
+
+  it('is a no-op from caveComplete (never skips the mandatory tally)', () => {
+    const session: SessionState = {
+      screen: 'caveComplete',
+      score: 40,
+      lives: 3,
+      caveIndex: 0,
+      caveState: parseCave(FIXTURE_CAVE),
+      attemptEnded: true,
+      screenTicks: 0,
+    };
+    expect(restartAttempt(session)).toBe(session);
+  });
+});
+
+describe('a death and a same-tick restart cost one life in total (FR-023, FR-027a, spec Edge Cases)', () => {
+  it('endAttempt fires only once when tickSession detects death and restartAttempt is also called', () => {
+    let session = advanceScreen(startGame());
+    session = tickSession(session, {}); // falls
+    session = tickSession(session, {}); // crushes -> dying
+    session = tickSession(session, {}); // ages explosion
+    session = tickSession(session, {}); // resolves to dead -> endAttempt('death') fires
+    expect(session.screen).toBe('lifeLost');
+    expect(session.lives).toBe(2);
+
+    // A restart press landing in the very same frame, processed right
+    // after tickSession's own death handling already fired this attempt's
+    // endAttempt.
+    const next = restartAttempt(session);
+    expect(next.lives).toBe(2); // not 1 — no second decrement
   });
 });

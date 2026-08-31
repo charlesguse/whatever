@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { getCollected, getQuota, getRemainingSeconds, getStatus, TICK_RATE_HZ } from './sim/cave';
-  import { advanceScreen, startGame, tickSession } from './lib/session/session';
+  import { advanceScreen, pauseToggle, restartAttempt, startGame, tickSession } from './lib/session/session';
   import { CAVES } from './caves';
   import type { SessionState } from './lib/session/types';
   import { KeyboardInput } from './lib/input/keyboard';
@@ -45,6 +45,13 @@
   // never runs except via tickSession while screen === 'playing' (FR-011,
   // FR-028).
   function stepTick(): void {
+    // FR-027: restart works from playing, paused, caveIntro, and lifeLost,
+    // at any point in a frame — a no-op (via restartAttempt's own screen
+    // gate) everywhere else, so it is always safe to check first.
+    if (keyboard.consumeRestart()) {
+      session = restartAttempt(session);
+    }
+
     if (session.screen === 'title') {
       // Any of the start key, a movement key, or grab starts the game
       // (spec Edge Cases) — that same keypress is not also delivered to
@@ -59,6 +66,13 @@
       return;
     }
 
+    if (session.screen === 'playing' || session.screen === 'paused') {
+      if (keyboard.consumePause()) {
+        session = pauseToggle(session);
+        return; // the toggle itself is not also a play/freeze tick
+      }
+    }
+
     if (session.screen === 'playing') {
       const direction = keyboard.consumeDirection();
       const grab = keyboard.consumeGrab();
@@ -66,9 +80,15 @@
       return;
     }
 
-    // Every other screen (caveIntro, lifeLost, gameOver, and — once User
-    // Stories 4/5 land — caveComplete/won/paused): a keypress or the
-    // documented delay advances it, whichever comes first.
+    if (session.screen === 'paused') {
+      // FR-028, FR-030: frozen — no auto-advance, no tick, until the pause
+      // key is pressed again (handled above).
+      return;
+    }
+
+    // Every other screen (caveIntro, lifeLost, caveComplete, gameOver,
+    // won): a keypress or the documented delay advances it, whichever
+    // comes first.
     const advanced = { ...session, screenTicks: session.screenTicks + 1 };
     if (keyboard.consumeStart() || advanced.screenTicks >= SCREEN_AUTO_ADVANCE_TICKS) {
       session = advanceScreen(advanced);
@@ -102,7 +122,7 @@
     if (session.screen === 'gameOver' || session.screen === 'won') {
       return theme.hud.score.replace('{score}', String(session.score));
     }
-    if (session.screen !== 'playing') return undefined;
+    if (session.screen !== 'playing' && session.screen !== 'paused') return undefined;
     const stars = theme.readout.template
       .replace('{count}', String(getCollected(session.caveState)))
       .replace('{quota}', String(getQuota(session.caveState)));
@@ -131,6 +151,8 @@
         return theme.won.label;
       case 'caveComplete':
         return theme.caveComplete.label.replace('{score}', String(session.score));
+      case 'paused':
+        return theme.paused.label;
       default:
         return undefined;
     }

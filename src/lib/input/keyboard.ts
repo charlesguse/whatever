@@ -28,6 +28,9 @@ const RESTART_KEYS = new Set(['r', 'R']);
 // non-playing screen this feature adds.
 const START_KEYS = new Set([' ', 'Enter']);
 
+// A one-shot pause key (FR-048), distinct from every key above.
+const PAUSE_KEYS = new Set(['p', 'P']);
+
 // Tracks key-down/key-up state and reduces it to one direction-or-nothing
 // per tick (FR-018-FR-022). Held-key cadence is driven by the sim's tick
 // rate, never the OS key-repeat rate: repeat keydown events are ignored
@@ -39,6 +42,7 @@ export class KeyboardInput {
   private grabHeld = false;
   private restartPending = false;
   private startPending = false;
+  private pausePending = false;
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (GRAB_KEYS.has(event.key)) {
@@ -56,6 +60,12 @@ export class KeyboardInput {
     if (START_KEYS.has(event.key)) {
       event.preventDefault();
       if (!event.repeat) this.startPending = true;
+      return;
+    }
+
+    if (PAUSE_KEYS.has(event.key)) {
+      event.preventDefault();
+      if (!event.repeat) this.pausePending = true;
       return;
     }
 
@@ -127,6 +137,13 @@ export class KeyboardInput {
   consumeStart(): boolean {
     if (!this.startPending) return false;
     this.startPending = false;
+    return true;
+  }
+
+  // Reports and clears a one-shot pause request (FR-048, FR-049).
+  consumePause(): boolean {
+    if (!this.pausePending) return false;
+    this.pausePending = false;
     return true;
   }
 }

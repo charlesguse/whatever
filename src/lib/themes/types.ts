@@ -46,6 +46,10 @@ export interface Theme {
   readonly won: {
     readonly label: string;
   };
+  // The visible paused indicator (FR-028).
+  readonly paused: {
+    readonly label: string;
+  };
   // HUD labels, following the readout.template placeholder pattern
   // (FR-043, FR-046).
   readonly hud: {

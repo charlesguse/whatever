@@ -2,7 +2,7 @@ import { getCollected, getQuota, getRemainingSeconds, getStatus, parseCave } fro
 import { tick, type TickInput } from '../../sim/tick';
 import { CAVES } from '../../caves';
 import { bonusFor, starValue } from './scoring';
-import type { SessionState } from './types';
+import type { Screen, SessionState } from './types';
 
 // A new game always begins at cave one (FR-002) — startGame() never reads a
 // stored "furthest cave" value; that is display-only, read separately by the
@@ -97,6 +97,32 @@ export function endAttempt(session: SessionState, cause: 'death' | 'restart'): S
   // cause === 'restart': skips 'lifeLost' entirely, reloading straight into
   // play (FR-005's last sentence, FR-027a).
   return { ...session, lives, caveState, attemptEnded: false, screen: 'playing', screenTicks: 0 };
+}
+
+// FR-028–FR-030: screen swap only, in either direction — never calls tick(),
+// so caveState (grid, tick count, remainingTimeTicks) is byte-identical
+// before and after any number of toggle cycles that end back on the same
+// screen. A no-op from every other screen.
+export function pauseToggle(session: SessionState): SessionState {
+  if (session.screen === 'playing') return { ...session, screen: 'paused' };
+  if (session.screen === 'paused') return { ...session, screen: 'playing' };
+  return session;
+}
+
+// FR-027: reachable from 'playing', 'paused', 'caveIntro', and 'lifeLost' —
+// any point in an attempt's life, including while the cave is dying (screen
+// is still 'playing' then). A no-op from every other screen (in particular
+// 'caveComplete', so a restart press can never skip the mandatory tally).
+const RESTART_ELIGIBLE_SCREENS: ReadonlySet<Screen> = new Set([
+  'playing',
+  'paused',
+  'caveIntro',
+  'lifeLost',
+]);
+
+export function restartAttempt(session: SessionState): SessionState {
+  if (!RESTART_ELIGIBLE_SCREENS.has(session.screen)) return session;
+  return endAttempt(session, 'restart');
 }
 
 // Applies only to 'caveIntro', 'lifeLost', 'caveComplete', 'gameOver', and

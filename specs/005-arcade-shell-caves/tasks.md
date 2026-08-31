@@ -169,15 +169,15 @@ Single front-end project (unchanged from features 001–004): sim code under `sr
 
 ### Tests for User Story 5
 
-- [ ] T053 [P] [US5] In `tests/lib/session/session.test.ts`, add tests for `pauseToggle`: `'playing'` ⇄ `'paused'`; a no-op from every other screen; `caveState` byte-identical before and after any number of toggle cycles (FR-028–FR-030, SC-008).
-- [ ] T054 [P] [US5] In the same file, add tests for `restartAttempt`: from `'playing'`, `'paused'`, and while the cave is `'dying'`, each costs exactly one life and reloads at once (skipping `'lifeLost'`) (FR-005 last sentence, FR-027); from `'lifeLost'` and from `'caveIntro'`, each costs nothing (FR-027a); a restart on the last life produces `'gameOver'` exactly as a death does (FR-025, SC-009).
-- [ ] T055 [P] [US5] In the same file, add a test that a death detected by `tickSession` and a `restartAttempt` call landing on the same tick cost one life in total, not two — `endAttempt`'s idempotency guarantee (FR-023, FR-027a, spec Edge Cases).
+- [X] T053 [P] [US5] In `tests/lib/session/session.test.ts`, add tests for `pauseToggle`: `'playing'` ⇄ `'paused'`; a no-op from every other screen; `caveState` byte-identical before and after any number of toggle cycles (FR-028–FR-030, SC-008).
+- [X] T054 [P] [US5] In the same file, add tests for `restartAttempt`: from `'playing'`, `'paused'`, and while the cave is `'dying'`, each costs exactly one life and reloads at once (skipping `'lifeLost'`) (FR-005 last sentence, FR-027); from `'lifeLost'` and from `'caveIntro'`, each costs nothing (FR-027a); a restart on the last life produces `'gameOver'` exactly as a death does (FR-025, SC-009).
+- [X] T055 [P] [US5] In the same file, add a test that a death detected by `tickSession` and a `restartAttempt` call landing on the same tick cost one life in total, not two — `endAttempt`'s idempotency guarantee (FR-023, FR-027a, spec Edge Cases).
 
 ### Implementation for User Story 5
 
-- [ ] T056 [US5] In `src/lib/session/session.ts`, implement `pauseToggle(session)` (screen swap only, never calls `tick()`) and `restartAttempt(session)` (calls `endAttempt(session, 'restart')`) per contracts/session-api.md. Depends on T010.
-- [ ] T057 [US5] Add a one-shot **pause** key to `src/lib/input/keyboard.ts` (`consumePause()`), not colliding with movement/grab/restart/start (FR-048).
-- [ ] T058 [US5] In `src/App.svelte`, wire the pause key to `pauseToggle()` and the existing restart key to `restartAttempt()` (replacing the tick loop's direct `parseCave` call); add a `paused` screen overlay with a visible paused indicator (FR-028); add a `paused: { label: string }` field to `Theme`/`classroomTheme` (FR-046). Depends on T011, T056, T057.
+- [X] T056 [US5] In `src/lib/session/session.ts`, implement `pauseToggle(session)` (screen swap only, never calls `tick()`) and `restartAttempt(session)` (calls `endAttempt(session, 'restart')`) per contracts/session-api.md. Depends on T010.
+- [X] T057 [US5] Add a one-shot **pause** key to `src/lib/input/keyboard.ts` (`consumePause()`), not colliding with movement/grab/restart/start (FR-048).
+- [X] T058 [US5] In `src/App.svelte`, wire the pause key to `pauseToggle()` and the existing restart key to `restartAttempt()` (replacing the tick loop's direct `parseCave` call); add a `paused` screen overlay with a visible paused indicator (FR-028); add a `paused: { label: string }` field to `Theme`/`classroomTheme` (FR-046). Depends on T011, T056, T057.
 
 **Checkpoint**: Pause and restart both work from every reachable point, each spending exactly the documented number of lives.
 
