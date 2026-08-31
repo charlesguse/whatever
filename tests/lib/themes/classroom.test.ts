@@ -107,6 +107,12 @@ describe('classroom theme title/caveIntro/lifeLost/gameOver/won/paused/HUD field
     expect(classroomTheme.title.length).toBeGreaterThan(0);
   });
 
+  it('supplies a non-empty displayName, distinct from id', () => {
+    expect(typeof classroomTheme.displayName).toBe('string');
+    expect(classroomTheme.displayName.length).toBeGreaterThan(0);
+    expect(classroomTheme.displayName).not.toBe(classroomTheme.id);
+  });
+
   it('supplies a non-empty caveIntro template', () => {
     expect(classroomTheme.caveIntro.template.length).toBeGreaterThan(0);
   });

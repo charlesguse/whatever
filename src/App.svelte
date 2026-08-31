@@ -8,11 +8,18 @@
   import { readSave, writeSave } from './lib/storage/save';
   import { KeyboardInput } from './lib/input/keyboard';
   import { createRenderLoop, type RenderLoop } from './lib/render/canvas';
-  import { registerTheme, getTheme } from './lib/themes/registry';
-  import { classroomTheme } from './lib/themes/classroom';
+  import './lib/themes';
+  import { getTheme, listThemes } from './lib/themes/registry';
 
-  registerTheme(classroomTheme);
-  const THEME_ID = 'classroom';
+  // US3/T021 extends this initializer to resolve a stored id instead of
+  // the literal 'classroom'.
+  let activeThemeId: string = $state('classroom');
+
+  // FR-018: a no-op — no state change — when reselecting the active id.
+  function selectTheme(id: string): void {
+    if (id === activeThemeId) return;
+    activeThemeId = id;
+  }
 
   const TICK_INTERVAL_MS = 1000 / TICK_RATE_HZ;
   // Clamp the accumulator so a backgrounded tab does not fire a burst of
@@ -136,7 +143,7 @@
 
   // FR-044: reads the sim/session through accessors every frame — no local
   // tracking of any value. FR-046: every string comes from theme data.
-  let theme = $derived(getTheme(THEME_ID));
+  let theme = $derived(getTheme(activeThemeId));
 
   // FR-002, FR-040: read fresh whenever the title screen is showing — never
   // held stale from a previous game.
@@ -224,7 +231,7 @@
       renderLoop = createRenderLoop({
         canvas,
         getState: () => session.caveState,
-        getThemeId: () => THEME_ID,
+        getThemeId: () => activeThemeId,
       });
       renderLoop.start();
     }
@@ -249,6 +256,21 @@
 {/if}
 {#if statusMessage}
   <div class="status-banner">{statusMessage}</div>
+{/if}
+{#if listThemes().length > 1}
+  <div class="theme-picker">
+    {#each listThemes() as themeOption (themeOption.id)}
+      <button
+        type="button"
+        class="theme-option"
+        class:active={themeOption.id === activeThemeId}
+        aria-pressed={themeOption.id === activeThemeId}
+        onclick={() => selectTheme(themeOption.id)}
+      >
+        {themeOption.displayName}
+      </button>
+    {/each}
+  </div>
 {/if}
 
 <style>
@@ -282,5 +304,29 @@
     border-radius: 0.5rem;
     pointer-events: none;
     text-align: center;
+  }
+
+  .theme-picker {
+    position: fixed;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.35rem;
+  }
+
+  .theme-option {
+    padding: 0.25rem 0.6rem;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font: 0.9rem sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 0.3rem;
+    cursor: pointer;
+  }
+
+  .theme-option.active {
+    background: rgba(255, 255, 255, 0.85);
+    color: #111;
+    border-color: #fff;
   }
 </style>
