@@ -43,6 +43,9 @@ export interface Theme {
   readonly gameOver: {
     readonly label: string;
   };
+  readonly won: {
+    readonly label: string;
+  };
   // HUD labels, following the readout.template placeholder pattern
   // (FR-043, FR-046).
   readonly hud: {

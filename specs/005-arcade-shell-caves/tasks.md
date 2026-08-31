@@ -136,26 +136,26 @@ Single front-end project (unchanged from features 001–004): sim code under `sr
 
 ### Tests for User Story 4
 
-- [ ] T036 [P] [US4] Write `tests/sim/reachability.test.ts` for the flood-fill in isolation: reachable stars counted through cells the kid can enter (`empty`, `dirt`, `diamond`, `exit`); blocked by any wall, body, enemy, amoeba, magic wall, or expanding wall; a `butterfly` in the reachable region counted as 9 stars; `attainable = quota <= reachableStars` (FR-035, data-model.md).
-- [ ] T037 [US4] Write `tests/caves/shipped-caves.test.ts`: `CAVES.length === 8`, in the documented order; every cave parses without error; each has exactly one `player`, an indestructible border on all four sides, exactly one `exit`, and nothing capable of killing the kid on tick zero or the immediately following ticks before the player has acted (FR-031, FR-034, SC-010). Depends on T050 (needs the real eight-cave `CAVES`).
-- [ ] T038 [US4] In the same file, add a case that every shipped cave passes the FR-035 reachability check via `src/sim/reachability.ts` (SC-010). Depends on T036, T041, T050.
-- [ ] T039 [US4] Write `tests/caves/cave-one-winning-sequence.test.ts`: a recorded input sequence for cave one drives it from tick zero to `status === 'completed'` via quota-met → door-open (FR-036, SC-011). Depends on T042, T050.
-- [ ] T040 [US4] In `tests/lib/session/session.test.ts`, add a test that `advanceScreen` from `'caveComplete'` increments `caveIndex` and rebuilds `caveState` from the next cave in `CAVES` (own quota/clock restarting), and a test that from the eighth cave's `'caveComplete'` it transitions to `'won'` instead of a ninth cave (FR-006, SC-001). Depends on T050, T051.
+- [X] T036 [P] [US4] Write `tests/sim/reachability.test.ts` for the flood-fill in isolation: reachable stars counted through cells the kid can enter (`empty`, `dirt`, `diamond`, `exit`); blocked by any wall, body, enemy, amoeba, magic wall, or expanding wall; a `butterfly` in the reachable region counted as 9 stars; `attainable = quota <= reachableStars` (FR-035, data-model.md).
+- [X] T037 [US4] Write `tests/caves/shipped-caves.test.ts`: `CAVES.length === 8`, in the documented order; every cave parses without error; each has exactly one `player`, an indestructible border on all four sides, exactly one `exit`, and nothing capable of killing the kid on tick zero or the immediately following ticks before the player has acted (FR-031, FR-034, SC-010). Depends on T050 (needs the real eight-cave `CAVES`).
+- [X] T038 [US4] In the same file, add a case that every shipped cave passes the FR-035 reachability check via `src/sim/reachability.ts` (SC-010). Depends on T036, T041, T050.
+- [X] T039 [US4] Write `tests/caves/cave-one-winning-sequence.test.ts`: a recorded input sequence for cave one drives it from tick zero to `status === 'completed'` via quota-met → door-open (FR-036, SC-011). Depends on T042, T050.
+- [X] T040 [US4] In `tests/lib/session/session.test.ts`, add a test that `advanceScreen` from `'caveComplete'` increments `caveIndex` and rebuilds `caveState` from the next cave in `CAVES` (own quota/clock restarting), and a test that from the eighth cave's `'caveComplete'` it transitions to `'won'` instead of a ninth cave (FR-006, SC-001). Depends on T050, T051.
 
 ### Implementation for User Story 4
 
-- [ ] T041 [US4] Create `src/sim/reachability.ts`: a pure, exported flood-fill from the kid's spawn cell over `empty`/`dirt`/`diamond`/`exit`, counting reachable `diamond` cells plus 9 per reachable `butterfly`, no grid mutation, no PRNG use (FR-035, data-model.md).
-- [ ] T042 [US4] Write `src/caves/cave-01-dig-and-collect.ts`: dirt, stars, the door, no hazards (FR-032.1) — enclosed border, one kid, one door, explicit `quota` and `timeLimitSeconds`.
-- [ ] T043 [P] [US4] Write `src/caves/cave-02-falling.ts`: boulders that drop when the dirt beneath them goes (FR-032.2).
-- [ ] T044 [P] [US4] Write `src/caves/cave-03-rolling-and-pushing.ts`: stacks that roll, and at least one push the player must make to progress (FR-032.3).
-- [ ] T045 [P] [US4] Write `src/caves/cave-04-fireflies.ts`: a patrol to time a run past (FR-032.4).
-- [ ] T046 [P] [US4] Write `src/caves/cave-05-butterflies.ts`: includes the boulder-drop-onto-butterfly trick that turns one into stars (FR-032.5).
-- [ ] T047 [P] [US4] Write `src/caves/cave-06-magic-wall.ts`: a stretch worth feeding, and a wall that dies once spent, explicit `magicWallDuration` (FR-032.6).
-- [ ] T048 [P] [US4] Write `src/caves/cave-07-amoeba.ts`: a blob that must be sealed or outrun, explicit `amoebaGrowthRate`/`amoebaSizeLimit` (FR-032.7).
-- [ ] T049 [P] [US4] Write `src/caves/cave-08-finale.ts`: combines dig-and-collect, falling, rolling/pushing, a firefly, a butterfly, the magic wall, and the amoeba (FR-032.8).
-- [ ] T050 [US4] Rewrite `src/caves/index.ts` to export `CAVES` as the eight caves above, in order, replacing the T004 placeholder; delete `src/caves/starter.ts` (FR-031, FR-037). Depends on T042–T049.
-- [ ] T051 [US4] In `src/lib/session/session.ts`'s `advanceScreen`, implement the `'caveComplete'` transition: increment `caveIndex` and rebuild `caveState` from `CAVES[caveIndex]`, or transition to `'won'` after the eighth (FR-006). Depends on T010, T050.
-- [ ] T052 [US4] Add a `won: { label: string }` field to `Theme`/`classroomTheme`, and a `won` screen overlay in `src/App.svelte` showing the final score (FR-007, FR-008, FR-046). Depends on T011.
+- [X] T041 [US4] Create `src/sim/reachability.ts`: a pure, exported flood-fill from the kid's spawn cell over `empty`/`dirt`/`diamond`/`exit`, counting reachable `diamond` cells plus 9 per reachable `butterfly`, no grid mutation, no PRNG use (FR-035, data-model.md).
+- [X] T042 [US4] Write `src/caves/cave-01-dig-and-collect.ts`: dirt, stars, the door, no hazards (FR-032.1) — enclosed border, one kid, one door, explicit `quota` and `timeLimitSeconds`.
+- [X] T043 [P] [US4] Write `src/caves/cave-02-falling.ts`: boulders that drop when the dirt beneath them goes (FR-032.2).
+- [X] T044 [P] [US4] Write `src/caves/cave-03-rolling-and-pushing.ts`: stacks that roll, and at least one push the player must make to progress (FR-032.3).
+- [X] T045 [P] [US4] Write `src/caves/cave-04-fireflies.ts`: a patrol to time a run past (FR-032.4).
+- [X] T046 [P] [US4] Write `src/caves/cave-05-butterflies.ts`: includes the boulder-drop-onto-butterfly trick that turns one into stars (FR-032.5).
+- [X] T047 [P] [US4] Write `src/caves/cave-06-magic-wall.ts`: a stretch worth feeding, and a wall that dies once spent, explicit `magicWallDuration` (FR-032.6).
+- [X] T048 [P] [US4] Write `src/caves/cave-07-amoeba.ts`: a blob that must be sealed or outrun, explicit `amoebaGrowthRate`/`amoebaSizeLimit` (FR-032.7).
+- [X] T049 [P] [US4] Write `src/caves/cave-08-finale.ts`: combines dig-and-collect, falling, rolling/pushing, a firefly, a butterfly, the magic wall, and the amoeba (FR-032.8).
+- [X] T050 [US4] Rewrite `src/caves/index.ts` to export `CAVES` as the eight caves above, in order, replacing the T004 placeholder; delete `src/caves/starter.ts` (FR-031, FR-037). Depends on T042–T049.
+- [X] T051 [US4] In `src/lib/session/session.ts`'s `advanceScreen`, implement the `'caveComplete'` transition: increment `caveIndex` and rebuild `caveState` from `CAVES[caveIndex]`, or transition to `'won'` after the eighth (FR-006). Depends on T010, T050.
+- [X] T052 [US4] Add a `won: { label: string }` field to `Theme`/`classroomTheme`, and a `won` screen overlay in `src/App.svelte` showing the final score (FR-007, FR-008, FR-046). Depends on T011.
 
 **Checkpoint**: Eight original, reachability-checked caves ship in the documented order; cave one is provably completable end to end; completing the eighth wins the game instead of loading a ninth cave.
 

@@ -127,6 +127,8 @@
         return theme.lifeLost.label;
       case 'gameOver':
         return theme.gameOver.label;
+      case 'won':
+        return theme.won.label;
       case 'caveComplete':
         return theme.caveComplete.label.replace('{score}', String(session.score));
       default:

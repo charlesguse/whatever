@@ -11,10 +11,11 @@ import { bonusFor, starValue } from '../../../src/lib/session/scoring';
 // sequence without a real cave's size (FR-023–FR-025). Built inside
 // vi.hoisted since vi.mock's factory is hoisted above ordinary top-level
 // declarations.
-const { FIXTURE_CAVE } = vi.hoisted(() => {
+const { FIXTURE_CAVE, FIXTURE_CAVE_2 } = vi.hoisted(() => {
   // Inlined caveFromAscii shape (the real helper isn't hoisted either) —
   // width/height derived from the rows, matching src/sim/ascii.ts exactly.
   const rows = ['SSSSS', 'S.o.S', 'S...S', 'S.P.S', 'SSSSS'];
+  const rows2 = ['SSSSSS', 'S.P..S', 'S....S', 'SSSSSS'];
   return {
     FIXTURE_CAVE: {
       name: 'Fixture',
@@ -24,10 +25,20 @@ const { FIXTURE_CAVE } = vi.hoisted(() => {
       quota: 0,
       rows,
     },
+    // A second, distinguishable fixture cave — CAVES[1] — used only by the
+    // caveComplete -> next-cave / -> won advanceScreen tests.
+    FIXTURE_CAVE_2: {
+      name: 'Fixture Two',
+      width: rows2[0].length,
+      height: rows2.length,
+      seed: 2,
+      quota: 0,
+      rows: rows2,
+    },
   };
-}) as { FIXTURE_CAVE: CaveDefinition };
+}) as { FIXTURE_CAVE: CaveDefinition; FIXTURE_CAVE_2: CaveDefinition };
 
-vi.mock('../../../src/caves', () => ({ CAVES: [FIXTURE_CAVE] }));
+vi.mock('../../../src/caves', () => ({ CAVES: [FIXTURE_CAVE, FIXTURE_CAVE_2] }));
 
 // Advances a playing session one sim tick per call, with no input, until the
 // screen leaves 'playing' (a death routing through endAttempt) or a ceiling
@@ -233,5 +244,39 @@ describe('score survives a failed attempt (FR-017a, FR-021)', () => {
     // endAttempt never touches score — a failed attempt does not roll it
     // back (there is no per-attempt snapshot, only the running total).
     expect(session.score).toBe(25);
+  });
+});
+
+describe('advanceScreen from caveComplete (FR-006, SC-001)', () => {
+  it('advances to the next cave, own quota/clock restarting', () => {
+    const session: SessionState = {
+      screen: 'caveComplete',
+      score: 40,
+      lives: 3,
+      caveIndex: 0,
+      caveState: parseCave(FIXTURE_CAVE),
+      attemptEnded: true,
+      screenTicks: 0,
+    };
+    const next = advanceScreen(session);
+    expect(next.screen).toBe('caveIntro');
+    expect(next.caveIndex).toBe(1);
+    expect(asciiFromState(next.caveState)).toBe(asciiFromState(parseCave(FIXTURE_CAVE_2)));
+    expect(next.score).toBe(40); // carries forward, untouched
+  });
+
+  it('transitions to won instead of a ninth cave from the final cave', () => {
+    const session: SessionState = {
+      screen: 'caveComplete',
+      score: 100,
+      lives: 3,
+      caveIndex: 1, // the last cave in this file's 2-cave mock
+      caveState: parseCave(FIXTURE_CAVE_2),
+      attemptEnded: true,
+      screenTicks: 0,
+    };
+    const next = advanceScreen(session);
+    expect(next.screen).toBe('won');
+    expect(next.score).toBe(100);
   });
 });

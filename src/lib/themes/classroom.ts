@@ -47,6 +47,7 @@ export const classroomTheme: Theme = {
   // full-screen state shown between the crash and the reload (FR-005).
   lifeLost: { label: 'You lost a life! Get ready to try again.' },
   gameOver: { label: 'Game over! No more lives left.' },
+  won: { label: 'You cleared every classroom! Recess Rocks champion!' },
   hud: { lives: 'Lives: {lives}', time: 'Time: {seconds}', score: 'Score: {score}' },
   caveComplete: { label: 'Room cleared! Score: {score}' },
 };

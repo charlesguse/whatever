@@ -100,7 +100,7 @@ export function endAttempt(session: SessionState, cause: 'death' | 'restart'): S
 }
 
 // Applies only to 'caveIntro', 'lifeLost', 'caveComplete', 'gameOver', and
-// 'won' — a no-op elsewhere. 'caveComplete'/'won' land in User Story 4.
+// 'won' — a no-op elsewhere.
 export function advanceScreen(session: SessionState): SessionState {
   switch (session.screen) {
     case 'caveIntro':
@@ -108,6 +108,22 @@ export function advanceScreen(session: SessionState): SessionState {
       return { ...session, screen: 'playing', attemptEnded: false, screenTicks: 0 };
     case 'lifeLost':
       return { ...session, screen: 'caveIntro', screenTicks: 0 };
+    case 'caveComplete': {
+      // FR-006: advance to the next cave, own quota/clock restarting, or
+      // 'won' after the eighth (caveIndex is 0-based, so index 7 is cave 8).
+      const nextIndex = session.caveIndex + 1;
+      if (nextIndex >= CAVES.length) {
+        return { ...session, screen: 'won', screenTicks: 0 };
+      }
+      return {
+        ...session,
+        caveIndex: nextIndex,
+        caveState: parseCave(CAVES[nextIndex]),
+        attemptEnded: true,
+        screen: 'caveIntro',
+        screenTicks: 0,
+      };
+    }
     case 'gameOver':
     case 'won':
       return { ...session, screen: 'title', screenTicks: 0 };
