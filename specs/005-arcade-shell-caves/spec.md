@@ -176,7 +176,8 @@ Someone knocks at the door. The player hits pause, the game visibly stops — th
 clock included — and nothing moves until they come back. And at any point, a
 single key restarts the cave they are on, because a player who has boxed
 themselves in behind a bookshelf should never have to wait out a clock to try
-again.
+again. Giving up on an attempt is one key, and it costs what giving up costs: a
+life, the same as being crushed.
 
 **Why this priority**: Both are quality-of-life rules the constitution requires
 outright, and both are small. Neither is needed for the loop in stories 1–4 to
@@ -184,8 +185,10 @@ work, so they can land after it.
 
 **Independent Test**: Toggle pause in a headless session and confirm no ticks
 advance while paused and that the tick count, clock, and grid are identical
-before and after; press restart from play, from pause, and from the death
-screen, and confirm each yields a fresh copy of the current cave.
+before and after; press restart from play, from pause, while the cave is dying,
+and from the death screen, and confirm each yields a fresh copy of the current
+cave, that the first three each spend exactly one life, that the fourth spends
+none, and that a restart on the last life ends the game.
 
 **Acceptance Scenarios**:
 
@@ -194,9 +197,18 @@ screen, and confirm each yields a fresh copy of the current cave.
 2. **Given** a paused game, **When** the player presses pause again, **Then**
    play resumes from exactly the state it stopped in.
 3. **Given** a cave in play, at any point, **When** the player presses restart,
-   **Then** the current cave reloads from its starting state immediately.
-4. **Given** a paused game, **When** the player presses restart, **Then** the
-   cave reloads and the game is no longer paused.
+   **Then** exactly one life is spent and the current cave reloads from its
+   declared data and seed immediately.
+4. **Given** a paused game, **When** the player presses restart, **Then** one
+   life is spent, the cave reloads, and the game is no longer paused.
+5. **Given** a cave whose kid has just been killed and whose explosion is still
+   resolving, **When** the player presses restart, **Then** the attempt ends by
+   the same path the death would have taken — exactly one life spent in total,
+   not two — and the cave reloads at once.
+6. **Given** a cave in play with one life left, **When** the player presses
+   restart, **Then** the game is over, exactly as if the kid had been killed.
+7. **Given** the life-lost screen or the cave intro, **When** the player presses
+   restart, **Then** the cave reloads and no further life is spent.
 
 ---
 
@@ -248,9 +260,12 @@ game starts and plays normally with the values simply absent.
 
 **Score and bonus**
 
-- **A star collected during the attempt that ends in death**: covered by the
-  clarification on FR-017; the spec's provisional pick is that the points stay
-  scored.
+- **A star collected during the attempt that ends in death**: the points stay
+  scored (FR-017a). The score never decreases, and there is no per-attempt total
+  to roll back.
+- **A player farms a doomed attempt for points and then restarts**: legal, and
+  priced. Every farmed run costs a life (FR-027), so the player is trading the
+  budget the whole mode runs on for those points.
 - **A butterfly's blast pays out nine stars past the quota**: each of them
   scores the higher past-quota value when collected. The blast pays stars, not
   points; the points come from picking them up.
@@ -265,6 +280,12 @@ game starts and plays normally with the values simply absent.
 **Lives, death, and retry**
 
 - **The kid dies to two hazards on the same tick**: one death, one life.
+- **The player presses restart on the tick the kid is killed, or during the
+  dying phase**: one attempt ended, one life. The restart and the death converge
+  on the same attempt-over transition; whichever arrives first is the one that
+  ends the attempt, and the other finds it already ended.
+- **The player presses restart with no lives to spare**: game over. A voluntary
+  restart is an attempt ending, and the last attempt ending ends the game.
 - **The kid dies with the quota already met**: still a death, still a life. The
   quota is not a checkpoint.
 - **A retried cave is not the same as the one just lost**: it must be. The cave
@@ -309,20 +330,22 @@ game starts and plays normally with the values simply absent.
   state change in the cave, never by anything else.
 - **FR-002**: The **title** state MUST show the game's name, the stored high
   score, and the furthest cave reached, and MUST start a new game on a documented
-  start key — score zero, three lives, cave one.
-  [NEEDS CLARIFICATION: is "furthest cave reached" purely a badge shown here
-  (the spec's provisional pick), or does it also unlock starting a game from any
-  cave up to it — which would change what a high score means, since a run begun
-  at cave seven scores nothing from caves one through six?]
+  start key — score zero, three lives, cave one. The furthest cave reached is a
+  **badge only**: it MUST NOT unlock, offer, or gate a choice of starting cave,
+  and every game MUST begin at cave one so that every score on the board is a
+  score over the same eight caves.
 - **FR-003**: The **cave intro** state MUST name the cave and state its quota
   and time limit before play begins. The cave's clock MUST NOT run during the
   intro, and the intro MUST end on a keypress or after a short documented delay,
   whichever comes first.
 - **FR-004**: The **playing** state MUST advance the simulation at the project's
   fixed tick rate and MUST deliver player input to it exactly as it does today.
-- **FR-005**: The **life lost** state MUST be entered when the cave reports the
-  kid dead and MUST end — into the next attempt, or into game over — on a
-  keypress or after a short documented delay, whichever comes first.
+- **FR-005**: The **life lost** state MUST be entered when an attempt ends
+  because the cave reports the kid dead, and MUST end — into the next attempt, or
+  into game over — on a keypress or after a short documented delay, whichever
+  comes first. An attempt ended by a voluntary restart (FR-027) takes the same
+  attempt-over transition but MUST NOT stop on this screen: it reloads at once,
+  or enters game over if no lives remain.
 - **FR-006**: The **cave complete** state MUST be entered when the cave reports
   itself completed, MUST run the bonus tally (FR-019), and MUST then start the
   next cave, or enter **won** after the eighth.
@@ -368,10 +391,12 @@ game starts and plays normally with the values simply absent.
   worth **15 points**. The value depends only on whether the quota was met at
   the moment of collection, so a cave's star score is a pure function of its
   collected count and its quota.
-  [NEEDS CLARIFICATION: when a life is lost, do the points scored during that
-  failed attempt stay on the scoreboard (arcade-standard, and the spec's
-  provisional pick), or are they rolled back to the score the player had when
-  the attempt began?]
+- **FR-017a**: Points scored during an attempt MUST stay scored when that attempt
+  ends badly. Losing a life — by any death, or by a voluntary restart (FR-027) —
+  MUST NOT roll the score back to what it was when the attempt began. The session
+  carries one running total across attempts; there is no per-attempt snapshot to
+  revert to. This rule is safe only because an attempt costs a life (FR-027): see
+  Assumptions.
 - **FR-018**: No other event in this feature MUST score. Detonating an enemy,
   surviving, or finishing with lives in hand MUST be worth nothing by itself;
   the butterfly trick pays in stars, which pay in points only when collected.
@@ -389,27 +414,43 @@ game starts and plays normally with the values simply absent.
 
 - **FR-022**: A new game MUST begin with **three lives**, and the current count
   MUST be on the HUD throughout play.
-- **FR-023**: Every death — crushed by a falling body, caught by an enemy, or
-  out of time — MUST cost exactly **one** life, once per attempt, no matter how
-  many lethal things happen on the same tick or during the cave's dying phase.
-- **FR-024**: If lives remain after a death, the same cave MUST reload from its
-  declared data with its declared seed, so the retry is byte-for-byte the cave
-  the player just lost. Score carries forward per FR-017; lives do not
-  regenerate.
-- **FR-025**: If no lives remain after a death, the game MUST end: game-over
-  screen, then the title. The player MUST NOT be able to continue a finished
-  game.
+- **FR-023**: Every attempt-ending event — crushed by a falling body, caught by
+  an enemy, out of time, or a voluntary restart (FR-027) — MUST cost exactly
+  **one** life, once per attempt, no matter how many lethal things happen on the
+  same tick, or during the cave's dying phase, or whether the player presses
+  restart while the cave is already dying.
+- **FR-024**: If lives remain after an attempt ends, the same cave MUST reload
+  from its declared data with its declared seed (FR-027b), so the retry is
+  byte-for-byte the cave the player just lost. Score carries forward per FR-017a;
+  lives do not regenerate.
+- **FR-025**: If no lives remain after an attempt ends — by death or by a
+  voluntary restart — the game MUST end: game-over screen, then the title. The
+  player MUST NOT be able to continue a finished game.
 - **FR-026**: The retry MUST be reachable immediately by a keypress and MUST NOT
   require the player to wait out any animation (FR-005).
 
 ### Restart and pause
 
 - **FR-027**: A single documented **restart** key MUST reload the current cave
-  from its starting state, and MUST work while playing, while paused, during the
-  cave intro, and during the life-lost screen.
-  [NEEDS CLARIFICATION: does a voluntary restart cost a life — as a deliberate
-  death does in the arcade original, and the spec's provisional pick — or is it
-  free, making a cave retryable without limit as it is today?]
+  from its starting state, and MUST work while playing, while paused, while the
+  cave is **dying**, during the cave intro, and during the life-lost screen. A
+  voluntary restart pressed while an attempt is still live — playing, paused, or
+  dying — **MUST cost exactly one life**, taking the same **attempt-over**
+  transition a death takes: one place where an attempt ends, one place lives
+  decrement, one place the cave resets. If that was the last life, restart MUST
+  produce game over exactly as a death would.
+- **FR-027a**: Restart MUST NOT cost a second life for an attempt that has already
+  ended or has not yet begun. Pressed during the **life-lost** screen it MUST
+  reload the cave without a further decrement (the life is already spent);
+  pressed during the **cave intro** — before any tick of the attempt has run and
+  before the clock has started — it MUST reload the cave and cost nothing. The
+  invariant of FR-023 holds: exactly one life per attempt, however that attempt
+  ends.
+- **FR-027b**: Every reload this feature performs — after a death, after a
+  voluntary restart, or at the start of a cave — MUST rebuild the cave from its
+  declared definition and declared seed, **never from a snapshot** captured at
+  cave start. A restarted cave MUST therefore replay identically to the first
+  attempt, tick for tick, given the same inputs.
 - **FR-028**: A single documented **pause** key MUST toggle the paused state
   from play. While paused, no tick MUST run, the clock MUST NOT advance, the
   grid MUST NOT change, and a paused indicator MUST be visible.
@@ -464,8 +505,10 @@ game starts and plays normally with the values simply absent.
 ### Persistence
 
 - **FR-038**: The game MUST persist, to the local device only, the **high
-  score** and the **furthest cave reached**. Nothing MUST leave the device, and
-  no other data MUST be persisted by this feature.
+  score** and the **furthest cave reached**, the latter stored as a plain **cave
+  number** rather than as a badge string or a flag, so that a later cave-select
+  feature can read the same value with no migration. Nothing MUST leave the
+  device, and no other data MUST be persisted by this feature.
 - **FR-039**: The high score MUST be updated whenever a game ends — by game over
   or by winning — with the greater of the stored value and the final score. The
   furthest cave reached MUST be updated whenever a cave begins, with the greater
@@ -544,14 +587,24 @@ game starts and plays normally with the values simply absent.
   - the total after a skipped tally equalling the total after a completed one;
   - quota-met logic driving cave completion, and a completed cave advancing to
     the next in order;
-  - life loss on each cause of death — crushed, enemy, and timeout — each
-    costing exactly one life;
+  - life loss on each attempt-ending cause — crushed, enemy, timeout, and
+    voluntary restart — each costing exactly one life;
   - two lethal events on one tick costing one life, not two;
+  - the score after a failed attempt still including the stars collected during
+    it, for a death and for a voluntary restart (FR-017a);
   - the 3 → 2 → 1 → 0 sequence ending in game over, and game over returning to
     the title with score and lives reset for the next game;
   - completing the eighth cave producing the win state, not a ninth cave;
-  - a retried cave being identical to the cave as first loaded;
-  - restart from play, from pause, and from the life-lost screen;
+  - a retried cave being identical to the cave as first loaded, rebuilt from its
+    definition and seed rather than from a snapshot (FR-027b);
+  - restart from play, from pause, and from the dying phase, each costing exactly
+    one life; restart from the life-lost screen and from the cave intro, each
+    costing none;
+  - restart while dying costing one life in total, not two, when the death would
+    also have ended the attempt;
+  - a restart on the last life producing game over, exactly as a death does;
+  - the title screen never offering a starting cave other than cave one, whatever
+    furthest-cave value is stored (FR-002);
   - pause running no ticks and leaving the tick count, clock, and grid
     untouched, and resume continuing from exactly that state;
   - high score written only when higher, furthest cave written only when
@@ -580,9 +633,12 @@ game starts and plays normally with the values simply absent.
 - **Time bonus**: The seconds left on the clock at the door, converted to points
   once, presented as a tally that cannot change the total.
 - **Life**: One attempt at the current cave. Three per session, spent by any
-  death, never regained.
-- **Saved record**: The high score and furthest cave reached, on the local
-  device only, best-effort in both directions.
+  death and by a voluntary restart, never regained.
+- **Attempt-over transition**: The single point at which an attempt ends — by
+  death or by restart. One life decrements here, and the cave resets here;
+  nothing else in the feature spends a life.
+- **Saved record**: The high score and the furthest cave reached as a cave
+  number, on the local device only, best-effort in both directions.
 
 ## Success Criteria *(mandatory)*
 
@@ -599,10 +655,12 @@ game starts and plays normally with the values simply absent.
 - **SC-004**: The bonus added at the door equals the seconds the HUD was showing
   in 100% of completions, and is identical whether the tally is watched, skipped,
   or interrupted.
-- **SC-005**: Exactly one life is lost per death, in 100% of deaths, across all
-  three causes and including ticks on which two lethal things happen at once.
-- **SC-006**: Three deaths end the game in 100% of runs, and a fourth attempt is
-  never offered.
+- **SC-005**: Exactly one life is lost per attempt ended, in 100% of cases,
+  across all four causes — crushed, enemy, timeout, voluntary restart — including
+  ticks on which two lethal things happen at once and restarts pressed while the
+  cave is already dying.
+- **SC-006**: Three ended attempts end the game in 100% of runs, whether they
+  ended by death or by restart, and a fourth attempt is never offered.
 - **SC-007**: A retried cave is identical to that cave as first loaded, grid for
   grid and tick for tick, in 100% of retries over at least 100 ticks of
   no-input play — amoeba growth included.
@@ -610,7 +668,9 @@ game starts and plays normally with the values simply absent.
   at least 100 frames of paused wall-clock time, and resuming continues from
   exactly the paused tick.
 - **SC-009**: Restart returns a fresh cave within one tick of the keypress, from
-  play, pause, cave intro, and the life-lost screen — 100% of the time.
+  play, pause, the dying phase, cave intro, and the life-lost screen — 100% of
+  the time — and spends exactly one life from the first three and none from the
+  last two.
 - **SC-010**: All eight shipped caves parse, pass every FR-034 structural check,
   and pass the FR-035 quota-attainability check — 8 of 8, with zero exceptions.
 - **SC-011**: Cave one is completed by its recorded input sequence in 100% of
@@ -678,10 +738,30 @@ review knows what to look at:
   life at a score threshold. The original awards bonus lives; the issue does not
   ask for them, and adding one would change the difficulty curve the eight caves
   are tuned against. It is a good candidate for a later feature.
-- **A retry is the same cave, from the same seed** (FR-024). The constitution's
-  determinism principle makes this the only defensible reading: a player who
-  loses to the amoeba must be able to learn the room. A reseeded retry would
-  make caves unlearnable and the tests unwritable.
+- **A retry is the same cave, from the same seed** (FR-024, FR-027b), rebuilt
+  from the cave's declared definition rather than from a snapshot taken at cave
+  start. The constitution's determinism principle makes this the only defensible
+  reading: a player who loses to the amoeba must be able to learn the room. A
+  reseeded retry would make caves unlearnable and the tests unwritable, and a
+  snapshot would quietly become a second source of truth for what a cave is.
+- **Points-stay and restart-costs-a-life are one decision, not two** (FR-017a,
+  FR-027). Points survive a failed attempt *because* an attempt costs a life:
+  the life is the price that bounds farming, so grinding a doomed run for points
+  is a trade with a cost rather than an exploit. **Changing either rule requires
+  revisiting the other.** In particular, if a later feature softens FR-027 into a
+  free restart for friendliness, FR-017a turns the score into an unbounded
+  fountain — a player could collect a cave's stars, restart, and collect them
+  again forever. Whoever makes that change must pair it with a rollback rule, a
+  per-cave scoring cap, or some other bound.
+- **A voluntary restart ends the attempt; it does not end it twice** (FR-023,
+  FR-027a). Restart and death share one attempt-over transition, so a life is
+  spent exactly once per attempt. That is why restart during the *life-lost*
+  screen costs nothing more — the life is already spent — and why restart during
+  the *cave intro*, before the attempt's first tick, costs nothing at all.
+  Restart during the **dying** phase is explicitly in scope: feature 003 gave
+  death an animation window, and the moment a player most wants to press restart
+  is the moment they can see the explosion starting, so the key must be reliable
+  exactly there.
 - **Timeout kills without an explosion** (FR-013). The kid simply runs out of
   time; a blast would destroy nearby cells and could pay out stars, which would
   make timing out occasionally *profitable*. Death is death.
@@ -709,10 +789,17 @@ review knows what to look at:
 - **Persistence covers the high score and the furthest cave only** (FR-038).
   Theme choice is named in the constitution as persisted, but the theme picker
   is explicitly out of scope for this issue, so its storage arrives with it.
-- **The furthest cave reached is a record, not a shortcut**, pending the
-  clarification on FR-002 — the game always starts at cave one until told
-  otherwise. The issue asks for the value to be persisted and shown; it does not
-  ask for cave select, and cave select would quietly redefine the high score.
+- **The furthest cave reached is a record, not a shortcut** (FR-002). The game
+  always starts at cave one. This is a deferral rather than a rejection — the
+  arcade original did gate a start-of-group cave select on progress — and two
+  things decide it for now. **High-score comparability**: every run scores the
+  same eight caves, so one number means one thing; a cave select needs either an
+  exclusion rule or a second scoreboard, which is a scoring redesign hiding
+  inside a convenience feature. **Input timing**: cave select is a title-screen
+  UI with its own navigation, and the touch/gamepad feature is still ahead of
+  this one, so building it now means building it twice. The door is kept open at
+  no cost by persisting the value as a plain cave number (FR-038), which the
+  badge needs anyway and which a later cave select can read with no migration.
 - **Touch and gamepad remain unimplemented here**, as the issue says, so the
   constitution's requirement for them stands unmet until the input feature. This
   feature must not make that harder: nothing in the session shell may assume a
@@ -726,5 +813,6 @@ Named explicitly in the originating request: the second theme and the theme
 picker, touch and gamepad input, and sound. Also out of scope here: bonus lives
 at score thresholds, a scoreboard of more than one high score, initials entry,
 any cave beyond the eight, difficulty levels or a second lap through the caves,
-cave select (pending the clarification above), replays or ghosts, and any
+cave select (deferred deliberately — see FR-002 and Assumptions), replays or
+ghosts, and any
 persistence beyond the high score and furthest cave reached.
