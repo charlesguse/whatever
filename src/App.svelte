@@ -10,6 +10,7 @@
   import { createRenderLoop, type RenderLoop } from './lib/render/canvas';
   import './lib/themes';
   import { getTheme, listThemes } from './lib/themes/registry';
+  import { cycleThemeId } from './lib/themes/selection';
 
   // US3/T021 extends this initializer to resolve a stored id instead of
   // the literal 'classroom'.
@@ -74,6 +75,15 @@
   }
 
   function stepTickInner(): void {
+    // FR-020, FR-021, FR-035: consumed unconditionally, before any
+    // session.screen branch — including the 'title' branch's start/
+    // direction/grab checks below — so a cycleTheme press reaches every
+    // screen and is never also evaluated as a start/direction/grab press
+    // (CYCLE_THEME_KEYS is disjoint from those actions' keys).
+    if (keyboard.consumeCycleTheme()) {
+      selectTheme(cycleThemeId(activeThemeId, listThemes().map((t) => t.id)));
+    }
+
     // FR-027: restart works from playing, paused, caveIntro, and lifeLost,
     // at any point in a frame — a no-op (via restartAttempt's own screen
     // gate) everywhere else, so it is always safe to check first.

@@ -1,6 +1,6 @@
 import type { Direction } from '../../sim/tick';
 
-const KEY_TO_DIRECTION: Readonly<Record<string, Direction>> = {
+export const KEY_TO_DIRECTION: Readonly<Record<string, Direction>> = {
   ArrowUp: 'up',
   ArrowDown: 'down',
   ArrowLeft: 'left',
@@ -17,19 +17,23 @@ const KEY_TO_DIRECTION: Readonly<Record<string, Direction>> = {
 
 // A held key (never a tap) for grab — reported the same way direction state
 // is (FR-019, FR-021).
-const GRAB_KEYS = new Set(['Shift']);
+export const GRAB_KEYS = new Set(['Shift']);
 
 // A one-shot key for restart — works from a terminal state or mid-play
 // (FR-031).
-const RESTART_KEYS = new Set(['r', 'R']);
+export const RESTART_KEYS = new Set(['r', 'R']);
 
 // A one-shot start/confirm key (FR-048) — distinct from movement, grab, and
 // restart. Starts the game from the title screen and advances/skips every
 // non-playing screen this feature adds.
-const START_KEYS = new Set([' ', 'Enter']);
+export const START_KEYS = new Set([' ', 'Enter']);
 
 // A one-shot pause key (FR-048), distinct from every key above.
-const PAUSE_KEYS = new Set(['p', 'P']);
+export const PAUSE_KEYS = new Set(['p', 'P']);
+
+// A one-shot cycle-theme key (FR-033) — disjoint from every key above
+// (SC-011), the default per research.md, maintainer-reassignable here.
+export const CYCLE_THEME_KEYS = new Set(['t', 'T']);
 
 // Tracks key-down/key-up state and reduces it to one direction-or-nothing
 // per tick (FR-018-FR-022). Held-key cadence is driven by the sim's tick
@@ -43,6 +47,7 @@ export class KeyboardInput {
   private restartPending = false;
   private startPending = false;
   private pausePending = false;
+  private cycleThemePending = false;
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (GRAB_KEYS.has(event.key)) {
@@ -66,6 +71,12 @@ export class KeyboardInput {
     if (PAUSE_KEYS.has(event.key)) {
       event.preventDefault();
       if (!event.repeat) this.pausePending = true;
+      return;
+    }
+
+    if (CYCLE_THEME_KEYS.has(event.key)) {
+      event.preventDefault();
+      if (!event.repeat) this.cycleThemePending = true;
       return;
     }
 
@@ -144,6 +155,14 @@ export class KeyboardInput {
   consumePause(): boolean {
     if (!this.pausePending) return false;
     this.pausePending = false;
+    return true;
+  }
+
+  // Reports and clears a one-shot cycle-theme request (FR-033), the same
+  // shape as consumeRestart()/consumePause().
+  consumeCycleTheme(): boolean {
+    if (!this.cycleThemePending) return false;
+    this.cycleThemePending = false;
     return true;
   }
 }
