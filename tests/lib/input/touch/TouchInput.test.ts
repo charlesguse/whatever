@@ -56,7 +56,7 @@ function fakeTarget(): {
 // tuning, so this suite is only exercising TouchInput's own bookkeeping.
 function makeLayout(): TouchControlLayout {
   return {
-    reservedRect: { x: 0, y: 0, width: 500, height: 300 },
+    reservedRects: [{ x: 0, y: 0, width: 500, height: 300 }],
     caveRect: { x: 0, y: -300, width: 500, height: 300 },
     pad: { center: { x: 100, y: 150 }, deadRadius: 20, outerRadius: 80, zones: [] },
     grabButton: { x: 400, y: 0, width: 80, height: 80 },

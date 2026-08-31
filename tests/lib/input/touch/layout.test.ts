@@ -47,14 +47,18 @@ describe('computeTouchControlLayout — geometry invariants (SC-011, SC-011a, FR
   for (const insetBox of SAMPLE_INSET_BOXES) {
     const orientation = computeOrientation(insetBox);
 
-    it(`reservedRect and caveRect never intersect (${orientation}, ${insetBox.width}x${insetBox.height})`, () => {
+    it(`reservedRects and caveRect never intersect (${orientation}, ${insetBox.width}x${insetBox.height})`, () => {
       const layout = computeTouchControlLayout(insetBox, orientation);
-      expect(rectsIntersect(layout.reservedRect, layout.caveRect)).toBe(false);
+      for (const reservedRect of layout.reservedRects) {
+        expect(rectsIntersect(reservedRect, layout.caveRect)).toBe(false);
+      }
     });
 
-    it(`reservedRect and caveRect stay fully inside insetBox (${orientation}, ${insetBox.width}x${insetBox.height})`, () => {
+    it(`reservedRects and caveRect stay fully inside insetBox (${orientation}, ${insetBox.width}x${insetBox.height})`, () => {
       const layout = computeTouchControlLayout(insetBox, orientation);
-      expect(rectFullyInside(layout.reservedRect, insetBox)).toBe(true);
+      for (const reservedRect of layout.reservedRects) {
+        expect(rectFullyInside(reservedRect, insetBox)).toBe(true);
+      }
       expect(rectFullyInside(layout.caveRect, insetBox)).toBe(true);
     });
 
@@ -84,14 +88,34 @@ describe('computeTouchControlLayout — geometry invariants (SC-011, SC-011a, FR
     });
   }
 
-  it('both orientations produce a distinct shape (band-at-bottom vs. margin-at-side), per FR-031', () => {
+  it('both orientations produce a distinct shape (band-at-bottom vs. two margins-at-sides), per FR-031', () => {
     const box: InsetBox = { x: 0, y: 0, width: 800, height: 800 };
     const portrait = computeTouchControlLayout(box, 'portrait');
     const landscape = computeTouchControlLayout(box, 'landscape');
-    // Portrait's reserved band spans the full width; landscape's spans the
-    // full height — the two are not the same rectangle shape.
-    expect(portrait.reservedRect.width).toBe(box.width);
-    expect(landscape.reservedRect.height).toBe(box.height);
+    // Portrait's reserved band is a single rect spanning the full width;
+    // landscape's is two rects, each spanning the full height — the two
+    // orientations are not the same rectangle shape.
+    expect(portrait.reservedRects).toHaveLength(1);
+    expect(portrait.reservedRects[0].width).toBe(box.width);
+    expect(landscape.reservedRects).toHaveLength(2);
+    for (const reservedRect of landscape.reservedRects) {
+      expect(reservedRect.height).toBe(box.height);
+    }
+  });
+
+  it('landscape splits the reserved area into two margins, one per thumb (FR-031, issue #7)', () => {
+    for (const insetBox of SAMPLE_INSET_BOXES) {
+      if (computeOrientation(insetBox) !== 'landscape') continue;
+      const layout = computeTouchControlLayout(insetBox, 'landscape');
+      const midpointX = layout.caveRect.x + layout.caveRect.width / 2;
+      const padCenterX = layout.pad.center.x;
+      const grabCenterX = layout.grabButton.x + layout.grabButton.width / 2;
+      // The pad and the grab button sit on opposite sides of the cave's
+      // horizontal midpoint — a future tuning pass cannot silently collapse
+      // this back into a single one-thumb band.
+      expect(padCenterX).toBeLessThan(midpointX);
+      expect(grabCenterX).toBeGreaterThan(midpointX);
+    }
   });
 });
 

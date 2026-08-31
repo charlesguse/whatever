@@ -193,7 +193,7 @@ src/
 │   │   │   │                               #   two call sites
 │   │   │   ├── layout.ts                    # NEW — pure geometry: computeOrientation(insetBox);
 │   │   │   │                                #   computeTouchControlLayout(insetBox, orientation)
-│   │   │   │                                #   -> { reservedRect, caveRect, pad, grabButton,
+│   │   │   │                                #   -> { reservedRects, caveRect, pad, grabButton,
 │   │   │   │                                #   pauseButton, restartButton } (FR-009, FR-013,
 │   │   │   │                                #   FR-031, FR-031a); resolveTouchPoint(layout, x, y)
 │   │   │   │                                #   -> ControlHit (FR-010, FR-011)

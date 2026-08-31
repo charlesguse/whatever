@@ -41,9 +41,9 @@ below.
 - a touch landing on no control is ignored — it never produces or cancels
   a direction, even with several such touches active at once (the "palm
   on the glass" edge case);
-- `reservedRect` and `caveRect` never intersect for every sampled inset
-  box and orientation (SC-011a), and every control rect is fully inside
-  the inset box in both orientations (SC-011);
+- Every `reservedRects` entry and `caveRect` never intersect for every
+  sampled inset box and orientation (SC-011a), and every control rect is
+  fully inside the inset box in both orientations (SC-011);
 - a tap on the playfield acts as start/confirm only when no touch control
   layout is active, matching the keyboard's start key's screen coverage
   (FR-014);

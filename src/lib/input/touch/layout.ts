@@ -23,7 +23,7 @@ export interface PadZone {
 }
 
 export interface TouchControlLayout {
-  readonly reservedRect: Rect;
+  readonly reservedRects: readonly Rect[];
   readonly caveRect: Rect;
   readonly pad: {
     readonly center: { readonly x: number; readonly y: number };
@@ -53,9 +53,25 @@ const PAUSE_SIZE = 52;
 const RESTART_SIZE = 52;
 
 // The fraction of the reserved band's length given to the pad vs. the
-// button cluster (portrait: band length is width; landscape: band length
-// is height).
+// button cluster in portrait (band length is width there).
 const PAD_SHARE = 0.6;
+
+// FR-009 requires the pad/grab hit targets at or above 64 CSS px and
+// pause/restart at or above 44. These floors are the safety net for that
+// requirement, not the everyday value (the natural size derived from
+// PAD_OUTER_RADIUS/GRAB_SIZE above is normally larger): if a future tuning
+// pass shrinks those constants, the reserved band (portrait) or margins
+// (landscape) still can't collapse below the size that keeps FR-009's
+// minimums true. Both device boxes in layout.test.ts already pass the
+// 64/44 assertions with these floors in place — lowering one trades away
+// the requirement for reclaimed screen space.
+const PORTRAIT_BAND_FLOOR = 160;
+const LANDSCAPE_MARGIN_FLOOR = 140;
+
+// Each landscape margin (pad on the left, grab/pause/restart on the
+// right — FR-031's "margins beside it", plural) is capped at this fraction
+// of the inset box's width so the two margins never crowd out caveRect.
+const LANDSCAPE_MARGIN_MAX_FRACTION = 0.35;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -101,116 +117,145 @@ function makeZones(center: { x: number; y: number }, outerRadius: number, deadRa
   ];
 }
 
-// The reserved band is always carved out of insetBox first, and caveRect is
-// the exact remainder — the two can never overlap and neither can ever
-// extend beyond insetBox, by construction, regardless of the tuning
-// constants above (FR-031, FR-031a, SC-011, SC-011a).
-export function computeTouchControlLayout(insetBox: InsetBox, orientation: Orientation): TouchControlLayout {
-  const reservedRect: Rect =
-    orientation === 'portrait'
-      ? (() => {
-          const height = clamp(PAD_OUTER_RADIUS * 2 + MARGIN * 2, 160, insetBox.height * 0.45);
-          return { x: insetBox.x, y: insetBox.y + insetBox.height - height, width: insetBox.width, height };
-        })()
-      : (() => {
-          const width = clamp(PAD_OUTER_RADIUS * 2 + MARGIN * 2, 140, insetBox.width * 0.45);
-          return { x: insetBox.x + insetBox.width - width, y: insetBox.y, width, height: insetBox.height };
-        })();
+// Portrait: one reserved band along the bottom edge — pad in the first
+// PAD_SHARE of its width, grab/pause/restart in the rest — with caveRect
+// the remainder of insetBox above it. The band is carved out of insetBox
+// first and caveRect is the exact remainder, so the two can never overlap
+// and neither can ever extend beyond insetBox, by construction, regardless
+// of the tuning constants above (FR-031, FR-031a, SC-011, SC-011a).
+function computePortraitLayout(insetBox: InsetBox): TouchControlLayout {
+  const height = clamp(PAD_OUTER_RADIUS * 2 + MARGIN * 2, PORTRAIT_BAND_FLOOR, insetBox.height * 0.45);
+  const bandRect: Rect = { x: insetBox.x, y: insetBox.y + insetBox.height - height, width: insetBox.width, height };
+  const caveRect: Rect = { x: insetBox.x, y: insetBox.y, width: insetBox.width, height: insetBox.height - height };
 
-  const caveRect: Rect =
-    orientation === 'portrait'
-      ? { x: insetBox.x, y: insetBox.y, width: insetBox.width, height: insetBox.height - reservedRect.height }
-      : { x: insetBox.x, y: insetBox.y, width: insetBox.width - reservedRect.width, height: insetBox.height };
-
-  // Within the band, the pad gets the first PAD_SHARE of its length, the
-  // button cluster the rest — length runs along width in portrait (a
-  // horizontal band) and along height in landscape (a vertical margin).
-  const bandLength = orientation === 'portrait' ? reservedRect.width : reservedRect.height;
-  const bandThickness = orientation === 'portrait' ? reservedRect.height : reservedRect.width;
-  const padSection = bandLength * PAD_SHARE;
-  const buttonSection = bandLength - padSection;
+  const padSection = bandRect.width * PAD_SHARE;
+  const buttonSection = bandRect.width - padSection;
+  const bandThickness = bandRect.height;
 
   const outerRadius = Math.max(0, Math.min(PAD_OUTER_RADIUS, padSection / 2 - MARGIN, bandThickness / 2 - MARGIN));
   const deadRadius = Math.min(PAD_DEAD_RADIUS, outerRadius * 0.4);
+  const center = { x: bandRect.x + MARGIN + outerRadius, y: bandRect.y + bandRect.height / 2 };
 
-  const center =
-    orientation === 'portrait'
-      ? { x: reservedRect.x + MARGIN + outerRadius, y: reservedRect.y + reservedRect.height / 2 }
-      : { x: reservedRect.x + reservedRect.width / 2, y: reservedRect.y + MARGIN + outerRadius };
-
-  let grabButton: Rect;
-  let pauseButton: Rect;
-  let restartButton: Rect;
-
-  if (orientation === 'portrait') {
-    // The button cluster's region is narrow-and-tall (buttonSection wide,
-    // the full band thickness tall) — grab sits above a row holding pause
-    // and restart side by side.
-    const buttonColumnX = reservedRect.x + padSection;
-    const buttonColumnWidth = buttonSection;
-    const buttonColumnHeight = bandThickness;
-    const grabSize = clamp(GRAB_SIZE, 0, Math.min(buttonColumnWidth - 2 * MARGIN, buttonColumnHeight - 2 * MARGIN));
-    const smallSize = clamp(
-      Math.min(PAUSE_SIZE, RESTART_SIZE),
-      0,
-      Math.min((buttonColumnWidth - 3 * MARGIN) / 2, buttonColumnHeight - grabSize - 3 * MARGIN)
-    );
-    grabButton = {
-      x: buttonColumnX + buttonColumnWidth - MARGIN - grabSize,
-      y: reservedRect.y + MARGIN,
-      width: grabSize,
-      height: grabSize,
-    };
-    pauseButton = {
-      x: buttonColumnX + buttonColumnWidth - MARGIN - smallSize,
-      y: grabButton.y + grabSize + MARGIN,
-      width: smallSize,
-      height: smallSize,
-    };
-    restartButton = {
-      x: pauseButton.x - MARGIN - smallSize,
-      y: grabButton.y + grabSize + MARGIN,
-      width: smallSize,
-      height: smallSize,
-    };
-  } else {
-    // The button cluster's region is wide-and-short (the full band
-    // thickness wide, buttonSection tall) — grab, pause, and restart sit
-    // side by side in one row.
-    const buttonRowY = reservedRect.y + padSection;
-    const buttonRowWidth = bandThickness;
-    const buttonRowHeight = buttonSection;
-    const grabSize = clamp(GRAB_SIZE, 0, buttonRowHeight - 2 * MARGIN);
-    const remainingWidth = buttonRowWidth - grabSize - 4 * MARGIN;
-    const smallSize = clamp(Math.min(PAUSE_SIZE, RESTART_SIZE), 0, Math.min(remainingWidth / 2, buttonRowHeight - 2 * MARGIN));
-    grabButton = {
-      x: reservedRect.x + MARGIN,
-      y: buttonRowY + (buttonRowHeight - grabSize) / 2,
-      width: grabSize,
-      height: grabSize,
-    };
-    pauseButton = {
-      x: grabButton.x + grabSize + MARGIN,
-      y: buttonRowY + (buttonRowHeight - smallSize) / 2,
-      width: smallSize,
-      height: smallSize,
-    };
-    restartButton = {
-      x: pauseButton.x + smallSize + MARGIN,
-      y: buttonRowY + (buttonRowHeight - smallSize) / 2,
-      width: smallSize,
-      height: smallSize,
-    };
-  }
+  // The button cluster's region is narrow-and-tall (buttonSection wide, the
+  // full band thickness tall) — grab sits above a row holding pause and
+  // restart side by side.
+  const buttonColumnX = bandRect.x + padSection;
+  const buttonColumnWidth = buttonSection;
+  const buttonColumnHeight = bandThickness;
+  const grabSize = clamp(GRAB_SIZE, 0, Math.min(buttonColumnWidth - 2 * MARGIN, buttonColumnHeight - 2 * MARGIN));
+  const smallSize = clamp(
+    Math.min(PAUSE_SIZE, RESTART_SIZE),
+    0,
+    Math.min((buttonColumnWidth - 3 * MARGIN) / 2, buttonColumnHeight - grabSize - 3 * MARGIN)
+  );
+  const grabButton: Rect = {
+    x: buttonColumnX + buttonColumnWidth - MARGIN - grabSize,
+    y: bandRect.y + MARGIN,
+    width: grabSize,
+    height: grabSize,
+  };
+  const pauseButton: Rect = {
+    x: buttonColumnX + buttonColumnWidth - MARGIN - smallSize,
+    y: grabButton.y + grabSize + MARGIN,
+    width: smallSize,
+    height: smallSize,
+  };
+  const restartButton: Rect = {
+    x: pauseButton.x - MARGIN - smallSize,
+    y: grabButton.y + grabSize + MARGIN,
+    width: smallSize,
+    height: smallSize,
+  };
 
   return {
-    reservedRect,
+    reservedRects: [bandRect],
     caveRect,
     pad: { center, deadRadius, outerRadius, zones: makeZones(center, outerRadius, deadRadius) },
-    grabButton: containRect(grabButton, reservedRect),
-    pauseButton: containRect(pauseButton, reservedRect),
-    restartButton: containRect(restartButton, reservedRect),
+    grabButton: containRect(grabButton, bandRect),
+    pauseButton: containRect(pauseButton, bandRect),
+    restartButton: containRect(restartButton, bandRect),
   };
+}
+
+// Landscape: FR-031 requires "margins beside it" (plural) — one thumb's
+// margin on each side of the cave, not a single band holding everything.
+// The pad gets its own left margin, grab/pause/restart their own right
+// margin, and caveRect is the exact vertical strip between them — the two
+// margins are carved out of insetBox first, so neither they nor caveRect
+// can ever overlap or extend beyond insetBox, by construction.
+function computeLandscapeLayout(insetBox: InsetBox): TouchControlLayout {
+  const padMarginWidth = clamp(
+    PAD_OUTER_RADIUS * 2 + MARGIN * 2,
+    LANDSCAPE_MARGIN_FLOOR,
+    insetBox.width * LANDSCAPE_MARGIN_MAX_FRACTION
+  );
+  const buttonMarginWidth = clamp(
+    GRAB_SIZE + 2 * MARGIN,
+    LANDSCAPE_MARGIN_FLOOR,
+    insetBox.width * LANDSCAPE_MARGIN_MAX_FRACTION
+  );
+
+  const padMargin: Rect = { x: insetBox.x, y: insetBox.y, width: padMarginWidth, height: insetBox.height };
+  const buttonMargin: Rect = {
+    x: insetBox.x + insetBox.width - buttonMarginWidth,
+    y: insetBox.y,
+    width: buttonMarginWidth,
+    height: insetBox.height,
+  };
+  const caveRect: Rect = {
+    x: padMargin.x + padMargin.width,
+    y: insetBox.y,
+    width: insetBox.width - padMargin.width - buttonMargin.width,
+    height: insetBox.height,
+  };
+
+  const outerRadius = Math.max(
+    0,
+    Math.min(PAD_OUTER_RADIUS, padMargin.width / 2 - MARGIN, padMargin.height / 2 - MARGIN)
+  );
+  const deadRadius = Math.min(PAD_DEAD_RADIUS, outerRadius * 0.4);
+  const center = { x: padMargin.x + padMargin.width / 2, y: padMargin.y + padMargin.height / 2 };
+
+  // The button margin holds grab above a row of pause and restart, exactly
+  // like portrait's button column, just centered in its own margin instead
+  // of sharing a band with the pad.
+  const grabSize = clamp(GRAB_SIZE, 0, Math.min(buttonMargin.width - 2 * MARGIN, buttonMargin.height - 2 * MARGIN));
+  const smallSize = clamp(
+    Math.min(PAUSE_SIZE, RESTART_SIZE),
+    0,
+    Math.min((buttonMargin.width - 3 * MARGIN) / 2, buttonMargin.height - grabSize - 3 * MARGIN)
+  );
+  const grabButton: Rect = {
+    x: buttonMargin.x + (buttonMargin.width - grabSize) / 2,
+    y: buttonMargin.y + MARGIN,
+    width: grabSize,
+    height: grabSize,
+  };
+  const pauseButton: Rect = {
+    x: buttonMargin.x + buttonMargin.width / 2 - MARGIN / 2 - smallSize,
+    y: grabButton.y + grabSize + MARGIN,
+    width: smallSize,
+    height: smallSize,
+  };
+  const restartButton: Rect = {
+    x: buttonMargin.x + buttonMargin.width / 2 + MARGIN / 2,
+    y: grabButton.y + grabSize + MARGIN,
+    width: smallSize,
+    height: smallSize,
+  };
+
+  return {
+    reservedRects: [padMargin, buttonMargin],
+    caveRect,
+    pad: { center, deadRadius, outerRadius, zones: makeZones(center, outerRadius, deadRadius) },
+    grabButton: containRect(grabButton, buttonMargin),
+    pauseButton: containRect(pauseButton, buttonMargin),
+    restartButton: containRect(restartButton, buttonMargin),
+  };
+}
+
+export function computeTouchControlLayout(insetBox: InsetBox, orientation: Orientation): TouchControlLayout {
+  return orientation === 'portrait' ? computePortraitLayout(insetBox) : computeLandscapeLayout(insetBox);
 }
 
 function pointInRect(rect: Rect, x: number, y: number): boolean {

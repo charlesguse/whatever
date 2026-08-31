@@ -100,9 +100,9 @@ incurs literally zero per-tick work beyond the one boolean check.
 |---|---|---|
 | `InsetBox` | `{ x, y, width, height }` (px, all `number`) | the safe-area-inset box, computed in `App.svelte` (research.md), never read from inside this module |
 | `Orientation` | `'portrait' \| 'landscape'` | `computeOrientation(insetBox)`: `'portrait'` when `height >= width`, else `'landscape'` — a pure comparison, no `matchMedia`, no screen API |
-| `Rect` | `{ x, y, width, height }` (px) | a plain axis-aligned rectangle, reused for every control and for `reservedRect`/`caveRect` |
+| `Rect` | `{ x, y, width, height }` (px) | a plain axis-aligned rectangle, reused for every control, for `caveRect`, and for each entry of `reservedRects` |
 | `PadZone` | `{ direction: Direction; rect: Rect }` | one of four, purely descriptive (hit-testing goes through `resolveTouchPoint`, not per-zone containment) |
-| `TouchControlLayout` | `{ reservedRect: Rect; caveRect: Rect; pad: { center: {x,y}; deadRadius: number; outerRadius: number; zones: readonly PadZone[] }; grabButton: Rect; pauseButton: Rect; restartButton: Rect }` | the full output of `computeTouchControlLayout(insetBox, orientation)` |
+| `TouchControlLayout` | `{ reservedRects: readonly Rect[]; caveRect: Rect; pad: { center: {x,y}; deadRadius: number; outerRadius: number; zones: readonly PadZone[] }; grabButton: Rect; pauseButton: Rect; restartButton: Rect }` | the full output of `computeTouchControlLayout(insetBox, orientation)` — `reservedRects` holds one rect in portrait (the bottom band) and two in landscape (the left and right margins) |
 | `ControlHit` | `{ kind: 'pad'; direction: Direction \| undefined } \| { kind: 'grab' } \| { kind: 'pause' } \| { kind: 'restart' } \| { kind: 'none' }` | the output of `resolveTouchPoint(layout, x, y)` |
 
 **Sizing invariants (FR-009, tuning values the maintainer may retune at
@@ -112,18 +112,18 @@ features):**
 - Each pad zone and the grab button present a hit target of at least
   **64 CSS px** in both dimensions.
 - Pause and restart present at least **44 CSS px** in both dimensions.
-- `reservedRect` and `caveRect` are computed together and never overlap
-  (SC-011a) — in portrait, `reservedRect` is a band along the bottom edge
-  of `insetBox` and `caveRect` is everything above it; in landscape,
-  `reservedRect` is split into left/right margins (pad on the side a
-  right-handed default expects to fall naturally, grab/pause/restart on
-  the other) and `caveRect` is the vertical strip between them — both
-  per-orientation shapes exist from the first version of this function,
-  per FR-031's "defined per orientation from the start."
-- Both rects are fully inside `insetBox` in both orientations (SC-011);
-  `computeTouchControlLayout` never produces a rect that extends beyond
-  `insetBox`'s bounds, because every rect is derived from `insetBox`'s own
-  `x`/`y`/`width`/`height`, never from the raw viewport (FR-031a).
+- Every entry of `reservedRects` and `caveRect` are computed together and
+  never overlap (SC-011a) — in portrait, `reservedRects` holds one band
+  along the bottom edge of `insetBox` and `caveRect` is everything above
+  it; in landscape, `reservedRects` holds two margins (pad on the left,
+  grab/pause/restart on the right) and `caveRect` is the vertical strip
+  between them — both per-orientation shapes exist from the first version
+  of this function, per FR-031's "defined per orientation from the start."
+- Every rect (each `reservedRects` entry and `caveRect`) is fully inside
+  `insetBox` in both orientations (SC-011); `computeTouchControlLayout`
+  never produces a rect that extends beyond `insetBox`'s bounds, because
+  every rect is derived from `insetBox`'s own `x`/`y`/`width`/`height`,
+  never from the raw viewport (FR-031a).
 
 **`resolveTouchPoint(layout, x, y)` resolution order:**
 

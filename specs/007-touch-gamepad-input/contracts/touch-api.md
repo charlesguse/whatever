@@ -38,14 +38,14 @@ export function resolveTouchPoint(
 
 See [data-model.md](../data-model.md) for the full `InsetBox`/
 `TouchControlLayout`/`ControlHit` shapes, the sizing invariants (FR-009,
-64px/44px targets), the never-overlapping `reservedRect`/`caveRect`
+64px/44px targets), the never-overlapping `reservedRects`/`caveRect`
 guarantee (SC-011a), and `resolveTouchPoint`'s exact resolution order.
 
 **Guarantees this module alone provides, checkable with zero DOM:**
 
-- For every `InsetBox` and `Orientation` the test suite samples,
-  `reservedRect` and `caveRect` never intersect (SC-011a) and both are
-  fully contained within `insetBox` (SC-011, FR-031a).
+- For every `InsetBox` and `Orientation` the test suite samples, every
+  entry of `reservedRects` and `caveRect` never intersect (SC-011a) and
+  all are fully contained within `insetBox` (SC-011, FR-031a).
 - `resolveTouchPoint` is a pure function of `(layout, x, y)` — calling it
   twice with the same arguments always returns the same `ControlHit`, so
   `TouchInput`'s re-resolution of pad touches on every `touchmove` needs
