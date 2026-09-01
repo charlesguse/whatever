@@ -221,7 +221,10 @@ with sound: same caves, same speed, same screens, no console errors, no "audio
 failed" banner, no dead-looking control. Another player on an iPhone opens it
 in Safari; the first tap that starts the game is also what brings the audio to
 life, and everything from that tap on is audible. A third player leaves the tab
-in the background mid-cave and comes back to no backlog of queued noise.
+in the background mid-cave and comes back to no backlog of queued noise. A
+fourth plays entirely on a controller and hears nothing until they touch a key
+or the screen — the game never says a word about it, and the mute control they
+can still see and press remembers what they chose either way.
 
 **Why this priority**: "Never load-bearing" is a constitutional constraint, and
 the failure modes here are invisible until they are not. It is last because it
@@ -232,7 +235,11 @@ machine as a pure function over injected outcomes — no audio constructor at
 all, a constructor that throws, a device that stays suspended, a resume that
 rejects, and a healthy device. Every non-healthy outcome yields "silent, no
 error surfaced, game unaffected", and the state machine never retries in a way
-that could block a frame.
+that could block a frame. Assert that a key, click, or touch is the only input
+that advances the machine out of "not yet created" and that a gamepad press
+leaves it there. Separately, assert the voice cap as a pure function: an
+over-cap set of event ids yields the highest-priority subset under FR-020a,
+identically on every run.
 
 **Acceptance Scenarios**:
 
@@ -257,6 +264,18 @@ that could block a frame.
 7. **Given** a build of the game, **When** `dist/index.html` is inspected,
    **Then** it remains a single self-contained file with no audio file, no
    external request, and no added runtime dependency.
+8. **Given** a session driven entirely by a gamepad — start, play, mute, and
+   finish, with no key, click, or touch — **When** events occur, **Then** the
+   game stays silent, nothing is logged or shown, and the first key press or
+   tap that does arrive creates the device and makes everything after it
+   audible.
+9. **Given** a platform where audio is unavailable, blocked, or not yet
+   created, **When** any screen is shown, **Then** the on-screen mute control is
+   present and functional, toggles, shows its state, and persists it — it never
+   appears, disappears, or changes affordance as audio availability changes.
+10. **Given** a cave larger than the viewport, **When** events occur outside the
+    visible area, **Then** they are as audible as on-camera ones, and no camera
+    or scroll state is read to decide it.
 
 ---
 
@@ -289,8 +308,19 @@ that could block a frame.
   surprised later.
 - **Theme switched while muted**: no sound, no error; unmuting later uses the
   current theme.
-- **A cave larger than the viewport**: see the open question below on events
-  that happen off-camera.
+- **A cave larger than the viewport**: an event that happens off-camera is
+  heard exactly as one on-camera is — a chain reaction the player cannot see is
+  the cave telling them something upstream moved.
+- **A chain reaction over the voice cap**: the voices that survive are the
+  highest-priority ones under FR-020a, the same ones every replay, and never
+  whichever happened to be scheduled first.
+- **A controller-only session**: a player who starts, plays, and finishes using
+  only a gamepad hears nothing, because no key, click, or touch ever unlocked
+  the device. Nothing is logged or shown; the mute control still toggles and
+  still persists; the first key press or tap of the session makes everything
+  from that point on audible.
+- **Audio that never becomes available**: the on-screen mute control is present
+  and live anyway, showing whichever state the player last chose.
 
 ## Requirements *(mandatory)*
 
@@ -348,7 +378,8 @@ that could block a frame.
   no network request, so `dist/index.html` stays a single self-contained file
   playable from `file://`.
 - **FR-016**: The audio device MUST be created lazily, inside a user gesture
-  (key press, click, or tap), never at module load or page load.
+  (key press, click, or tap — and only those; see FR-043), never at module load
+  or page load.
 - **FR-017**: Device creation MUST fall back to the older vendor-prefixed
   constructor where the standard one is absent, so first-generation iOS Safari
   behavior is covered.
@@ -362,6 +393,17 @@ that could block a frame.
 - **FR-020**: The system MUST cap the number of voices sounding at once and
   drop the excess rather than queue it, so a chain reaction cannot degrade the
   frame rate or clip into distortion.
+- **FR-020a**: Which voices are dropped at the cap MUST follow one stated,
+  deterministic priority order, never arrival order or a race:
+  `explosion`, `diamondCollected`, `doorOpen`, `timeLow`, `bonusTally`,
+  `fallStart`, `fallLand`, `dirtStep`, highest first. An event the player did
+  not cause and may not be able to see — a distant `fallLand` under FR-042 —
+  MUST NOT be able to silence the `explosion` or `diamondCollected` they just
+  caused. `bonusTally` never competes, since it is the only event on its
+  screen (FR-012); it is ranked only to keep the order total.
+- **FR-020b**: Because the order is total and the event set is closed, the cap
+  MUST be verifiable as a pure function from an over-cap set of event ids to
+  the set that sounds, in the node-only test environment.
 - **FR-021**: Every voice MUST be short enough to be over before it can mask
   the next event of the same id at the game's tick rate.
 - **FR-022**: Sound MUST NOT be the only signal for any game state. Everything
@@ -422,26 +464,50 @@ that could block a frame.
 
 **Availability of the mute control**
 
-- **FR-041**: The on-screen mute control's presence when audio is unavailable
-  or blocked MUST follow one rule, stated here and tested:
-  [NEEDS CLARIFICATION: is the mute control always present and functional —
-  because whether audio will ever start is not knowable until a gesture and the
-  stored preference matters anyway — or hidden entirely when the platform
-  offers no audio at all, in the spirit of Principle V's "never a dead
-  control"?]
+- **FR-041**: The on-screen mute control MUST always be present and functional,
+  on every screen and on every platform, whether audio is unavailable, blocked,
+  or simply not created yet. It MUST NOT branch on any audio-capability check,
+  and it MUST NOT appear, disappear, or change affordance when audio becomes
+  available. A press while audio is unavailable still toggles the state, still
+  shows the new state per FR-027, still persists per FR-031, and applies the
+  moment audio does become available.
+- **FR-041a**: The mute control is not a dead control in the sense Principle V
+  forbids. A hidden touch control is an affordance for a capability the device
+  genuinely lacks and reports up front; audio availability is not knowable
+  before the first gesture (FR-016), and the toggle records a preference that
+  outlives both the session and the device, so a player who mutes where audio
+  never starts is still muted where it does.
 
 **Scope of what is audible**
 
-- **FR-042**: In a cave larger than the viewport, which events reach the player
-  MUST follow one rule, stated here and tested:
-  [NEEDS CLARIFICATION: are all events audible regardless of where they happen
-  in the cave, or only events inside (or near) the visible viewport?]
+- **FR-042**: Every sound event MUST be audible wherever it happens in the
+  cave, including outside the visible viewport in a cave larger than the
+  screen. A scrolling cave MUST NOT be quieter than a single-screen one.
+- **FR-042a**: No camera, viewport, or scroll state may enter event derivation
+  or the audio path. Sound events stay position-free (see Key Entities), which
+  is what keeps derivation a pure function of simulation state across two ticks
+  under FR-002 and testable without a renderer under FR-014.
+
+**Unlocking audio**
+
+- **FR-043**: The audio device MUST be created only on a first key press,
+  click, or touch. Gamepad input MUST NOT be wired to device creation:
+  controller input is polled and browsers grant no user activation for it, so a
+  session driven entirely by a controller MUST remain silent until a key,
+  click, or touch occurs.
+- **FR-044**: That controller-only silence is a platform constraint, not a
+  failure. It MUST be covered by FR-018's swallow-everything rule — nothing
+  logged, thrown, or shown to the player — and the mute control MUST stay
+  present, toggleable, and persisted throughout it, per FR-041. Creating the
+  device at load to avoid the silence is forbidden by FR-016.
 
 ### Key Entities
 
 - **Sound Event**: one of the eight named occurrences in FR-001, derived per
   tick from observed simulation state. It has no payload beyond its id — no
-  position, no magnitude, no count.
+  position, no magnitude, no count. Position-free is load-bearing, not
+  incidental: it is what lets FR-042 make every event audible without the audio
+  path ever seeing the camera.
 - **Voice Specification**: the plain-data description of how one event sounds
   in one theme — waveform kind, pitch or pitch sweep, duration, envelope,
   level, noise content. Ranges are declared so completeness and level tests can
@@ -452,7 +518,12 @@ that could block a frame.
   next to the theme choice, resolved at startup, toggled by a named input
   action.
 - **Audio Availability**: an internal state — not yet created, available,
-  unavailable — that is never surfaced to the player and never gates gameplay.
+  unavailable — that is never surfaced to the player, never gates gameplay, and
+  never gates the presence or behavior of the mute control. It leaves "not yet
+  created" only on a key press, click, or touch.
+- **Voice Priority**: the total, fixed order over the event ids in FR-020a that
+  decides which voices survive the cap. It is a property of the event set, not
+  of a theme, and no theme may reorder it.
 
 ## Success Criteria *(mandatory)*
 
@@ -469,7 +540,8 @@ that could block a frame.
   errors, warnings, or banners reach them.
 - **SC-004**: Mute is reachable in one press or one tap from every screen, takes
   effect within one tick, and survives a full page reload 100% of the time when
-  storage is available.
+  storage is available — including on a platform where audio never becomes
+  available, where the control is equally present and equally functional.
 - **SC-005**: Frame rate during a large chain reaction with sound on stays
   within the constitution's bounds (target 60fps, floor 30fps) on the
   maintainer's mid-range laptop, indistinguishable from the same run muted.
@@ -479,6 +551,14 @@ that could block a frame.
 - **SC-007**: A contributor can add a fully voiced third theme by changing only
   that theme's data file and the registry entry — demonstrated by review of the
   file list, not by shipping a third theme.
+- **SC-008**: Over-cap event sets resolve to the same surviving voices on every
+  run, with a player-caused `explosion` or `diamondCollected` never dropped in
+  favor of a `fallLand`, `fallStart`, or `dirtStep` — enforced by a test over
+  the priority order, not by listening.
+- **SC-009**: A gamepad-only session produces zero audio-device creations and
+  zero errors, warnings, or banners, and the first key press or tap makes every
+  subsequent event audible — the first half enforced by a test over the
+  availability state machine, the second confirmed by the maintainer.
 
 ## What the maintainer listens for
 
@@ -509,6 +589,13 @@ opened via `file://`:
     audible; nothing is silent-forever after that tap.
 11. **Backgrounded tab** — switch away mid-cave for a while and return: no
     burst of stored-up sound.
+12. **Controller only** — reload, then start and play a cave using only a
+    gamepad: silent throughout, with nothing in the console and no banner, and
+    the on-screen mute control still visible and still toggling. Then press any
+    key or tap the page: the next event is audible.
+13. **Off-camera events** — in a cave larger than the viewport, scroll away from
+    a collapse you started: it is as loud as it was on screen, and a scrolling
+    cave is no quieter than a single-screen one.
 
 ## Assumptions
 
@@ -542,4 +629,7 @@ opened via `file://`:
   existing binding table; if no button is free, the keyboard and on-screen
   control still satisfy "no input mode is the only way", and the spec's
   requirement narrows to those two.
+- **Voice cap size**: the number of simultaneous voices is a tuning value the
+  maintainer may change after listening. The priority order in FR-020a is not —
+  it is a stated requirement, and changing it is a spec change.
 - **Nothing leaves the device**: this feature adds no network use of any kind.
