@@ -7,6 +7,11 @@
   import type { Screen, SessionState } from './lib/session/types';
   import { readSave, writeSave } from './lib/storage/save';
   import { KeyboardInput } from './lib/input/keyboard';
+  import { TouchInput } from './lib/input/touch/TouchInput';
+  import { GamepadInput } from './lib/input/gamepad/GamepadInput';
+  import { computeOrientation, computeTouchControlLayout, type InsetBox } from './lib/input/touch/layout';
+  import { nextLastInputSource, shouldShowTouchControls, type LastInputSource } from './lib/input/visibility';
+  import { orAll, resolveDirection } from './lib/input/merge';
   import { createRenderLoop, type RenderLoop } from './lib/render/canvas';
   import './lib/themes';
   import { getTheme, listThemes } from './lib/themes/registry';
@@ -49,10 +54,89 @@
   let session: SessionState = $state(titleSession());
 
   const keyboard = new KeyboardInput();
+  const touch = new TouchInput();
+  const gamepad = new GamepadInput();
   let renderLoop: RenderLoop | undefined;
   let tickHandle: number | undefined;
   let lastTime: number | undefined;
   let accumulator = 0;
+
+  // FR-029: a capability read only — no UA/device/screen-size sniff — read
+  // once, since it cannot change for the life of the page.
+  const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  // FR-028: gates whether gamepad.poll() is ever called — no listener side
+  // effect, no error, when the API is absent.
+  const gamepadSupported = typeof navigator.getGamepads === 'function';
+
+  // FR-027a: advanced only by window-level keydown/click/touchstart
+  // listeners below — no fourth listener, so pointer movement structurally
+  // cannot change it.
+  let lastInputSource: LastInputSource = $state('none');
+
+  // The safe-area-inset box, read from a hidden probe element's computed
+  // style at mount and again on resize/orientationchange (research.md).
+  let probeEl: HTMLDivElement | undefined = $state();
+  let insetBox: InsetBox | undefined = $state(undefined);
+
+  function measureInsetBox(): InsetBox {
+    if (!probeEl) return { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
+    const style = getComputedStyle(probeEl);
+    const top = parseFloat(style.paddingTop) || 0;
+    const right = parseFloat(style.paddingRight) || 0;
+    const bottom = parseFloat(style.paddingBottom) || 0;
+    const left = parseFloat(style.paddingLeft) || 0;
+    return { x: left, y: top, width: window.innerWidth - left - right, height: window.innerHeight - top - bottom };
+  }
+
+  function refreshInsetBox(): void {
+    insetBox = measureInsetBox();
+  }
+
+  const onAnyKeyDown = (): void => {
+    lastInputSource = nextLastInputSource(lastInputSource, 'keydown');
+  };
+  const onAnyClick = (): void => {
+    lastInputSource = nextLastInputSource(lastInputSource, 'click');
+  };
+  const onAnyTouchStart = (): void => {
+    lastInputSource = nextLastInputSource(lastInputSource, 'touchstart');
+  };
+
+  // FR-008, FR-027, FR-027a: three independent, separately testable gates —
+  // capability, last input source, and the current screen.
+  let controlsVisible = $derived(
+    hasTouch &&
+      shouldShowTouchControls({ hasTouch }, lastInputSource) &&
+      (session.screen === 'playing' || session.screen === 'paused')
+  );
+
+  // FR-031, FR-031a: recomputed only when visibility, the screen, or the
+  // measured inset box changes — not per tick or per frame.
+  let touchLayout = $derived.by(() => {
+    if (!controlsVisible || !insetBox) return undefined;
+    return computeTouchControlLayout(insetBox, computeOrientation(insetBox));
+  });
+
+  $effect(() => {
+    touch.setLayout(touchLayout);
+  });
+
+  // The canvas/cave container is CSS-sized from layout.caveRect whenever a
+  // layout is active, so canvas.ts's computeViewportCells() needs no
+  // change — the drawable area is smaller by construction, not by a new
+  // parameter.
+  let canvasStyle = $derived(
+    touchLayout
+      ? `left:${touchLayout.caveRect.x}px;top:${touchLayout.caveRect.y}px;width:${touchLayout.caveRect.width}px;height:${touchLayout.caveRect.height}px;`
+      : ''
+  );
+
+  // FR-015: keeps the theme picker inside caveRect's right edge instead of
+  // the viewport's, so it never sits under a landscape reserved margin.
+  let themePickerRightPx = $derived.by(() => {
+    if (!touchLayout || !insetBox) return undefined;
+    return insetBox.x + insetBox.width - (touchLayout.caveRect.x + touchLayout.caveRect.width) + 8;
+  });
 
   // FR-039: writeSave only ever grows a stored value, so passing the other
   // field's minimum here is a safe no-op on that field. Called only on the
@@ -73,6 +157,8 @@
   // never runs except via tickSession while screen === 'playing' (FR-011,
   // FR-028).
   function stepTick(): void {
+    // FR-017: polled once per tick, before any consume*() call.
+    if (gamepadSupported) gamepad.poll();
     const previousScreen = session.screen;
     stepTickInner();
     saveOnTransition(previousScreen, session.screen);
@@ -83,15 +169,17 @@
     // session.screen branch — including the 'title' branch's start/
     // direction/grab checks below — so a cycleTheme press reaches every
     // screen and is never also evaluated as a start/direction/grab press
-    // (CYCLE_THEME_KEYS is disjoint from those actions' keys).
-    if (keyboard.consumeCycleTheme()) {
+    // (CYCLE_THEME_KEYS is disjoint from those actions' keys). Every
+    // source's consume*() is computed before orAll/resolveDirection run,
+    // never inside a short-circuiting `||` (contracts/input-merge-api.md).
+    if (orAll(keyboard.consumeCycleTheme(), touch.consumeCycleTheme(), gamepad.consumeCycleTheme())) {
       selectTheme(cycleThemeId(activeThemeId, listThemes().map((t) => t.id)));
     }
 
     // FR-027: restart works from playing, paused, caveIntro, and lifeLost,
     // at any point in a frame — a no-op (via restartAttempt's own screen
     // gate) everywhere else, so it is always safe to check first.
-    if (keyboard.consumeRestart()) {
+    if (orAll(keyboard.consumeRestart(), touch.consumeRestart(), gamepad.consumeRestart())) {
       session = restartAttempt(session);
     }
 
@@ -99,10 +187,12 @@
       // Any of the start key, a movement key, or grab starts the game
       // (spec Edge Cases) — that same keypress is not also delivered to
       // the kid on the first tick, since startGame() lands on 'caveIntro',
-      // not 'playing', and tickSession is gated on 'playing'.
-      const direction = keyboard.consumeDirection();
-      const grab = keyboard.consumeGrab();
-      const start = keyboard.consumeStart();
+      // not 'playing', and tickSession is gated on 'playing'. Gamepad has
+      // no consumeStart() — its confirm route is the edge-triggered
+      // consumeConfirm() instead (research.md's dual-read decision).
+      const direction = resolveDirection(keyboard.consumeDirection(), touch.consumeDirection(), gamepad.consumeDirection());
+      const grab = orAll(keyboard.consumeGrab(), touch.consumeGrab(), gamepad.consumeGrab());
+      const start = orAll(keyboard.consumeStart(), touch.consumeStart(), gamepad.consumeConfirm());
       if (start || direction !== undefined || grab) {
         session = startGame();
       }
@@ -110,15 +200,15 @@
     }
 
     if (session.screen === 'playing' || session.screen === 'paused') {
-      if (keyboard.consumePause()) {
+      if (orAll(keyboard.consumePause(), touch.consumePause(), gamepad.consumePause())) {
         session = pauseToggle(session);
         return; // the toggle itself is not also a play/freeze tick
       }
     }
 
     if (session.screen === 'playing') {
-      const direction = keyboard.consumeDirection();
-      const grab = keyboard.consumeGrab();
+      const direction = resolveDirection(keyboard.consumeDirection(), touch.consumeDirection(), gamepad.consumeDirection());
+      const grab = orAll(keyboard.consumeGrab(), touch.consumeGrab(), gamepad.consumeGrab());
       session = tickSession(session, { direction, grab });
       return;
     }
@@ -130,10 +220,11 @@
     }
 
     // Every other screen (caveIntro, lifeLost, caveComplete, gameOver,
-    // won): a keypress or the documented delay advances it, whichever
-    // comes first.
+    // won): a tap/keypress/confirm or the documented delay advances it,
+    // whichever comes first.
     const advanced = { ...session, screenTicks: session.screenTicks + 1 };
-    if (keyboard.consumeStart() || advanced.screenTicks >= SCREEN_AUTO_ADVANCE_TICKS) {
+    const advance = orAll(keyboard.consumeStart(), touch.consumeStart(), gamepad.consumeConfirm());
+    if (advance || advanced.screenTicks >= SCREEN_AUTO_ADVANCE_TICKS) {
       session = advanceScreen(advanced);
     } else {
       session = advanced;
@@ -241,6 +332,14 @@
 
   onMount(() => {
     keyboard.attach();
+    touch.attach();
+    gamepad.attach();
+    window.addEventListener('keydown', onAnyKeyDown);
+    window.addEventListener('click', onAnyClick);
+    window.addEventListener('touchstart', onAnyTouchStart);
+    refreshInsetBox();
+    window.addEventListener('resize', refreshInsetBox);
+    window.addEventListener('orientationchange', refreshInsetBox);
     if (canvas) {
       renderLoop = createRenderLoop({
         canvas,
@@ -254,6 +353,13 @@
 
   onDestroy(() => {
     keyboard.detach();
+    touch.detach();
+    gamepad.detach();
+    window.removeEventListener('keydown', onAnyKeyDown);
+    window.removeEventListener('click', onAnyClick);
+    window.removeEventListener('touchstart', onAnyTouchStart);
+    window.removeEventListener('resize', refreshInsetBox);
+    window.removeEventListener('orientationchange', refreshInsetBox);
     renderLoop?.stop();
     if (tickHandle !== undefined) {
       cancelAnimationFrame(tickHandle);
@@ -261,7 +367,10 @@
   });
 </script>
 
-<canvas bind:this={canvas}></canvas>
+<!-- FR-031a: a hidden four-sided-padding probe read via getComputedStyle,
+     never a CSS env() read from inside the pure layout module. -->
+<div bind:this={probeEl} class="safe-area-probe" aria-hidden="true"></div>
+<canvas bind:this={canvas} style={canvasStyle}></canvas>
 {#if hudText}
   <div class="readout">{hudText}</div>
 {/if}
@@ -272,7 +381,7 @@
   <div class="status-banner">{statusMessage}</div>
 {/if}
 {#if listThemes().length > 1}
-  <div class="theme-picker">
+  <div class="theme-picker" style={themePickerRightPx !== undefined ? `right:${themePickerRightPx}px` : undefined}>
     {#each listThemes() as themeOption (themeOption.id)}
       <button
         type="button"
@@ -286,12 +395,70 @@
     {/each}
   </div>
 {/if}
+{#if touchLayout}
+  <!-- FR-008, FR-009, FR-031: the reserved control region — a fixed pad
+       plus grab/pause/restart, sized and placed by touch/layout.ts. Actual
+       hit-testing happens through TouchInput's document-level listeners,
+       not per-element handlers, so these are purely visual affordances. -->
+  <div class="touch-controls" aria-hidden="true">
+    <div
+      class="touch-pad"
+      style="left:{touchLayout.pad.center.x - touchLayout.pad.outerRadius}px; top:{touchLayout.pad.center.y -
+        touchLayout.pad.outerRadius}px; width:{touchLayout.pad.outerRadius * 2}px; height:{touchLayout.pad
+        .outerRadius * 2}px;"
+    ></div>
+    <div
+      class="touch-button touch-grab"
+      style="left:{touchLayout.grabButton.x}px; top:{touchLayout.grabButton.y}px; width:{touchLayout.grabButton
+        .width}px; height:{touchLayout.grabButton.height}px;"
+    >
+      ✋
+    </div>
+    <div
+      class="touch-button touch-pause"
+      style="left:{touchLayout.pauseButton.x}px; top:{touchLayout.pauseButton.y}px; width:{touchLayout.pauseButton
+        .width}px; height:{touchLayout.pauseButton.height}px;"
+    >
+      ⏸
+    </div>
+    <div
+      class="touch-button touch-restart"
+      style="left:{touchLayout.restartButton.x}px; top:{touchLayout.restartButton.y}px; width:{touchLayout
+        .restartButton.width}px; height:{touchLayout.restartButton.height}px;"
+    >
+      ⟲
+    </div>
+  </div>
+{/if}
 
 <style>
+  /* FR-012: no scroll/zoom/bounce/select/callout anywhere on the page —
+     the event-level suppression in TouchInput.attach() is backed up here. */
+  :global(html),
+  :global(body) {
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .safe-area-probe {
+    position: fixed;
+    inset: 0;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
+    pointer-events: none;
+    visibility: hidden;
+  }
+
   canvas {
     display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100vw;
     height: 100vh;
+    touch-action: none;
+    user-select: none;
   }
 
   .readout {
@@ -342,5 +509,35 @@
     background: rgba(255, 255, 255, 0.85);
     color: #111;
     border-color: #fff;
+  }
+
+  .touch-controls {
+    position: fixed;
+    inset: 0;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .touch-pad {
+    position: fixed;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    touch-action: none;
+  }
+
+  .touch-button {
+    position: fixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    color: #fff;
+    font-size: 1.5rem;
+    line-height: 1;
+    touch-action: none;
+    user-select: none;
   }
 </style>
