@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { SoundEventId } from '../../../src/lib/audio/events';
+import { TICK_RATE_HZ } from '../../../src/sim/cave';
 import { listThemes } from '../../../src/lib/themes/registry';
 import type { Theme, VoiceSpec } from '../../../src/lib/themes/types';
 import '../../../src/lib/themes';
+
+// FR-021: a voice MUST be over before it can mask the next event of the
+// same id at the game's tick rate. doorOpen is exempt — FR-007 guarantees
+// it fires at most once per cave attempt, so same-id masking cannot occur.
+const TICK_INTERVAL_MS = 1000 / TICK_RATE_HZ;
+const MASKING_EXEMPT_EVENT_IDS: ReadonlySet<SoundEventId> = new Set(['doorOpen']);
 
 const SOUND_EVENT_IDS: readonly SoundEventId[] = [
   'dirtStep',
@@ -55,6 +62,10 @@ function checkVoiceSpecRanges(theme: Theme): void {
 
     expect(voice.noiseMix, `${label} noiseMix`).toBeGreaterThanOrEqual(0);
     expect(voice.noiseMix, `${label} noiseMix`).toBeLessThanOrEqual(1);
+
+    if (!MASKING_EXEMPT_EVENT_IDS.has(id)) {
+      expect(voice.durationMs, `${label} durationMs (FR-021, masking)`).toBeLessThan(TICK_INTERVAL_MS);
+    }
   }
 }
 

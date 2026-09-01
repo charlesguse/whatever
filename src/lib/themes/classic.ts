@@ -5,13 +5,17 @@ import type { SoundTable, Theme, ThemeEntry } from './types';
 // retro-chiptune palette, distinct from Classroom's per event id
 // (FR-039), every level within the [0.2, 0.6] band shared across both
 // themes.
+// FR-021: every id but doorOpen (which fires at most once per attempt, so
+// same-id masking cannot occur) is kept under the game's 125ms tick
+// interval (TICK_RATE_HZ = 8) so it is always over before the next event
+// of the same id could arrive on the very next tick.
 const sounds: SoundTable = {
   dirtStep: { waveform: 'square', frequencyHz: 220, durationMs: 50, attackMs: 1, releaseMs: 15, level: 0.2, noiseMix: 0.5 },
-  fallStart: { waveform: 'sawtooth', frequencyHz: 500, frequencyEndHz: 250, durationMs: 110, attackMs: 3, releaseMs: 35, level: 0.28, noiseMix: 0.05 },
-  fallLand: { waveform: 'square', frequencyHz: 120, frequencyEndHz: 60, durationMs: 150, attackMs: 1, releaseMs: 70, level: 0.5, noiseMix: 0.4 },
-  diamondCollected: { waveform: 'triangle', frequencyHz: 1100, frequencyEndHz: 1600, durationMs: 160, attackMs: 3, releaseMs: 70, level: 0.55, noiseMix: 0 },
+  fallStart: { waveform: 'sawtooth', frequencyHz: 500, frequencyEndHz: 250, durationMs: 95, attackMs: 3, releaseMs: 30, level: 0.28, noiseMix: 0.05 },
+  fallLand: { waveform: 'square', frequencyHz: 120, frequencyEndHz: 60, durationMs: 90, attackMs: 1, releaseMs: 40, level: 0.5, noiseMix: 0.4 },
+  diamondCollected: { waveform: 'triangle', frequencyHz: 1100, frequencyEndHz: 1600, durationMs: 100, attackMs: 3, releaseMs: 40, level: 0.55, noiseMix: 0 },
   doorOpen: { waveform: 'sawtooth', frequencyHz: 400, frequencyEndHz: 700, durationMs: 240, attackMs: 8, releaseMs: 90, level: 0.35, noiseMix: 0 },
-  explosion: { waveform: 'noise', frequencyHz: 100, durationMs: 260, attackMs: 1, releaseMs: 140, level: 0.6, noiseMix: 1 },
+  explosion: { waveform: 'noise', frequencyHz: 100, durationMs: 100, attackMs: 1, releaseMs: 45, level: 0.6, noiseMix: 1 },
   timeLow: { waveform: 'sawtooth', frequencyHz: 1000, durationMs: 80, attackMs: 1, releaseMs: 15, level: 0.3, noiseMix: 0 },
   bonusTally: { waveform: 'square', frequencyHz: 850, frequencyEndHz: 1050, durationMs: 90, attackMs: 1, releaseMs: 25, level: 0.25, noiseMix: 0 },
 };
