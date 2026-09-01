@@ -38,11 +38,12 @@ export class TouchInput {
         // FR-014: no control to hit-test against — a tap-to-confirm
         // candidate, only ever consumed by App.svelte on screens with no
         // layout at all. FR-017/FR-020 (006, mirrored from keyboard.ts's
-        // START_KEYS handling): a tap targeting the theme picker is that
-        // button's own activation, not a start/confirm request — leave it
-        // alone so the picker still gets the tap.
+        // START_KEYS handling): a tap targeting the theme picker or the
+        // mute button (008, FR-025) is that button's own activation, not a
+        // start/confirm request — leave it alone so the button still gets
+        // the tap.
         const target = touch.target as { closest?: (selector: string) => unknown } | null | undefined;
-        if (target?.closest?.('.theme-picker')) continue;
+        if (target?.closest?.('.theme-picker, .mute-button')) continue;
         this.startPending = true;
         continue;
       }

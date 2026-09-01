@@ -42,12 +42,14 @@ function fakeTarget(): {
   };
 }
 
-// A minimal stand-in for a DOM element inside (or outside) the theme
-// picker — only `closest()` is exercised by keyboard.ts, so that is all
-// this stub implements (no real DOM in this project's test run).
-function elementStub(insideThemePicker: boolean): { closest(selector: string): unknown } {
+// A minimal stand-in for a DOM element inside (or outside) a given class —
+// only `closest()` is exercised by keyboard.ts, so that is all this stub
+// implements (no real DOM in this project's test run). Mimics real
+// `closest()` semantics for a comma-separated selector list.
+function elementStub(insideClass: string | false): { closest(selector: string): unknown } {
   return {
-    closest: (selector: string) => (insideThemePicker && selector === '.theme-picker' ? {} : null),
+    closest: (selector: string) =>
+      insideClass !== false && selector.split(',').some((part) => part.trim() === insideClass) ? {} : null,
   };
 }
 
@@ -96,10 +98,10 @@ describe('Start-key presses targeting the theme picker (FR-017, US1/AC6)', () =>
     const keyboard = new KeyboardInput();
     keyboard.attach(target);
 
-    dispatch({ type: 'keydown', key: 'Enter', target: elementStub(true) });
+    dispatch({ type: 'keydown', key: 'Enter', target: elementStub('.theme-picker') });
     expect(keyboard.consumeStart()).toBe(false);
 
-    dispatch({ type: 'keydown', key: ' ', target: elementStub(true) });
+    dispatch({ type: 'keydown', key: ' ', target: elementStub('.theme-picker') });
     expect(keyboard.consumeStart()).toBe(false);
   });
 
@@ -113,6 +115,20 @@ describe('Start-key presses targeting the theme picker (FR-017, US1/AC6)', () =>
 
     dispatch({ type: 'keydown', key: ' ' });
     expect(keyboard.consumeStart()).toBe(true);
+  });
+});
+
+describe('Start-key presses targeting the mute button (008, FR-025)', () => {
+  it('does not set startPending when event.target is inside the mute button', () => {
+    const { target, dispatch } = fakeTarget();
+    const keyboard = new KeyboardInput();
+    keyboard.attach(target);
+
+    dispatch({ type: 'keydown', key: 'Enter', target: elementStub('.mute-button') });
+    expect(keyboard.consumeStart()).toBe(false);
+
+    dispatch({ type: 'keydown', key: ' ', target: elementStub('.mute-button') });
+    expect(keyboard.consumeStart()).toBe(false);
   });
 });
 
