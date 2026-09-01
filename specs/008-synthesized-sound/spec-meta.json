@@ -2,7 +2,7 @@
   "issue": 8,
   "spec_dir": "specs/008-synthesized-sound",
   "feature_num": "008",
-  "stage": "spec",
+  "stage": "plan",
   "iteration": 0,
-  "spec_branch": null
+  "spec_branch": "spec/008-synthesized-sound"
 }
