@@ -2,7 +2,8 @@
   "issue": 8,
   "spec_dir": "specs/008-synthesized-sound",
   "feature_num": "008",
-  "stage": "implement",
+  "stage": "review",
   "iteration": 1,
-  "spec_branch": "spec/008-synthesized-sound"
+  "spec_branch": "spec/008-synthesized-sound",
+  "pending_re_review_from": []
 }
