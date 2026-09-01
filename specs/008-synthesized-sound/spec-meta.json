@@ -3,7 +3,7 @@
   "spec_dir": "specs/008-synthesized-sound",
   "feature_num": "008",
   "stage": "implement",
-  "iteration": 1,
+  "iteration": 2,
   "spec_branch": "spec/008-synthesized-sound",
   "pending_re_review_from": ["charlesguse"]
 }
