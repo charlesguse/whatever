@@ -152,4 +152,12 @@ export class TouchInput {
   consumeCycleTheme(): boolean {
     return false;
   }
+
+  // Always false — mirrors consumeCycleTheme()'s existing stub. The real
+  // touch/pointer mute route is App.svelte's always-rendered on-screen
+  // button, a native element, not this class's hit-test system
+  // (mute-api.md).
+  consumeMute(): boolean {
+    return false;
+  }
 }

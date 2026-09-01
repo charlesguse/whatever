@@ -6,6 +6,7 @@
   import { CAVES } from './caves';
   import type { Screen, SessionState } from './lib/session/types';
   import { readSave, writeSave } from './lib/storage/save';
+  import { resolveStoredMute, toggleMute } from './lib/audio/mute';
   import { KeyboardInput } from './lib/input/keyboard';
   import { TouchInput } from './lib/input/touch/TouchInput';
   import { GamepadInput } from './lib/input/gamepad/GamepadInput';
@@ -29,6 +30,15 @@
     if (id === activeThemeId) return;
     activeThemeId = id;
     writeSave({ themeId: id });
+  }
+
+  // FR-030: a plain boolean, never a SessionState field — toggling it can
+  // never perturb the cave, score, clock, or tick count.
+  let muted: boolean = $state(resolveStoredMute(readSave().muted));
+
+  function toggleMuted(): void {
+    muted = toggleMute(muted);
+    writeSave({ muted });
   }
 
   const TICK_INTERVAL_MS = 1000 / TICK_RATE_HZ;
@@ -174,6 +184,12 @@
     // never inside a short-circuiting `||` (contracts/input-merge-api.md).
     if (orAll(keyboard.consumeCycleTheme(), touch.consumeCycleTheme(), gamepad.consumeCycleTheme())) {
       selectTheme(cycleThemeId(activeThemeId, listThemes().map((t) => t.id)));
+    }
+
+    // FR-024, FR-025: reachable from every screen, same as cycle-theme
+    // above — never touches session (FR-030).
+    if (orAll(keyboard.consumeMute(), touch.consumeMute(), gamepad.consumeMute())) {
+      toggleMuted();
     }
 
     // FR-027: restart works from playing, paused, caveIntro, and lifeLost,
@@ -380,6 +396,15 @@
 {#if statusMessage}
   <div class="status-banner">{statusMessage}</div>
 {/if}
+
+<button
+  type="button"
+  class="mute-button"
+  aria-pressed={muted}
+  onclick={toggleMuted}
+>
+  {muted ? '🔇' : '🔊'}
+</button>
 {#if listThemes().length > 1}
   <div class="theme-picker" style={themePickerRightPx !== undefined ? `right:${themePickerRightPx}px` : undefined}>
     {#each listThemes() as themeOption (themeOption.id)}
@@ -485,6 +510,19 @@
     border-radius: 0.5rem;
     pointer-events: none;
     text-align: center;
+  }
+
+  .mute-button {
+    position: fixed;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    padding: 0.25rem 0.6rem;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 1.1rem;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 0.3rem;
+    cursor: pointer;
   }
 
   .theme-picker {

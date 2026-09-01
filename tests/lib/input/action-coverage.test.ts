@@ -4,6 +4,7 @@ import {
   GRAB_KEYS,
   KEY_TO_DIRECTION,
   KeyboardInput,
+  MUTE_KEYS,
   PAUSE_KEYS,
   RESTART_KEYS,
   START_KEYS,
@@ -18,9 +19,10 @@ const NAMED_ACTIONS = [
   'consumeStart',
   'consumePause',
   'consumeCycleTheme',
+  'consumeMute',
 ] as const;
 
-describe('KeyboardInput declares all six named actions, each backed by a non-empty key table (SC-012)', () => {
+describe('KeyboardInput declares all seven named actions, each backed by a non-empty key table (SC-012)', () => {
   it('every named action method exists', () => {
     const keyboard = new KeyboardInput();
     for (const action of NAMED_ACTIONS) {
@@ -35,6 +37,7 @@ describe('KeyboardInput declares all six named actions, each backed by a non-emp
     expect(START_KEYS.size).toBeGreaterThan(0);
     expect(PAUSE_KEYS.size).toBeGreaterThan(0);
     expect(CYCLE_THEME_KEYS.size).toBeGreaterThan(0);
+    expect(MUTE_KEYS.size).toBeGreaterThan(0);
   });
 });
 

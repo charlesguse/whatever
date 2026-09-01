@@ -102,6 +102,46 @@ describe('themeId (FR-025, FR-027)', () => {
   });
 });
 
+describe('muted (FR-031, FR-032, FR-033)', () => {
+  it('readSave() returns muted: undefined for a missing stored value', () => {
+    expect(readSave(memoryStorage()).muted).toBeUndefined();
+  });
+
+  it('readSave() returns muted: undefined for an unreadable/non-boolean stored value', () => {
+    const string = memoryStorage();
+    string.setItem('recess-rocks:save', JSON.stringify({ highScore: 0, furthestCave: 1, muted: 'true' }));
+    expect(readSave(string).muted).toBeUndefined();
+
+    const number = memoryStorage();
+    number.setItem('recess-rocks:save', JSON.stringify({ highScore: 0, furthestCave: 1, muted: 1 }));
+    expect(readSave(number).muted).toBeUndefined();
+
+    const nullValue = memoryStorage();
+    nullValue.setItem('recess-rocks:save', JSON.stringify({ highScore: 0, furthestCave: 1, muted: null }));
+    expect(readSave(nullValue).muted).toBeUndefined();
+  });
+
+  it('writeSave merges muted per-field, not as a full-record overwrite', () => {
+    const storage = memoryStorage();
+    writeSave({ muted: true }, storage);
+    writeSave({ highScore: 5 }, storage); // no muted in this call
+    expect(readSave(storage).muted).toBe(true);
+    expect(readSave(storage).highScore).toBe(5);
+  });
+
+  it('writeSave is last-write-wins for muted, not Math.max-shaped', () => {
+    const storage = memoryStorage();
+    writeSave({ muted: true }, storage);
+    writeSave({ muted: false }, storage);
+    expect(readSave(storage).muted).toBe(false);
+  });
+
+  it('a throwing/absent store degrades to session-only for muted, exactly like themeId', () => {
+    expect(readSave(throwingStorage()).muted).toBeUndefined();
+    expect(() => writeSave({ muted: true }, throwingStorage())).not.toThrow();
+  });
+});
+
 describe('invalid or out-of-range stored values are treated as absent (FR-042)', () => {
   it('a missing key reads as absent', () => {
     expect(readSave(memoryStorage())).toEqual({ highScore: 0, furthestCave: 1 });

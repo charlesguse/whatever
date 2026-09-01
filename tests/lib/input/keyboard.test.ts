@@ -4,6 +4,7 @@ import {
   GRAB_KEYS,
   KEY_TO_DIRECTION,
   KeyboardInput,
+  MUTE_KEYS,
   PAUSE_KEYS,
   RESTART_KEYS,
   START_KEYS,
@@ -127,6 +128,50 @@ describe('CYCLE_THEME_KEYS is disjoint from every gameplay key set (SC-011)', ()
     for (const keys of otherKeySets) {
       for (const key of keys) {
         expect(CYCLE_THEME_KEYS.has(key)).toBe(false);
+      }
+    }
+  });
+});
+
+describe('KeyboardInput.consumeMute (FR-024, FR-025)', () => {
+  it('reports true exactly once per keydown, false otherwise', () => {
+    const { target, dispatch } = fakeTarget();
+    const keyboard = new KeyboardInput();
+    keyboard.attach(target);
+
+    expect(keyboard.consumeMute()).toBe(false);
+
+    dispatch({ type: 'keydown', key: 'm' });
+    expect(keyboard.consumeMute()).toBe(true);
+    expect(keyboard.consumeMute()).toBe(false);
+
+    dispatch({ type: 'keydown', key: 'M' });
+    expect(keyboard.consumeMute()).toBe(true);
+  });
+
+  it('ignores event.repeat', () => {
+    const { target, dispatch } = fakeTarget();
+    const keyboard = new KeyboardInput();
+    keyboard.attach(target);
+
+    dispatch({ type: 'keydown', key: 'm', repeat: true });
+    expect(keyboard.consumeMute()).toBe(false);
+  });
+});
+
+describe('MUTE_KEYS is disjoint from every other key set (FR-025)', () => {
+  it('shares no member with direction/grab/restart/start/pause/cycle-theme keys', () => {
+    const otherKeySets = [
+      Object.keys(KEY_TO_DIRECTION),
+      [...GRAB_KEYS],
+      [...RESTART_KEYS],
+      [...START_KEYS],
+      [...PAUSE_KEYS],
+      [...CYCLE_THEME_KEYS],
+    ];
+    for (const keys of otherKeySets) {
+      for (const key of keys) {
+        expect(MUTE_KEYS.has(key)).toBe(false);
       }
     }
   });

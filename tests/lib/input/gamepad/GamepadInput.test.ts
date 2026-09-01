@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GamepadInput } from '../../../../src/lib/input/gamepad/GamepadInput';
-import { DPAD_BUTTON_INDEX, FACE_BUTTON_GRAB_CONFIRM_INDEX, PAUSE_BUTTON_INDEX } from '../../../../src/lib/input/gamepad/bindings';
+import { DPAD_BUTTON_INDEX, FACE_BUTTON_GRAB_CONFIRM_INDEX, MUTE_BUTTON_INDEX, PAUSE_BUTTON_INDEX } from '../../../../src/lib/input/gamepad/bindings';
 
 function button(pressed: boolean): GamepadButton {
   return { pressed, touched: pressed, value: pressed ? 1 : 0 } as GamepadButton;
@@ -114,6 +114,18 @@ describe('GamepadInput — one-shot edge-trigger across a held span (SC-006)', (
     expect(gamepad.consumePause()).toBe(false);
     gamepad.poll();
     expect(gamepad.consumePause()).toBe(false);
+  });
+
+  it('mute fires once on the poll it becomes pressed, not again while held (FR-026)', () => {
+    const gamepad = new GamepadInput();
+    vi.stubGlobal('navigator', {
+      getGamepads: () => [makePad(0, { pressedIndices: [MUTE_BUTTON_INDEX] })],
+    });
+
+    gamepad.poll();
+    expect(gamepad.consumeMute()).toBe(true);
+    gamepad.poll();
+    expect(gamepad.consumeMute()).toBe(false);
   });
 });
 

@@ -35,6 +35,10 @@ export const PAUSE_KEYS = new Set(['p', 'P']);
 // (SC-011), the default per research.md, maintainer-reassignable here.
 export const CYCLE_THEME_KEYS = new Set(['t', 'T']);
 
+// A one-shot mute key (FR-024, FR-025) — disjoint from every key above,
+// the default per research.md, maintainer-reassignable here.
+export const MUTE_KEYS = new Set(['m', 'M']);
+
 // Tracks key-down/key-up state and reduces it to one direction-or-nothing
 // per tick (FR-018-FR-022). Held-key cadence is driven by the sim's tick
 // rate, never the OS key-repeat rate: repeat keydown events are ignored
@@ -48,6 +52,7 @@ export class KeyboardInput {
   private startPending = false;
   private pausePending = false;
   private cycleThemePending = false;
+  private mutePending = false;
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (GRAB_KEYS.has(event.key)) {
@@ -83,6 +88,12 @@ export class KeyboardInput {
     if (CYCLE_THEME_KEYS.has(event.key)) {
       event.preventDefault();
       if (!event.repeat) this.cycleThemePending = true;
+      return;
+    }
+
+    if (MUTE_KEYS.has(event.key)) {
+      event.preventDefault();
+      if (!event.repeat) this.mutePending = true;
       return;
     }
 
@@ -169,6 +180,14 @@ export class KeyboardInput {
   consumeCycleTheme(): boolean {
     if (!this.cycleThemePending) return false;
     this.cycleThemePending = false;
+    return true;
+  }
+
+  // Reports and clears a one-shot mute request (FR-024, FR-025), the same
+  // shape as consumeCycleTheme().
+  consumeMute(): boolean {
+    if (!this.mutePending) return false;
+    this.mutePending = false;
     return true;
   }
 }

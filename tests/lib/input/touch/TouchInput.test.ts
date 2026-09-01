@@ -275,3 +275,11 @@ describe('a held pad direction produces the identical per-tick action a held key
     }
   });
 });
+
+describe("mute's touch route is the on-screen button, not this class (mute-api.md)", () => {
+  it('TouchInput.consumeMute() always returns false', () => {
+    const touch = new TouchInput();
+    expect(touch.consumeMute()).toBe(false);
+    expect(touch.consumeMute()).toBe(false);
+  });
+});
