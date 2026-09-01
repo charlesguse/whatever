@@ -7,6 +7,9 @@
   import type { Screen, SessionState } from './lib/session/types';
   import { readSave, writeSave } from './lib/storage/save';
   import { resolveStoredMute, toggleMute } from './lib/audio/mute';
+  import { deriveSoundEvents } from './lib/audio/events';
+  import { applyVoiceCap, DEFAULT_VOICE_CAP } from './lib/audio/priority';
+  import { createAudioEngine } from './lib/audio/engine';
   import { KeyboardInput } from './lib/input/keyboard';
   import { TouchInput } from './lib/input/touch/TouchInput';
   import { GamepadInput } from './lib/input/gamepad/GamepadInput';
@@ -66,6 +69,7 @@
   const keyboard = new KeyboardInput();
   const touch = new TouchInput();
   const gamepad = new GamepadInput();
+  const audioEngine = createAudioEngine();
   let renderLoop: RenderLoop | undefined;
   let tickHandle: number | undefined;
   let lastTime: number | undefined;
@@ -102,14 +106,20 @@
     insetBox = measureInsetBox();
   }
 
+  // FR-016, FR-043: device creation happens only inside these existing
+  // key/click/touch gesture listeners — never at module/page load, never
+  // from gamepad polling.
   const onAnyKeyDown = (): void => {
     lastInputSource = nextLastInputSource(lastInputSource, 'keydown');
+    audioEngine.unlock();
   };
   const onAnyClick = (): void => {
     lastInputSource = nextLastInputSource(lastInputSource, 'click');
+    audioEngine.unlock();
   };
   const onAnyTouchStart = (): void => {
     lastInputSource = nextLastInputSource(lastInputSource, 'touchstart');
+    audioEngine.unlock();
   };
 
   // FR-008, FR-027, FR-027a: three independent, separately testable gates —
@@ -170,8 +180,12 @@
     // FR-017: polled once per tick, before any consume*() call.
     if (gamepadSupported) gamepad.poll();
     const previousScreen = session.screen;
+    const previousSession = session;
     stepTickInner();
     saveOnTransition(previousScreen, session.screen);
+    // FR-019, FR-020: derive -> cap -> play, every tick, entirely outside
+    // the sim's own tick() call above.
+    audioEngine.play(applyVoiceCap(deriveSoundEvents(previousSession, session), DEFAULT_VOICE_CAP), theme.sounds, muted);
   }
 
   function stepTickInner(): void {
