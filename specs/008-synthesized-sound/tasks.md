@@ -303,3 +303,9 @@ With multiple developers, after Foundational:
   other task pairs an implementation task with a preceding test task.
 - Commit after each task or logical group; stop at any checkpoint to
   validate a story independently before moving on.
+
+## Maintainer Feedback
+
+- [ ] Add a pure, total transition function to `src/lib/audio/availability.ts` over an input source (`'key' | 'click' | 'touch' | 'gamepad'`) that returns the next `AudioAvailability`: `gamepad` leaves `notCreated` unchanged; `key`, `click`, and `touch` advance it out of `notCreated`. Closes the gap where SC-009 claims a test over the availability state machine that does not exist.
+- [ ] Route `createAudioEngine().unlock()` in `src/lib/audio/engine.ts` through that new transition function, so FR-043 (a gamepad press must never unlock audio) is enforced structurally rather than by the convention of which App.svelte listeners happen to call `unlock()`.
+- [ ] Add a test in `tests/lib/audio/availability.test.ts` driving the new transition as a pure function across all four input sources, including asserting the `gamepad` case leaves `notCreated` unchanged, satisfying SC-009's 'first half enforced by a test over the availability state machine'.
