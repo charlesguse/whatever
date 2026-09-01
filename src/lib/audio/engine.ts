@@ -10,7 +10,14 @@ export interface AudioEngine {
   play(events: readonly SoundEventId[], sounds: SoundTable, muted: boolean): void;
 }
 
-function scheduleVoice(context: AudioContext, voice: VoiceSpec): void {
+// Tracks every currently-scheduled source node so a mute press can hard-stop
+// them immediately (FR-028 — "including any voice already sounding"),
+// rather than only suppressing newly scheduled ones.
+function scheduleVoice(
+  context: AudioContext,
+  voice: VoiceSpec,
+  activeNodes: Set<AudioScheduledSourceNode>
+): void {
   try {
     const now = context.currentTime;
     const durationSec = voice.durationMs / 1000;
@@ -39,6 +46,8 @@ function scheduleVoice(context: AudioContext, voice: VoiceSpec): void {
       noiseGain.connect(master);
       noiseSource.start(now);
       noiseSource.stop(now + durationSec);
+      activeNodes.add(noiseSource);
+      noiseSource.addEventListener('ended', () => activeNodes.delete(noiseSource));
     }
 
     if (voice.noiseMix < 1) {
@@ -54,6 +63,8 @@ function scheduleVoice(context: AudioContext, voice: VoiceSpec): void {
       oscillatorGain.connect(master);
       oscillator.start(now);
       oscillator.stop(now + durationSec);
+      activeNodes.add(oscillator);
+      oscillator.addEventListener('ended', () => activeNodes.delete(oscillator));
     }
   } catch {
     // FR-018: every scheduling failure is swallowed — nothing thrown,
@@ -68,6 +79,20 @@ export function createAudioEngine(): AudioEngine {
   let availability: AudioAvailability = 'notCreated';
   let unlockStarted = false;
   let context: AudioContext | undefined;
+  const activeNodes = new Set<AudioScheduledSourceNode>();
+
+  // FR-028: an immediate hard stop, not a fade — "no tail" per the
+  // maintainer's listening checklist.
+  function stopAllVoices(): void {
+    for (const node of activeNodes) {
+      try {
+        node.stop();
+      } catch {
+        // Already stopped/never started — swallow (FR-018).
+      }
+    }
+    activeNodes.clear();
+  }
 
   function unlock(): void {
     // Idempotent — a no-op once a first attempt has started, including
@@ -100,10 +125,15 @@ export function createAudioEngine(): AudioEngine {
   }
 
   function play(events: readonly SoundEventId[], sounds: SoundTable, muted: boolean): void {
-    // No node allocation at all when muted or unavailable (FR-018, FR-029).
-    if (muted || availability !== 'available' || !context) return;
+    // FR-028: muting stops any voice already sounding, immediately — not
+    // only new ones. No node allocation at all when muted or unavailable
+    // (FR-018, FR-029).
+    if (muted || availability !== 'available' || !context) {
+      stopAllVoices();
+      return;
+    }
     for (const id of events) {
-      scheduleVoice(context, sounds[id]);
+      scheduleVoice(context, sounds[id], activeNodes);
     }
   }
 
