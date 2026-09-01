@@ -527,9 +527,14 @@
   }
 
   .mute-button {
+    /* Top-center: clear of the HUD readout (top-left), the theme picker
+       (top-right), and the touch pad/grab/pause/restart controls (the
+       bottom band in portrait, the full-height side margins in landscape
+       — src/lib/input/touch/layout.ts). */
     position: fixed;
-    bottom: 0.5rem;
-    left: 0.5rem;
+    top: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
     padding: 0.25rem 0.6rem;
     background: rgba(0, 0, 0, 0.55);
     color: #fff;
