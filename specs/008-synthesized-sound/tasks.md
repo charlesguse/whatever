@@ -184,8 +184,8 @@ checklist.
 **Purpose**: Final verification that the feature is additive-only and the
 single-file build is intact.
 
-- [ ] T028 [P] Run `npm test` (builds first, then the full suite) and confirm every existing feature-001–007 test still passes unchanged and `dist/` still holds exactly one self-contained `index.html` (SC-006); depends on T007, T008, T015–T020, T022, T023, T025, T026, T027
-- [ ] T029 [P] Grep `src/sim/`, `src/lib/render/`, and `src/lib/audio/` for a theme-id branch (e.g. `theme ===`/`themeId ===` outside `src/lib/themes/`) and confirm none exists (FR-036); confirm `git diff`/the PR's file list touches no file under `src/sim/` (FR-002, FR-003)
+- [X] T028 [P] Run `npm test` (builds first, then the full suite) and confirm every existing feature-001–007 test still passes unchanged and `dist/` still holds exactly one self-contained `index.html` (SC-006); depends on T007, T008, T015–T020, T022, T023, T025, T026, T027
+- [X] T029 [P] Grep `src/sim/`, `src/lib/render/`, and `src/lib/audio/` for a theme-id branch (e.g. `theme ===`/`themeId ===` outside `src/lib/themes/`) and confirm none exists (FR-036); confirm `git diff`/the PR's file list touches no file under `src/sim/` (FR-002, FR-003)
 - [ ] T030 Work through `spec.md`'s "What the maintainer listens for" checklist against a `npm run build` output of `dist/index.html` opened via `file://` (dirt step, fall start/land single and stacked, diamond collected, exit opening, explosion, low time, bonus tally, mute instant/no-tail/persists/unmute-plays-next, theme switch mid-cave, iOS Safari first-tap unlock, backgrounded/restored tab, controller-only session, off-camera events) — maintainer-only, not a `vitest` task; depends on T028
 
 ---
