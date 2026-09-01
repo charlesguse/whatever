@@ -1,5 +1,19 @@
 import { ELEMENT_IDS, type ElementId } from '../../sim/elements';
-import type { Theme, ThemeEntry } from './types';
+import type { SoundTable, Theme, ThemeEntry } from './types';
+
+// One synthesized voice per SoundEventId (FR-034, FR-035) — a bright,
+// playful palette distinct from Classic's per event id (FR-039), every
+// level within the [0.2, 0.6] band shared across both themes.
+const sounds: SoundTable = {
+  dirtStep: { waveform: 'noise', frequencyHz: 300, durationMs: 60, attackMs: 2, releaseMs: 20, level: 0.25, noiseMix: 0.8 },
+  fallStart: { waveform: 'triangle', frequencyHz: 600, frequencyEndHz: 300, durationMs: 120, attackMs: 5, releaseMs: 40, level: 0.3, noiseMix: 0.1 },
+  fallLand: { waveform: 'sine', frequencyHz: 150, frequencyEndHz: 90, durationMs: 140, attackMs: 2, releaseMs: 60, level: 0.45, noiseMix: 0.3 },
+  diamondCollected: { waveform: 'sine', frequencyHz: 900, frequencyEndHz: 1400, durationMs: 180, attackMs: 5, releaseMs: 80, level: 0.5, noiseMix: 0 },
+  doorOpen: { waveform: 'triangle', frequencyHz: 500, frequencyEndHz: 800, durationMs: 260, attackMs: 10, releaseMs: 100, level: 0.4, noiseMix: 0 },
+  explosion: { waveform: 'noise', frequencyHz: 150, durationMs: 220, attackMs: 2, releaseMs: 120, level: 0.55, noiseMix: 0.9 },
+  timeLow: { waveform: 'square', frequencyHz: 1200, durationMs: 90, attackMs: 2, releaseMs: 20, level: 0.35, noiseMix: 0 },
+  bonusTally: { waveform: 'sine', frequencyHz: 1000, frequencyEndHz: 1200, durationMs: 100, attackMs: 2, releaseMs: 30, level: 0.3, noiseMix: 0 },
+};
 
 // The Classroom theme: one entry per declared element id (all 14, FR-026),
 // including the 9 with no sim behavior yet. Only appearance lives here —
@@ -58,6 +72,7 @@ export const classroomTheme: Theme = {
     furthestCave: 'Furthest Classroom: {cave}',
   },
   caveComplete: { label: 'Room cleared! Score: {score}' },
+  sounds,
 };
 
 // Sanity check at module load: every declared element id must have an entry.

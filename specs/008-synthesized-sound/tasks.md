@@ -137,12 +137,12 @@ every event id, in range, and Classroom/Classic differ per event id.
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T021 [US3] Write `tests/lib/themes/sound-table-completeness.test.ts`, mirroring `registry-completeness.test.ts`'s existing shape: iterate `listThemes()` and assert every registered theme defines a `VoiceSpec` for every one of the eight `SoundEventId`s (failure names both the theme id and the missing event id); assert every `VoiceSpec` field is in its declared range (`frequencyHz`/`frequencyEndHz` in `[20, 20000]`, `durationMs` in `(0, 2000]`, `attackMs`/`releaseMs >= 0` with their sum `<= durationMs`, `level`/`noiseMix` in `[0, 1]`); assert Classroom and Classic differ in at least one field for every event id (FR-039); assert every voice's `level` across both themes falls within one shared declared band (FR-039); depends on T004
+- [X] T021 [US3] Write `tests/lib/themes/sound-table-completeness.test.ts`, mirroring `registry-completeness.test.ts`'s existing shape: iterate `listThemes()` and assert every registered theme defines a `VoiceSpec` for every one of the eight `SoundEventId`s (failure names both the theme id and the missing event id); assert every `VoiceSpec` field is in its declared range (`frequencyHz`/`frequencyEndHz` in `[20, 20000]`, `durationMs` in `(0, 2000]`, `attackMs`/`releaseMs >= 0` with their sum `<= durationMs`, `level`/`noiseMix` in `[0, 1]`); assert Classroom and Classic differ in at least one field for every event id (FR-039); assert every voice's `level` across both themes falls within one shared declared band (FR-039); depends on T004
 
 ### Implementation for User Story 3
 
-- [ ] T022 [P] [US3] Add `sounds: SoundTable` with all eight `VoiceSpec` entries to `src/lib/themes/classroom.ts` (FR-034, FR-035); depends on T004, T021
-- [ ] T023 [P] [US3] Add `sounds: SoundTable` with all eight `VoiceSpec` entries to `src/lib/themes/classic.ts`, with every event id's spec differing from Classroom's and every `level` within the same shared band as Classroom's (FR-039); depends on T004, T021
+- [X] T022 [P] [US3] Add `sounds: SoundTable` with all eight `VoiceSpec` entries to `src/lib/themes/classroom.ts` (FR-034, FR-035); depends on T004, T021
+- [X] T023 [P] [US3] Add `sounds: SoundTable` with all eight `VoiceSpec` entries to `src/lib/themes/classic.ts`, with every event id's spec differing from Classroom's and every `level` within the same shared band as Classroom's (FR-039); depends on T004, T021
 
 **Checkpoint**: Both shipped themes are fully and distinctly voiced; adding a
 future theme now only requires one more `sounds` table plus its registry
