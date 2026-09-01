@@ -111,15 +111,15 @@
   // from gamepad polling.
   const onAnyKeyDown = (): void => {
     lastInputSource = nextLastInputSource(lastInputSource, 'keydown');
-    audioEngine.unlock();
+    audioEngine.unlock('key');
   };
   const onAnyClick = (): void => {
     lastInputSource = nextLastInputSource(lastInputSource, 'click');
-    audioEngine.unlock();
+    audioEngine.unlock('click');
   };
   const onAnyTouchStart = (): void => {
     lastInputSource = nextLastInputSource(lastInputSource, 'touchstart');
-    audioEngine.unlock();
+    audioEngine.unlock('touch');
   };
 
   // FR-008, FR-027, FR-027a: three independent, separately testable gates —

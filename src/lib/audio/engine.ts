@@ -1,4 +1,4 @@
-import { resolveAvailabilityAfterGesture, type AudioAvailability } from './availability';
+import { resolveAvailabilityAfterGesture, nextAvailabilityForInput, type AudioAvailability, type InputSource } from './availability';
 import type { SoundEventId } from './events';
 import type { SoundTable, VoiceSpec } from '../themes/types';
 
@@ -6,7 +6,7 @@ import type { SoundTable, VoiceSpec } from '../themes/types';
 // by the maintainer against spec.md's "What the maintainer listens for"
 // checklist.
 export interface AudioEngine {
-  unlock(): void;
+  unlock(source: InputSource): void;
   play(events: readonly SoundEventId[], sounds: SoundTable, muted: boolean): void;
 }
 
@@ -77,7 +77,6 @@ function scheduleVoice(
 // silently swallowed.
 export function createAudioEngine(): AudioEngine {
   let availability: AudioAvailability = 'notCreated';
-  let unlockStarted = false;
   let context: AudioContext | undefined;
   const activeNodes = new Set<AudioScheduledSourceNode>();
 
@@ -94,11 +93,16 @@ export function createAudioEngine(): AudioEngine {
     activeNodes.clear();
   }
 
-  function unlock(): void {
-    // Idempotent — a no-op once a first attempt has started, including
-    // while its resume() promise is still pending (FR-016).
-    if (unlockStarted) return;
-    unlockStarted = true;
+  function unlock(source: InputSource): void {
+    // Routed through the availability state machine (FR-043): gamepad can
+    // never move availability out of notCreated, so this is structurally a
+    // no-op for it, not merely a convention of which listeners call
+    // unlock(). Also idempotent for key/click/touch once a first attempt
+    // has started, including while its resume() promise is still pending
+    // (FR-016).
+    const next = nextAvailabilityForInput(availability, source);
+    if (next === availability) return;
+    availability = next;
 
     try {
       const Ctor =
