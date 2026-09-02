@@ -182,8 +182,17 @@ finite, non-negative pending time.
   stall across a pause is silent either way; the rule still applies, and resuming
   from pause is unaffected.
 - **A stall that ends exactly at the boundary**: the boundary is stated in one
-  direction, so a gap that lands exactly on it behaves the same way on every
-  frame and in the test — no "sometimes catches up".
+  direction — strictly greater drops, at-or-below carries — so pending time that
+  lands exactly on it is carried and spent, and it behaves the same way on every
+  frame and in the test. No "sometimes catches up".
+- **Two ticks in one frame below the boundary**: pending time above one tick
+  interval but at or below two spends two ticks in that frame, so two voices can
+  still sound together. This is a known, accepted residual, not a missed case: it
+  is reachable only from a frame gap that already means the frame rate has fallen
+  to a small fraction of the constitution's floor, and it is a sub-boundary
+  stutter rather than a stall, so SC-002 — which speaks only about the frame
+  after a stall — still holds. Capping ticks per frame would be a different lever
+  from the one this spec pulls; see the scope note in FR-020.
 - **A stall during the cave clock**: the cave clock is counted in ticks, not in
   wall-clock time, so a stall does not consume the player's remaining time. A
   player who returns from a hidden tab finds the same seconds left as when they
@@ -209,16 +218,23 @@ finite, non-negative pending time.
 **The rule**
 
 - **FR-001**: The system MUST bound how much pending simulation time survives a
-  gap between frames, such that a gap large enough to count as a stall leaves
-  zero pending time and the frame that follows it runs no catch-up ticks.
+  gap between frames, such that pending time large enough to count as a stall
+  leaves zero pending time and the frame that follows it runs no catch-up ticks.
 - **FR-002**: The stall boundary MUST be stated as a fixed amount of pending
-  simulation time. Pending time strictly greater than the boundary is a stall and
-  is dropped in full; pending time at or below the boundary is carried and spent
-  as ticks exactly as it is today. The default boundary is two tick intervals'
-  worth of pending time. [NEEDS CLARIFICATION: is two tick intervals the right
-  stall boundary — how much stutter should still catch up, given that at the
-  game's tick rate a frame gap of more than one tick interval already means the
-  frame rate has fallen below the constitution's floor?]
+  simulation time — the time carried forward plus the time elapsed since the
+  previous frame — and MUST NOT be stated against the elapsed frame gap alone.
+  Pending time strictly greater than the boundary is a stall and is dropped in
+  full; pending time at or below the boundary is carried and spent as ticks
+  exactly as it is today. The boundary is two tick intervals' worth of pending
+  time, expressed in tick intervals so that the tick rate remains the single
+  source of truth for it, and never as a hard-coded number of milliseconds.
+- **FR-002a**: The boundary MUST NOT be restated against elapsed time. An
+  elapsed-based boundary of one tick interval would make voice stacking
+  structurally impossible, but it would also zero pending time on *every* frame
+  of a machine sustaining a frame time longer than one tick interval — the game
+  would render forever and never advance a tick. The pending-based rule leaves
+  that machine slow but playable and recoverable, and that is the behavior this
+  spec requires.
 - **FR-003**: The rule MUST be driven by the elapsed time the tick loop already
   observes between frames, and MUST NOT depend on a page-visibility signal, a
   focus signal, or any other event that names one cause of a stall. Hiding a tab,
@@ -262,6 +278,11 @@ finite, non-negative pending time.
   rendering, and the rule MUST NOT allocate per frame or per tick.
 - **FR-015**: The player MUST NOT be shown, told, or logged anything when a stall
   is detected and its backlog dropped.
+- **FR-020**: The feature MUST NOT add a cap on the number of ticks a single
+  frame may run. The only lever this feature pulls is how much pending time
+  survives a frame, per the signature in FR-016; a ticks-per-frame cap is a
+  different rule with different consequences and is out of scope here, including
+  as a way to remove the sub-boundary two-tick case noted in Edge Cases.
 
 **Verification**
 
@@ -273,7 +294,11 @@ finite, non-negative pending time.
 - **FR-017**: The rule MUST ship with tests in the existing node-only
   environment covering, at minimum: a normally paced frame, a stutter under the
   boundary that still spends its ticks, the boundary itself, a gap past the
-  boundary that drops to zero, and the totality cases in FR-007.
+  boundary that drops to zero, and the totality cases in FR-007. The
+  boundary-itself case MUST assert that pending time exactly at two tick
+  intervals is carried in full and spends two ticks — that case is both the
+  inclusive edge of FR-002 and the maximum-stacking case of the accepted
+  residual, and asserting one tick there would pin the wrong rule.
 - **FR-018**: The feature MUST NOT add browser-automation test infrastructure,
   and MUST NOT require a real canvas, audio device, or gamepad to verify the
   rule. The audible result on a real restore remains the maintainer's to confirm
@@ -286,12 +311,12 @@ finite, non-negative pending time.
 - **Pending simulation time**: the amount of simulated time owed but not yet
   spent as ticks, carried from frame to frame. It is the single value this
   feature governs; everything else about the loop is unchanged.
-- **Stall**: a frame gap whose pending simulation time exceeds the stated
-  boundary. It is defined by elapsed time alone and carries no information about
-  its cause.
+- **Stall**: a frame whose pending simulation time — carried-forward time plus
+  the gap since the previous frame — exceeds the stated boundary. It is defined
+  by elapsed time alone and carries no information about its cause.
 - **Stall boundary**: the fixed amount of pending simulation time above which the
-  backlog is dropped in full. One value, stated in the spec, applied on every
-  screen.
+  backlog is dropped in full. Two tick intervals' worth, expressed in tick
+  intervals rather than milliseconds. One value, applied on every screen.
 
 ## Success Criteria *(mandatory)*
 
@@ -347,12 +372,19 @@ against `dist/index.html` opened via `file://`:
 
 ## Assumptions
 
-- **Stall boundary default**: pending simulation time greater than two tick
-  intervals is a stall. At the game's eight-ticks-per-second rate that is a frame
-  gap of roughly a quarter second — well past the constitution's frame-rate floor,
-  so it cannot be reached by a machine that is keeping up, while still letting a
-  brief hiccup catch itself up as the issue asks. Flagged in FR-002 as the one
-  tuning call in this spec.
+- **Stall boundary**: pending simulation time greater than two tick intervals is
+  a stall — confirmed by the requester on issue #26, and no longer an open tuning
+  call. The number follows from what pending time looks like on a *healthy*
+  machine, which is not the same as the frame gap: pending-before-spending
+  legitimately peaks just under one tick interval plus one frame time, so a
+  machine sitting exactly on the constitution's frame-rate floor can carry
+  pending time close to one and a third tick intervals as a matter of course.
+  A one-interval boundary sits below that healthy ceiling and would drop backlog
+  during flawless play; one and a half intervals leaves a floor-rate machine only
+  a sliver of headroom before FR-006's "a brief stutter still spends its ticks"
+  is violated. Two intervals is the smallest round value that clears the
+  healthy-machine ceiling with real margin, and it still lets a brief hiccup
+  catch itself up as the issue asks.
 - **Dropped time is not owed back**: a stall freezes the game; the simulation does
   not fast-forward and does not replay the lost interval. The cave clock is
   counted in ticks, so a player returning from a stall keeps the time they had.

@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,12 +31,16 @@
 
 ## Notes
 
-- One `[NEEDS CLARIFICATION]` marker remains, on **FR-002** — the stall boundary.
-  The spec states a working default (pending time greater than two tick
-  intervals is a stall) and records it in Assumptions, so the spec is complete
-  and testable as written; the marker asks the requester to confirm or move the
-  one tuning value in the feature. It is posted to the lifecycle issue rather
-  than blocking, per the pipeline's CI deviation.
+- The one `[NEEDS CLARIFICATION]` marker, on **FR-002** — the stall boundary —
+  is resolved by the requester's answer on issue #26. Two tick intervals of
+  *pending* time is confirmed, expressed in tick intervals rather than
+  milliseconds, with the carry inclusive at the boundary and strictly-greater
+  dropping. Folding the answer in added **FR-002a** (why the boundary stays on
+  pending rather than on elapsed), **FR-020** (no ticks-per-frame cap — a
+  different lever, out of scope), an Edge Case recording the accepted
+  sub-boundary two-tick residual, a tightened **FR-017** boundary case, and a
+  rewritten Assumptions entry that reasons from healthy pending time rather than
+  from a single frame gap.
 - **FR-016**–**FR-018** name the project's existing pure-function-plus-node-test
   idiom and the absence of a browser in CI. That is a constitutional constraint
   (Principle VII, "Verifiable Without A Browser Harness") and the issue asks for
