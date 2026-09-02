@@ -6,6 +6,10 @@
   import { CAVES } from './caves';
   import type { Screen, SessionState } from './lib/session/types';
   import { readSave, writeSave } from './lib/storage/save';
+  import { resolveStoredMute, toggleMute } from './lib/audio/mute';
+  import { deriveSoundEvents } from './lib/audio/events';
+  import { applyVoiceCap, DEFAULT_VOICE_CAP } from './lib/audio/priority';
+  import { createAudioEngine } from './lib/audio/engine';
   import { KeyboardInput } from './lib/input/keyboard';
   import { TouchInput } from './lib/input/touch/TouchInput';
   import { GamepadInput } from './lib/input/gamepad/GamepadInput';
@@ -29,6 +33,15 @@
     if (id === activeThemeId) return;
     activeThemeId = id;
     writeSave({ themeId: id });
+  }
+
+  // FR-030: a plain boolean, never a SessionState field — toggling it can
+  // never perturb the cave, score, clock, or tick count.
+  let muted: boolean = $state(resolveStoredMute(readSave().muted));
+
+  function toggleMuted(): void {
+    muted = toggleMute(muted);
+    writeSave({ muted });
   }
 
   const TICK_INTERVAL_MS = 1000 / TICK_RATE_HZ;
@@ -56,6 +69,7 @@
   const keyboard = new KeyboardInput();
   const touch = new TouchInput();
   const gamepad = new GamepadInput();
+  const audioEngine = createAudioEngine();
   let renderLoop: RenderLoop | undefined;
   let tickHandle: number | undefined;
   let lastTime: number | undefined;
@@ -92,14 +106,20 @@
     insetBox = measureInsetBox();
   }
 
+  // FR-016, FR-043: device creation happens only inside these existing
+  // key/click/touch gesture listeners — never at module/page load, never
+  // from gamepad polling.
   const onAnyKeyDown = (): void => {
     lastInputSource = nextLastInputSource(lastInputSource, 'keydown');
+    audioEngine.unlock('key');
   };
   const onAnyClick = (): void => {
     lastInputSource = nextLastInputSource(lastInputSource, 'click');
+    audioEngine.unlock('click');
   };
   const onAnyTouchStart = (): void => {
     lastInputSource = nextLastInputSource(lastInputSource, 'touchstart');
+    audioEngine.unlock('touch');
   };
 
   // FR-008, FR-027, FR-027a: three independent, separately testable gates —
@@ -160,8 +180,12 @@
     // FR-017: polled once per tick, before any consume*() call.
     if (gamepadSupported) gamepad.poll();
     const previousScreen = session.screen;
+    const previousSession = session;
     stepTickInner();
     saveOnTransition(previousScreen, session.screen);
+    // FR-019, FR-020: derive -> cap -> play, every tick, entirely outside
+    // the sim's own tick() call above.
+    audioEngine.play(applyVoiceCap(deriveSoundEvents(previousSession, session), DEFAULT_VOICE_CAP), theme.sounds, muted);
   }
 
   function stepTickInner(): void {
@@ -174,6 +198,12 @@
     // never inside a short-circuiting `||` (contracts/input-merge-api.md).
     if (orAll(keyboard.consumeCycleTheme(), touch.consumeCycleTheme(), gamepad.consumeCycleTheme())) {
       selectTheme(cycleThemeId(activeThemeId, listThemes().map((t) => t.id)));
+    }
+
+    // FR-024, FR-025: reachable from every screen, same as cycle-theme
+    // above — never touches session (FR-030).
+    if (orAll(keyboard.consumeMute(), touch.consumeMute(), gamepad.consumeMute())) {
+      toggleMuted();
     }
 
     // FR-027: restart works from playing, paused, caveIntro, and lifeLost,
@@ -380,6 +410,15 @@
 {#if statusMessage}
   <div class="status-banner">{statusMessage}</div>
 {/if}
+
+<button
+  type="button"
+  class="mute-button"
+  aria-pressed={muted}
+  onclick={toggleMuted}
+>
+  {muted ? '🔇' : '🔊'}
+</button>
 {#if listThemes().length > 1}
   <div class="theme-picker" style={themePickerRightPx !== undefined ? `right:${themePickerRightPx}px` : undefined}>
     {#each listThemes() as themeOption (themeOption.id)}
@@ -485,6 +524,24 @@
     border-radius: 0.5rem;
     pointer-events: none;
     text-align: center;
+  }
+
+  .mute-button {
+    /* Top-center: clear of the HUD readout (top-left), the theme picker
+       (top-right), and the touch pad/grab/pause/restart controls (the
+       bottom band in portrait, the full-height side margins in landscape
+       — src/lib/input/touch/layout.ts). */
+    position: fixed;
+    top: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.25rem 0.6rem;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 1.1rem;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 0.3rem;
+    cursor: pointer;
   }
 
   .theme-picker {

@@ -18,6 +18,10 @@ export interface SaveRecord {
   // a *registered* theme is resolveStoredThemeId's job (src/lib/themes/
   // selection.ts), keeping this module theme-registry-agnostic.
   readonly themeId?: string;
+  // FR-032: validated here only as "is this a boolean" — resolveStoredMute
+  // (src/lib/audio/mute.ts) is what supplies the default. Last-write-wins
+  // like themeId, never Math.max-shaped like highScore/furthestCave.
+  readonly muted?: boolean;
 }
 
 const DEFAULT_SAVE: SaveRecord = { highScore: 0, furthestCave: MIN_CAVE };
@@ -60,7 +64,9 @@ export function readSave(storage: StorageLike | undefined = defaultStorage()): S
     if (raw === null) return DEFAULT_SAVE;
 
     const parsed: unknown = JSON.parse(raw);
-    const record = parsed as { highScore?: unknown; furthestCave?: unknown; themeId?: unknown } | null;
+    const record = parsed as
+      | { highScore?: unknown; furthestCave?: unknown; themeId?: unknown; muted?: unknown }
+      | null;
 
     return {
       highScore: isValidHighScore(record?.highScore) ? record.highScore : DEFAULT_SAVE.highScore,
@@ -68,6 +74,7 @@ export function readSave(storage: StorageLike | undefined = defaultStorage()): S
         ? record.furthestCave
         : DEFAULT_SAVE.furthestCave,
       themeId: typeof record?.themeId === 'string' ? record.themeId : undefined,
+      muted: typeof record?.muted === 'boolean' ? record.muted : undefined,
     };
   } catch {
     return DEFAULT_SAVE;
@@ -90,6 +97,7 @@ export function writeSave(
       highScore: Math.max(current.highScore, record.highScore ?? current.highScore),
       furthestCave: Math.max(current.furthestCave, record.furthestCave ?? current.furthestCave),
       themeId: record.themeId ?? current.themeId,
+      muted: record.muted ?? current.muted,
     };
     storage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {

@@ -13,9 +13,11 @@ interface FakeTouch {
   target?: { closest(selector: string): unknown };
 }
 
-function elementStub(insideThemePicker: boolean): { closest(selector: string): unknown } {
+// Mimics real closest() semantics for a comma-separated selector list.
+function elementStub(insideClass: string | false): { closest(selector: string): unknown } {
   return {
-    closest: (selector: string) => (insideThemePicker && selector === '.theme-picker' ? {} : null),
+    closest: (selector: string) =>
+      insideClass !== false && selector.split(',').some((part) => part.trim() === insideClass) ? {} : null,
   };
 }
 
@@ -244,7 +246,19 @@ describe('consumeStart() — set only by a touchstart while no layout is active 
 
     dispatch({
       type: 'touchstart',
-      changedTouches: [{ identifier: 1, clientX: 10, clientY: 10, target: elementStub(true) }],
+      changedTouches: [{ identifier: 1, clientX: 10, clientY: 10, target: elementStub('.theme-picker') }],
+    });
+    expect(touch.consumeStart()).toBe(false);
+  });
+
+  it('is not set by a touchstart targeting the mute button (008, FR-025)', () => {
+    const { target, dispatch } = fakeTarget();
+    const touch = new TouchInput();
+    touch.attach(target);
+
+    dispatch({
+      type: 'touchstart',
+      changedTouches: [{ identifier: 1, clientX: 10, clientY: 10, target: elementStub('.mute-button') }],
     });
     expect(touch.consumeStart()).toBe(false);
   });
@@ -273,5 +287,13 @@ describe('a held pad direction produces the identical per-tick action a held key
     for (let tick = 0; tick < 5; tick++) {
       expect(touch.consumeDirection()).toBe('up');
     }
+  });
+});
+
+describe("mute's touch route is the on-screen button, not this class (mute-api.md)", () => {
+  it('TouchInput.consumeMute() always returns false', () => {
+    const touch = new TouchInput();
+    expect(touch.consumeMute()).toBe(false);
+    expect(touch.consumeMute()).toBe(false);
   });
 });

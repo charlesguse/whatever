@@ -8,6 +8,7 @@ import {
 import {
   CYCLE_THEME_BUTTON_INDEX,
   FACE_BUTTON_GRAB_CONFIRM_INDEX,
+  MUTE_BUTTON_INDEX,
   PAUSE_BUTTON_INDEX,
   RESTART_BUTTON_INDEX,
   STICK_X_AXIS_INDEX,
@@ -32,6 +33,7 @@ export class GamepadInput {
   private mergedRestart = false;
   private mergedPause = false;
   private mergedCycleTheme = false;
+  private mergedMute = false;
 
   private readonly onGamepadDisconnected = (event: GamepadEvent): void => {
     // US4 AC2/AC3: deletes the entry immediately, not waiting for the next
@@ -69,6 +71,7 @@ export class GamepadInput {
     let restart = false;
     let pause = false;
     let cycleTheme = false;
+    let mute = false;
 
     // FR-024: merged across pads — the first non-undefined direction found
     // scanning connected pads in index order; every boolean/edge is OR'd
@@ -96,6 +99,7 @@ export class GamepadInput {
       restart = restart || edges.has(RESTART_BUTTON_INDEX);
       pause = pause || edges.has(PAUSE_BUTTON_INDEX);
       cycleTheme = cycleTheme || edges.has(CYCLE_THEME_BUTTON_INDEX);
+      mute = mute || edges.has(MUTE_BUTTON_INDEX);
 
       state.previousStickDirection = stick;
       state.previousPressed = pressedNow;
@@ -107,6 +111,7 @@ export class GamepadInput {
     this.mergedRestart = restart;
     this.mergedPause = pause;
     this.mergedCycleTheme = cycleTheme;
+    this.mergedMute = mute;
   }
 
   consumeDirection(): Direction | undefined {
@@ -131,5 +136,9 @@ export class GamepadInput {
 
   consumeCycleTheme(): boolean {
     return this.mergedCycleTheme;
+  }
+
+  consumeMute(): boolean {
+    return this.mergedMute;
   }
 }

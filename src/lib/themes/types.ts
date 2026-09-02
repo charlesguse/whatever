@@ -1,4 +1,21 @@
+import type { SoundEventId } from '../audio/events';
 import type { ElementId } from '../../sim/elements';
+
+// One synthesized voice, keyed by sound event id (FR-034, FR-035). Plain
+// data — waveform/frequency/envelope/level, no audio-file reference, no
+// function value.
+export interface VoiceSpec {
+  readonly waveform: 'sine' | 'square' | 'triangle' | 'sawtooth' | 'noise';
+  readonly frequencyHz: number; // [20, 20000]
+  readonly frequencyEndHz?: number; // [20, 20000]; omitted = constant pitch
+  readonly durationMs: number; // (0, 2000]
+  readonly attackMs: number; // >= 0
+  readonly releaseMs: number; // >= 0; attackMs + releaseMs <= durationMs
+  readonly level: number; // [0, 1]
+  readonly noiseMix: number; // [0, 1]; 0 = pure oscillator, 1 = pure noise
+}
+
+export type SoundTable = Readonly<Record<SoundEventId, VoiceSpec>>;
 
 // Element identity lives in the sim; appearance lives here, keyed by element
 // id (constitution Principle III). Adding a theme touches only a new entry
@@ -69,4 +86,7 @@ export interface Theme {
   readonly caveComplete: {
     readonly label: string;
   };
+  // One synthesized voice per SoundEventId (FR-034) — required, so
+  // TypeScript refuses to compile a theme missing any of the eight ids.
+  readonly sounds: SoundTable;
 }

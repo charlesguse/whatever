@@ -38,11 +38,12 @@ export class TouchInput {
         // FR-014: no control to hit-test against — a tap-to-confirm
         // candidate, only ever consumed by App.svelte on screens with no
         // layout at all. FR-017/FR-020 (006, mirrored from keyboard.ts's
-        // START_KEYS handling): a tap targeting the theme picker is that
-        // button's own activation, not a start/confirm request — leave it
-        // alone so the picker still gets the tap.
+        // START_KEYS handling): a tap targeting the theme picker or the
+        // mute button (008, FR-025) is that button's own activation, not a
+        // start/confirm request — leave it alone so the button still gets
+        // the tap.
         const target = touch.target as { closest?: (selector: string) => unknown } | null | undefined;
-        if (target?.closest?.('.theme-picker')) continue;
+        if (target?.closest?.('.theme-picker, .mute-button')) continue;
         this.startPending = true;
         continue;
       }
@@ -150,6 +151,14 @@ export class TouchInput {
   // No on-screen theme control this feature adds — the theme picker's own
   // tap already works as a native click (data-model.md).
   consumeCycleTheme(): boolean {
+    return false;
+  }
+
+  // Always false — mirrors consumeCycleTheme()'s existing stub. The real
+  // touch/pointer mute route is App.svelte's always-rendered on-screen
+  // button, a native element, not this class's hit-test system
+  // (mute-api.md).
+  consumeMute(): boolean {
     return false;
   }
 }

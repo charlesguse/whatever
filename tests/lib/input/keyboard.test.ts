@@ -4,6 +4,7 @@ import {
   GRAB_KEYS,
   KEY_TO_DIRECTION,
   KeyboardInput,
+  MUTE_KEYS,
   PAUSE_KEYS,
   RESTART_KEYS,
   START_KEYS,
@@ -41,12 +42,14 @@ function fakeTarget(): {
   };
 }
 
-// A minimal stand-in for a DOM element inside (or outside) the theme
-// picker — only `closest()` is exercised by keyboard.ts, so that is all
-// this stub implements (no real DOM in this project's test run).
-function elementStub(insideThemePicker: boolean): { closest(selector: string): unknown } {
+// A minimal stand-in for a DOM element inside (or outside) a given class —
+// only `closest()` is exercised by keyboard.ts, so that is all this stub
+// implements (no real DOM in this project's test run). Mimics real
+// `closest()` semantics for a comma-separated selector list.
+function elementStub(insideClass: string | false): { closest(selector: string): unknown } {
   return {
-    closest: (selector: string) => (insideThemePicker && selector === '.theme-picker' ? {} : null),
+    closest: (selector: string) =>
+      insideClass !== false && selector.split(',').some((part) => part.trim() === insideClass) ? {} : null,
   };
 }
 
@@ -95,10 +98,10 @@ describe('Start-key presses targeting the theme picker (FR-017, US1/AC6)', () =>
     const keyboard = new KeyboardInput();
     keyboard.attach(target);
 
-    dispatch({ type: 'keydown', key: 'Enter', target: elementStub(true) });
+    dispatch({ type: 'keydown', key: 'Enter', target: elementStub('.theme-picker') });
     expect(keyboard.consumeStart()).toBe(false);
 
-    dispatch({ type: 'keydown', key: ' ', target: elementStub(true) });
+    dispatch({ type: 'keydown', key: ' ', target: elementStub('.theme-picker') });
     expect(keyboard.consumeStart()).toBe(false);
   });
 
@@ -115,6 +118,20 @@ describe('Start-key presses targeting the theme picker (FR-017, US1/AC6)', () =>
   });
 });
 
+describe('Start-key presses targeting the mute button (008, FR-025)', () => {
+  it('does not set startPending when event.target is inside the mute button', () => {
+    const { target, dispatch } = fakeTarget();
+    const keyboard = new KeyboardInput();
+    keyboard.attach(target);
+
+    dispatch({ type: 'keydown', key: 'Enter', target: elementStub('.mute-button') });
+    expect(keyboard.consumeStart()).toBe(false);
+
+    dispatch({ type: 'keydown', key: ' ', target: elementStub('.mute-button') });
+    expect(keyboard.consumeStart()).toBe(false);
+  });
+});
+
 describe('CYCLE_THEME_KEYS is disjoint from every gameplay key set (SC-011)', () => {
   it('shares no member with direction/grab/restart/start/pause keys', () => {
     const otherKeySets = [
@@ -127,6 +144,50 @@ describe('CYCLE_THEME_KEYS is disjoint from every gameplay key set (SC-011)', ()
     for (const keys of otherKeySets) {
       for (const key of keys) {
         expect(CYCLE_THEME_KEYS.has(key)).toBe(false);
+      }
+    }
+  });
+});
+
+describe('KeyboardInput.consumeMute (FR-024, FR-025)', () => {
+  it('reports true exactly once per keydown, false otherwise', () => {
+    const { target, dispatch } = fakeTarget();
+    const keyboard = new KeyboardInput();
+    keyboard.attach(target);
+
+    expect(keyboard.consumeMute()).toBe(false);
+
+    dispatch({ type: 'keydown', key: 'm' });
+    expect(keyboard.consumeMute()).toBe(true);
+    expect(keyboard.consumeMute()).toBe(false);
+
+    dispatch({ type: 'keydown', key: 'M' });
+    expect(keyboard.consumeMute()).toBe(true);
+  });
+
+  it('ignores event.repeat', () => {
+    const { target, dispatch } = fakeTarget();
+    const keyboard = new KeyboardInput();
+    keyboard.attach(target);
+
+    dispatch({ type: 'keydown', key: 'm', repeat: true });
+    expect(keyboard.consumeMute()).toBe(false);
+  });
+});
+
+describe('MUTE_KEYS is disjoint from every other key set (FR-025)', () => {
+  it('shares no member with direction/grab/restart/start/pause/cycle-theme keys', () => {
+    const otherKeySets = [
+      Object.keys(KEY_TO_DIRECTION),
+      [...GRAB_KEYS],
+      [...RESTART_KEYS],
+      [...START_KEYS],
+      [...PAUSE_KEYS],
+      [...CYCLE_THEME_KEYS],
+    ];
+    for (const keys of otherKeySets) {
+      for (const key of keys) {
+        expect(MUTE_KEYS.has(key)).toBe(false);
       }
     }
   });
