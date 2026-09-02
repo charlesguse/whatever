@@ -59,19 +59,69 @@ window.
 
 ## 007 — Touch controls and gamepad support
 
-Checklist: `specs/007-touch-gamepad-input/quickstart.md`. **Not yet run.**
-Gamepad items are parked until the controller is found; touch and landscape
-items need a touchscreen or emulation.
+Checklist: `specs/007-touch-gamepad-input/spec.md`, **Maintainer Review Notes**
+(007's quickstart deliberately defers to it rather than duplicating it). Four
+device situations: tablet/phone in both orientations, desktop with a
+controller, touchscreen laptop with both touch and keyboard, and plain desktop
+with neither. Covers gesture suppression, safe-area placement, feel parity
+across input sources, and hotplug behaviour.
+
+**Not yet run.** Gamepad situations are parked until the controller is found;
+the touch situations need a real touchscreen.
 
 ## 006 — Classic theme and an in-game theme switcher
 
 Checklist: `specs/006-classic-theme-switcher/quickstart.md`, "Validate
-`file://` playback" (17 items). **Not yet run.**
+`file://` playback" (17 items).
+
+**Run 2026-09-02 — items 1-12 and 14-16 by the maintainer against
+`dist/index.html` at `bf9d316`; item 17 verified from the diff of the 006
+finalize merge (`9e3c617`, PR #20).**
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1 | Build and open from disk | pass |
+| 2 | Theme control listed, keyboard-operable | pass |
+| 3 | Classic switches every element and string, no reload | pass |
+| 4 | Classic's closed exit indistinguishable from steel wall | pass |
+| 5 | Play under Classic identical to Classroom | pass |
+| 6 | Switch mid-cave with a boulder in flight | pass |
+| 7 | Switch while holding a movement key | pass |
+| 8 | Cycle key from title does not start the game | pass |
+| 9 | Cycle key mid-cave does not consume movement | pass |
+| 10 | Switch on every non-playing screen | pass |
+| 11 | Re-selecting the active theme is a no-op | pass |
+| 12 | Classic survives reload with score and progress | pass |
+| 13 | `localStorage` disabled for the page | blocked — needs devtools site-data block |
+| 14 | Click/tap works in addition to keyboard | pass |
+| 15 | Tab + Enter switches without starting a cave | pass |
+| 16 | Frame rate holds through a switch | pass |
+| 17 | Diff audit | pass — see below |
+
+**Item 17 detail** (diff `9e3c617^..9e3c617`, PR #20):
+
+- **Zero files under `src/sim/` changed.** Nothing in the diff touches the sim.
+- **Zero comparisons against a theme id in rendering or shell logic.** The only
+  occurrence of a theme id outside the two theme-data files is a comment in
+  `src/lib/themes/index.ts` documenting registration order — not a branch.
+- **Adding Classic touched only theme data and the registration entry point.**
+  `src/lib/themes/classic.ts` (new, entirely data) plus a two-line registration
+  in `src/lib/themes/index.ts`. `types.ts` gained a required `displayName` and
+  `classroom.ts` filled it in — the contract gaining a field, which is the
+  prescribed move in CLAUDE.md rather than a violation. Because `displayName`
+  is required on `Theme`, a theme that omits it fails to compile.
+- **The renderer was not touched at all** — zero changes under `src/lib/render/`.
+
+The remaining changed files (`App.svelte`, `keyboard.ts`, `save.ts`,
+`selection.ts`, `registry.ts`) are the switcher, which is 006's other half and
+not part of what item 17 constrains.
 
 ## 005 — Arcade shell: eight caves, timer, score, lives, and game over
 
-Checklist: `specs/005-arcade-shell-caves/quickstart.md` (13 items). **Not yet
-run.**
+Checklist: `specs/005-arcade-shell-caves/quickstart.md` — 13 `file://` playback
+items, plus a three-bullet "Validate the theme contract" diff audit. **Not yet
+run.** Item 11's `localStorage` half is blocked the same way 006's item 13 is;
+the three diff-audit bullets can be verified without a browser.
 
 ## 004 — Amoeba, magic wall, and expanding wall
 
