@@ -14,10 +14,16 @@ import {
   STICK_X_AXIS_INDEX,
   STICK_Y_AXIS_INDEX,
 } from './bindings';
+import { advanceRepeat, INITIAL_REPEAT_STATE, type RepeatState } from '../repeat';
 
 interface GamepadPadState {
   previousStickDirection: Direction | undefined;
   previousPressed: ReadonlySet<number>;
+  // This pad's repeat state (FR-004, FR-018) and the direction it was last
+  // resolved as — a changed value resets the state as a fresh press
+  // (research.md D3), the same rule TouchInput applies.
+  repeatState: RepeatState;
+  lastDirection: Direction | undefined;
 }
 
 // Mirrors KeyboardInput's shape. Session-state isolation (FR-025, SC-009):
@@ -81,7 +87,12 @@ export class GamepadInput {
 
       let state = this.padStates.get(pad.index);
       if (state === undefined) {
-        state = { previousStickDirection: undefined, previousPressed: new Set() };
+        state = {
+          previousStickDirection: undefined,
+          previousPressed: new Set(),
+          repeatState: INITIAL_REPEAT_STATE,
+          lastDirection: undefined,
+        };
         this.padStates.set(pad.index, state);
       }
 
@@ -90,7 +101,14 @@ export class GamepadInput {
       const stickY = pad.axes[STICK_Y_AXIS_INDEX] ?? 0;
       const stick = resolveStickDirection(stickX, stickY, state.previousStickDirection);
       const padDirection = resolveDirection(dpad, stick);
-      if (direction === undefined) direction = padDirection;
+
+      if (padDirection !== state.lastDirection) {
+        state.repeatState = INITIAL_REPEAT_STATE;
+      }
+      const { state: nextRepeatState, report } = advanceRepeat(state.repeatState, padDirection !== undefined);
+      state.repeatState = nextRepeatState;
+      state.lastDirection = padDirection;
+      if (direction === undefined && report) direction = padDirection;
 
       const { pressedNow, edges } = mapOneShotButtons(pad.buttons, state.previousPressed);
 

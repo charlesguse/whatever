@@ -87,17 +87,87 @@ describe('GamepadInput — consumeGrab (level) vs. consumeConfirm (edge) on the 
   });
 });
 
-describe('GamepadInput — one direction per held tick, no repeat', () => {
-  it('a held d-pad direction produces the identical direction across many polls', () => {
+describe('GamepadInput — one direction per held tick, one-tick repeat delay (FR-020)', () => {
+  it('a held d-pad direction reports the same cadence as keyboard: report, suppress, report every tick after', () => {
     const gamepad = new GamepadInput();
     vi.stubGlobal('navigator', {
       getGamepads: () => [makePad(0, { pressedIndices: [DPAD_BUTTON_INDEX.right] })],
     });
 
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBe('right'); // tick 1: reports
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBeUndefined(); // tick 2: the one-tick delay
     for (let tick = 0; tick < 5; tick++) {
       gamepad.poll();
-      expect(gamepad.consumeDirection()).toBe('right');
+      expect(gamepad.consumeDirection()).toBe('right'); // tick 3+: reports every tick
     }
+  });
+});
+
+describe('GamepadInput.consumeDirection — one tap, one cell (FR-001, FR-006, FR-007)', () => {
+  it('a tap held for exactly one poll reports exactly once', () => {
+    const gamepad = new GamepadInput();
+    let pads: Gamepad[] = [makePad(0, { pressedIndices: [DPAD_BUTTON_INDEX.up] })];
+    vi.stubGlobal('navigator', { getGamepads: () => pads });
+
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBe('up');
+
+    pads = [makePad(0, {})];
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBeUndefined();
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBeUndefined();
+  });
+
+  it('a tap held for exactly two polls reports exactly once', () => {
+    const gamepad = new GamepadInput();
+    let pads: Gamepad[] = [makePad(0, { pressedIndices: [DPAD_BUTTON_INDEX.up] })];
+    vi.stubGlobal('navigator', { getGamepads: () => pads });
+
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBe('up');
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBeUndefined();
+
+    pads = [makePad(0, {})];
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBeUndefined();
+  });
+
+  it('release then an immediate re-press is treated as fresh — reports on its own first tick (FR-006)', () => {
+    const gamepad = new GamepadInput();
+    let pads: Gamepad[] = [makePad(0, { pressedIndices: [DPAD_BUTTON_INDEX.up] })];
+    vi.stubGlobal('navigator', { getGamepads: () => pads });
+
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBe('up');
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBeUndefined();
+
+    pads = [makePad(0, {})];
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBeUndefined();
+
+    pads = [makePad(0, { pressedIndices: [DPAD_BUTTON_INDEX.up] })];
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBe('up');
+  });
+
+  it('a d-pad-to-stick direction change while held reports the new direction on the very next tick (FR-007)', () => {
+    const gamepad = new GamepadInput();
+    let pads: Gamepad[] = [makePad(0, { pressedIndices: [DPAD_BUTTON_INDEX.up] })];
+    vi.stubGlobal('navigator', { getGamepads: () => pads });
+
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBe('up'); // tick 1: reports
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBeUndefined(); // tick 2: suppressed
+
+    pads = [makePad(0, { axes: [0.6, 0] })]; // stick right
+    gamepad.poll();
+    expect(gamepad.consumeDirection()).toBe('right'); // fresh press, reports immediately
   });
 });
 
