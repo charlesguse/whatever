@@ -29,7 +29,7 @@ Single project (per plan.md's Project Structure): `src/lib/input/visibility.ts` 
 
 **Purpose**: Confirm the current baseline before touching it — this is a defect fix, so "what exists today" must be pinned before it is replaced.
 
-- [ ] T001 Run `npm test` on the current branch and confirm it is green (build succeeds, full vitest suite passes) before any change, establishing the SC-006 baseline to diff against later.
+- [X] T001 Run `npm test` on the current branch and confirm it is green (build succeeds, full vitest suite passes) before any change, establishing the SC-006 baseline to diff against later.
 
 **Checkpoint**: Baseline confirmed green. No source files touched yet.
 
