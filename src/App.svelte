@@ -20,6 +20,7 @@
   import './lib/themes';
   import { getTheme, listThemes } from './lib/themes/registry';
   import { cycleThemeId, resolveStoredThemeId } from './lib/themes/selection';
+  import { nextPendingTime } from './lib/loop/stall';
 
   // FR-025: restores the stored theme id, falling back to Classroom for
   // anything unregistered, non-string, or absent.
@@ -45,9 +46,6 @@
   }
 
   const TICK_INTERVAL_MS = 1000 / TICK_RATE_HZ;
-  // Clamp the accumulator so a backgrounded tab does not fire a burst of
-  // catch-up ticks on return (spec Edge Cases).
-  const MAX_ACCUMULATED_MS = TICK_INTERVAL_MS * 5;
 
   // FR-003, FR-005, FR-007: each non-playing screen ends on a keypress or
   // after this short documented delay, whichever comes first — a tuning
@@ -268,7 +266,7 @@
     const elapsed = time - lastTime;
     lastTime = time;
 
-    accumulator = Math.min(accumulator + elapsed, MAX_ACCUMULATED_MS);
+    accumulator = nextPendingTime(accumulator, elapsed, TICK_INTERVAL_MS);
     while (accumulator >= TICK_INTERVAL_MS) {
       stepTick();
       accumulator -= TICK_INTERVAL_MS;
