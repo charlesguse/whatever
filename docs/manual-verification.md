@@ -60,14 +60,41 @@ window.
 ## 007 — Touch controls and gamepad support
 
 Checklist: `specs/007-touch-gamepad-input/spec.md`, **Maintainer Review Notes**
-(007's quickstart deliberately defers to it rather than duplicating it). Four
-device situations: tablet/phone in both orientations, desktop with a
-controller, touchscreen laptop with both touch and keyboard, and plain desktop
-with neither. Covers gesture suppression, safe-area placement, feel parity
-across input sources, and hotplug behaviour.
+(007's quickstart defers to it rather than duplicating it). Grouped by device
+situation rather than numbered.
 
-**Not yet run.** Gamepad situations are parked until the controller is found;
-the touch situations need a real touchscreen.
+**Partially run 2026-09-02, on a phone/tablet with no keyboard, against
+`bf9d316`.**
+
+Tablet/phone, in the order the notes list them:
+
+| Item | Result |
+| --- | --- |
+| Full cave with two thumbs; pad and grab reachable | pass |
+| Slide between pad zones; clean direction change, no diagonal | pass |
+| Break the page: drag, flick, pinch, double-tap, long-press, edge swipe | pass |
+| Rotate device mid-cave with a thumb down | not run — item was unclear, since clarified |
+| Nothing hidden behind a control or thumb; cave still reads | pass |
+| Tap a theme mid-cave; switches, controls do not eat the tap | pass |
+| Finishable title-to-win without a keyboard | partial — works so far, game not yet completed |
+
+**Found during this pass:** tapping the on-screen controls on a keyboard-less
+device hides them — [#31](https://github.com/charlesguse/whatever/issues/31).
+A tap's browser-synthesized `click` is treated as a mouse click, which flips
+`lastInputSource` to `discrete` and fails `shouldShowTouchControls`. The pure
+reducer in `visibility.ts` is correct; the call site feeds it a synthesized
+click it cannot distinguish from a real one.
+
+Desktop with a controller: **not run**, parked until the controller is found.
+
+Touchscreen laptop (touch + keyboard): **not run**, deferred by the maintainer.
+
+Plain desktop with neither:
+
+| Item | Result |
+| --- | --- |
+| Page looks as it did before the feature, no console error, keyboard unchanged | pass |
+| Diff touches no file under `src/sim/` (FR-033), changes no keyboard binding (FR-034) | pass — verified against the 007 finalize merge (`8532251`, PR #23): zero `src/sim/` changes, and `src/lib/input/keyboard.ts` is untouched by that diff |
 
 ## 006 — Classic theme and an in-game theme switcher
 
@@ -119,9 +146,37 @@ not part of what item 17 constrains.
 ## 005 — Arcade shell: eight caves, timer, score, lives, and game over
 
 Checklist: `specs/005-arcade-shell-caves/quickstart.md` — 13 `file://` playback
-items, plus a three-bullet "Validate the theme contract" diff audit. **Not yet
-run.** Item 11's `localStorage` half is blocked the same way 006's item 13 is;
-the three diff-audit bullets can be verified without a browser.
+items plus a three-bullet theme-contract diff audit.
+
+**Run 2026-09-02, by the maintainer, against `bf9d316`.**
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1 | Build and open from disk | pass |
+| 2 | Title screen badges; start key begins a new game | pass |
+| 3 | HUD and cave intro | pass |
+| 4 | Death costs one life, same cave reloads, feels instant | pass |
+| 5 | Clock to zero: death with no explosion | pass |
+| 6 | Bonus tally pacing, skip lands on same total | pass |
+| 7 | Game over shows final score, returns to title | pass |
+| 8 | Cave eight leads to the win screen, not a ninth cave | pass |
+| 9 | Pause stops the clock; resume is exact | pass |
+| 10 | Restart at five points (first three cost a life, last two do not) | pass |
+| 11 | Reload preserves high score and furthest cave | not run — see note |
+| 12 | Classroom voice throughout; no double screen skip on a held key | pass |
+| 13 | Frame rate across all eight caves | partial — rock solid so far, run not yet completed |
+
+**Item 11 note.** The maintainer asked when the high score is meant to appear.
+It is written only on the transition into `gameOver` or `won`
+(`App.svelte:166-168`) and displayed only on the **title screen**, and only when
+greater than zero (`App.svelte:293`). So it is invisible until a run actually
+ends and returns to the title, and a first-ever run shows nothing because the
+stored value is still 0. Item 11 is therefore still to be run: finish a run,
+return to title, note the score, reload, and confirm it survives. Its
+`localStorage`-disabled half is blocked the same way 006's item 13 is.
+
+The three-bullet theme-contract diff audit at the end of 005's quickstart has
+**not** been run; it needs no browser and can be verified from the diff.
 
 ## 004 — Amoeba, magic wall, and expanding wall
 
