@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,16 +31,26 @@
 
 ## Notes
 
-- Three [NEEDS CLARIFICATION] markers remain and are posted to lifecycle issue
-  #31 as questions rather than blocking the draft:
-  - **FR-004** — how an activation with no discernible origin resolves. Affects
-    whether the reported defect can recur on a browser that reports nothing.
-  - **FR-005** — whether a pen/stylus counts as touch-like or discrete.
-  - **FR-012** — where the new touch-only regression checklist item lives.
+- All three [NEEDS CLARIFICATION] markers are resolved from the answer on
+  lifecycle issue #31:
+  - **FR-004** — an activation with no discernible origin is touch-safe and does
+    not hide the controls. The Enter/Space case that motivated the alternative
+    is handled by the preceding key press instead, pinned as **FR-004a**.
+  - **FR-005** — a pen/stylus is touch-like and does not hide the controls.
+  - **FR-012** — the touch-only regression item becomes a *standing* check in
+    `docs/manual-verification.md`, in a new "Standing checks" section kept apart
+    from the dated per-spec pass log (**FR-012a**). This feature's own
+    Maintainer Review Notes item stays, and feature 007's spec is not edited
+    (**FR-012b**).
+- The answer carried a rider outside this feature: spec 012 (issue #35) has an
+  FR-024 that adds its item to feature 007's Maintainer Review Notes, and the
+  author is asking there to redirect it to the same "Standing checks" section.
+  That change belongs to 012 and is not made here; 011 is written so either
+  merge order lands on the same shape.
 - Content-quality wording note: the spec names concrete input kinds (tap, click,
   key press, pointer movement) and refers to the visibility decision as a pure
   function. Both are carried over from feature 007's vocabulary and from
   Principle VII's browser-less testability requirement — they describe observable
   behavior and testability, not an implementation, so the "no implementation
   details" items are marked pass.
-- Items marked incomplete require spec updates before `/speckit-plan`.
+- All items pass; the spec is ready for `/speckit-plan`.

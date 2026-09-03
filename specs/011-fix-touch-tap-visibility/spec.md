@@ -127,7 +127,8 @@ rows with opposite outcomes, and that reverting the fix makes it fail.
 
 1. **Given** the browser-less suite, **When** it runs, **Then** it asserts an
    activation whose origin is a touch leaves the controls visible and an
-   activation whose origin is a mouse hides them.
+   activation whose origin is a mouse hides them, with an unknown origin and a
+   pen origin both landing on the visible side.
 2. **Given** the visibility decision, **When** a reviewer reads it, **Then** the
    origin of an activation is one of its declared inputs rather than something a
    caller is trusted to have classified correctly.
@@ -144,9 +145,13 @@ rows with opposite outcomes, and that reverting the fix makes it fail.
   visible. The outcome must not depend on which element was tapped — that
   dependence is exactly what made the reported defect look intermittent.
 - **An activation with no discernible origin** — a browser that reports nothing
-  about what produced the click, or a click produced by pressing Enter or Space
-  on a focused button. Covered by the open question in FR-004.
-- **A stylus or pen** on a tablet. Covered by the open question in FR-005.
+  about what produced the click: touch-safe, the controls stay visible (FR-004).
+- **A click produced by pressing Enter or Space on a focused button**: the
+  controls hide, but because of the key press that precedes the activation, not
+  because of the activation itself (FR-004a). Unknown-origin-means-visible
+  therefore costs nothing on the keyboard path.
+- **A stylus or pen** on a tablet: touch-like, the controls stay visible
+  (FR-005).
 - **A hybrid device that has touch and a keyboard**: tapping must still never
   hide the controls there either. The rule keys on where the input came from,
   never on whether a keyboard is attached — the game cannot reliably detect
@@ -177,18 +182,22 @@ rows with opposite outcomes, and that reverting the fix makes it fail.
 - **FR-003**: Pointer *movement* MUST remain incapable of showing or hiding the
   controls (007 FR-027a). This feature MUST NOT add movement as an input to the
   decision.
-- **FR-004**: An activation whose origin cannot be determined MUST resolve to
-  [NEEDS CLARIFICATION: treat an unknown-origin activation as touch-safe (leave
-  the controls visible), which never strands a touch-only player but leaves the
-  controls up on a hybrid device whose browser reports no origin; or treat it as
-  discrete (hide), which preserves the tidier hybrid behavior at the cost of
-  reintroducing the reported defect on any browser that omits origin
-  information].
-- **FR-005**: An activation produced by a pen or stylus MUST resolve to [NEEDS
-  CLARIFICATION: touch-like (does not hide), on the grounds that a stylus is
-  direct manipulation of the same screen and can operate the on-screen pad; or
-  discrete (hides), on the grounds that a stylus user on a hybrid device is
-  working like a mouse user].
+- **FR-004**: An activation whose origin cannot be determined MUST resolve as
+  touch-safe — it MUST NOT hide the touch controls. Ambiguity is not symmetric
+  here: resolving it toward "hide" would reintroduce the reported defect on
+  exactly the browsers that cannot be enumerated in advance, stranding a
+  touch-only player, whereas resolving it toward "show" costs at worst an untidy
+  extra pad on a hybrid device.
+- **FR-004a**: A click produced by pressing Enter or Space on a focused button
+  MUST still hide the controls, and MUST do so by way of the key press that
+  precedes it — the key press is itself a discrete input under FR-002 and marks
+  the last input source before the resulting activation arrives. No rule may
+  depend on the activation itself reporting a keyboard origin.
+- **FR-005**: An activation produced by a pen or stylus MUST resolve as
+  touch-like — it MUST NOT hide the touch controls. A pen is direct manipulation
+  of the same screen the on-screen pad lives on and can operate that pad, so a
+  pen user on a keyboard-less tablet losing the controls is the reported defect
+  in another form.
 - **FR-006**: The origin of an input MUST be an explicit input to the visibility
   decision, not a convention observed by whoever calls it. It MUST be possible
   to ask for the outcome of a tap-synthesized activation and of a genuine mouse
@@ -208,8 +217,10 @@ rows with opposite outcomes, and that reverting the fix makes it fail.
   FR-027 means — not present-and-hidden, not disabled.
 - **FR-010**: The browser-less suite MUST assert the full decision table —
   capability × last-input origin — including a row for a tap-synthesized
-  activation and a row for a genuine mouse activation with opposite outcomes.
-  The existing 007 visibility assertions MUST continue to pass.
+  activation and a row for a genuine mouse activation with opposite outcomes,
+  and rows for an unknown-origin activation and a pen activation, both leaving
+  the controls visible (FR-004, FR-005). The existing 007 visibility assertions
+  MUST continue to pass.
 - **FR-011**: The change MUST touch no file under `src/sim/`, change no keyboard
   binding, and change no touch control layout, hit area, or action mapping. It
   changes only which inputs the visibility decision receives and what it
@@ -219,11 +230,19 @@ rows with opposite outcomes, and that reverting the fix makes it fail.
   pad, grab, pause, restart, theme picker, and mute — and confirm the controls
   stay up. The item MUST record that emulated touch in desktop devtools does not
   reproduce this defect faithfully and that a real touch-only device is
-  required. The item lives in [NEEDS CLARIFICATION: this feature's Maintainer
-  Review Notes only, keeping earlier specs immutable as a record of what was
-  specified when; or added to feature 007's Maintainer Review Notes as well, so
-  the touch checklist stays in one place; or added to `docs/manual-verification.md`
-  as a standing item re-checked on every touch-affecting change].
+  required. The item MUST be added to `docs/manual-verification.md` as a
+  **standing** check — one re-run against every touch-affecting change, not a
+  one-time pass tied to this feature.
+- **FR-012a**: `docs/manual-verification.md` MUST gain a clearly separated
+  "Standing checks" section, kept apart from the dated per-spec pass log. The
+  log remains a record of what was verified and when; standing checks are a
+  separate, re-runnable list. One file, two clearly labelled roles — not one
+  list doing both jobs.
+- **FR-012b**: The corresponding item in this feature's Maintainer Review Notes
+  stays where it is. A spec is the record of what that feature required, so the
+  standing-checks entry is an addition, not a move. Feature 007's spec MUST NOT
+  be edited — earlier specs stay immutable as a record of what was specified
+  when.
 
 ### Key Entities
 
@@ -259,6 +278,9 @@ rows with opposite outcomes, and that reverting the fix makes it fail.
   alone, and none of them is a clock, a timestamp, or live device state.
 - **SC-006**: `npm test` passes, `dist/` still holds exactly one self-contained
   `index.html`, and no test added or changed by earlier features regresses.
+- **SC-007**: `docs/manual-verification.md` carries the touch-only regression
+  check in a "Standing checks" section that a reader can tell apart from the
+  dated pass log at a glance, and no file under `specs/007-*` is modified.
 
 ## Assumptions
 
@@ -304,11 +326,15 @@ must be a real device:
   Confirm no flicker at any point.
 - Play a cave to completion with thumbs only. Confirm the controls never vanish
   and the page is never reloaded to recover them.
+- If a stylus is available for the device, repeat the pad and button taps with
+  it. Confirm the controls stay up there too (FR-005).
 
 **On a touchscreen laptop (touch and a keyboard):**
 
 - Confirm the controls are visible before any input, vanish on a key press,
   vanish on a real mouse click, and come back on a touch — each instantly.
+- Tab to an on-screen button and activate it with Enter or Space. Confirm the
+  controls hide, on the strength of the key press (FR-004a).
 - Move the mouse and trackpad around, in both visibility states, without
   clicking. Confirm nothing appears, disappears, or flickers.
 - Alternate touch, keyboard, and mouse through a whole cave and confirm no input
@@ -319,3 +345,6 @@ must be a real device:
 - Confirm no on-screen control ever appears and there is no console error.
 - Read the diff and confirm it touches no file under `src/sim/`, changes no
   keyboard binding, and changes no touch layout or action mapping (FR-011).
+- Confirm `docs/manual-verification.md` has gained a "Standing checks" section
+  holding the touch-only regression item, separate from the dated per-spec pass
+  log, and that feature 007's spec is untouched (FR-012, FR-012a, FR-012b).
