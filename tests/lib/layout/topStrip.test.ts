@@ -149,3 +149,50 @@ describe('computeTopStripLayout — collapse decision (US1, FR-011, FR-012, FR-0
     expect(layout.muteButton.x + layout.muteButton.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
   });
 });
+
+describe('computeTopStripLayout — reserved regions and rotation (US2, FR-009, FR-020)', () => {
+  it('no occupant intersects the landscape side margins, and the non-overlap/containment properties still hold', () => {
+    const layout = computeTopStripLayout(NARROWEST_LANDSCAPE, LANDSCAPE_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
+    const rects = collectRects(layout);
+    for (const rect of rects) {
+      for (const reserved of LANDSCAPE_RESERVED_RECTS) {
+        expect(rectsIntersect(rect, reserved)).toBe(false);
+      }
+      expect(rectFullyInside(rect, NARROWEST_LANDSCAPE)).toBe(true);
+    }
+    for (let i = 0; i < rects.length; i++) {
+      for (let j = i + 1; j < rects.length; j++) {
+        expect(rectsIntersect(rects[i], rects[j])).toBe(false);
+      }
+    }
+  });
+
+  it('no occupant intersects the portrait bottom band', () => {
+    const layout = computeTopStripLayout(NARROWEST_PORTRAIT, PORTRAIT_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
+    for (const rect of collectRects(layout)) {
+      for (const reserved of PORTRAIT_RESERVED_RECTS) {
+        expect(rectsIntersect(rect, reserved)).toBe(false);
+      }
+      expect(rectFullyInside(rect, NARROWEST_PORTRAIT)).toBe(true);
+    }
+  });
+
+  it("matches today's shipped desktop arrangement: readout leading, mute centered, picker trailing (FR-020)", () => {
+    const layout = computeTopStripLayout(WIDE_DESKTOP, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
+    expect(layout.readout!.x).toBeLessThan(layout.muteButton.x);
+    expect(layout.muteButton.x + layout.muteButton.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
+    expect(layout.themePicker!.collapsed).toBe(false);
+  });
+
+  it('a degenerate available box (near-zero width or height) returns contained rects without throwing', () => {
+    const nearZeroWidth: InsetBox = { x: 0, y: 0, width: 1, height: 480 };
+    const nearZeroHeight: InsetBox = { x: 0, y: 0, width: 320, height: 1 };
+    for (const box of [nearZeroWidth, nearZeroHeight]) {
+      expect(() => computeTopStripLayout(box, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout)).not.toThrow();
+      const layout = computeTopStripLayout(box, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
+      for (const rect of collectRects(layout)) {
+        expect(rectFullyInside(rect, box)).toBe(true);
+      }
+    }
+  });
+});

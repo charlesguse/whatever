@@ -206,20 +206,20 @@ Acceptance Scenarios 1-2, 5).
 
 ### Tests for User Story 2
 
-- [ ] T010 [US2] In `tests/lib/layout/topStrip.test.ts`, add reserved-region
+- [X] T010 [US2] In `tests/lib/layout/topStrip.test.ts`, add reserved-region
   tests: at `NARROWEST_LANDSCAPE` with the touch controls' side-margin
   `reservedRects` active, and at `NARROWEST_PORTRAIT` with the bottom-band
   `reservedRects` active, assert none of `readout`/`muteButton`/
   `themePicker.rect` intersects any `reservedRects` entry (FR-009), in
   addition to the non-overlap (FR-007) and containment (FR-008) properties
   already required.
-- [ ] T011 [US2] In `tests/lib/layout/topStrip.test.ts`, add a desktop-width
+- [X] T011 [US2] In `tests/lib/layout/topStrip.test.ts`, add a desktop-width
   regression test: at the wide sampled viewport from `OCCUPANT_SIZE_SAMPLES`
   where all three occupants fit at natural size, assert the arrangement
   matches today's shipped layout — readout at the leading edge, theme picker
   at the trailing edge, mute button centered between them (FR-020, spec.md
   User Story 2 Acceptance Scenario 5).
-- [ ] T012 [US2] In `tests/lib/layout/topStrip.test.ts`, add a degenerate-
+- [X] T012 [US2] In `tests/lib/layout/topStrip.test.ts`, add a degenerate-
   viewport test: an `availableBox` with near-zero width and one with
   near-zero height, asserting `computeTopStripLayout` returns rects (does
   not throw) and every returned rect stays fully inside the available box
