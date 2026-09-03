@@ -3,7 +3,7 @@
   "spec_dir": "specs/012-top-strip-layout",
   "feature_num": "012",
   "stage": "implement",
-  "iteration": 2,
+  "iteration": 3,
   "spec_branch": "spec/012-top-strip-layout",
   "pending_re_review_from": ["charlesguse"]
 }
