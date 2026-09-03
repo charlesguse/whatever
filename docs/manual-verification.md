@@ -48,6 +48,13 @@ if the tab is hidden mid-collapse. This violates 008's own acceptance scenario
 6 ("no accumulated sounds fire at once"), which had been taken as satisfied by
 005's clamp. Filed as #26.
 
+**Fixed by spec 009** (`a905ef5`, PR #37): the clamp is replaced by
+`nextPendingTime` in `src/lib/loop/stall.ts`, which drops the backlog outright
+when pending time exceeds two tick intervals, so the frame after a stall runs
+no catch-up ticks at all. Item 11 is **awaiting re-run** against a build from
+main at or after that commit, along with the mid-collapse variant that shows
+the fix is not scoped to the tally screen.
+
 **Item 13 note.** Does not require reaching cave 8. The renderer fits cave
 width to the canvas and lets height overflow, so a short, wide browser window
 scrolls vertically on any cave, including cave 1. Cave 8 (26x16) is the only
@@ -84,6 +91,30 @@ A tap's browser-synthesized `click` is treated as a mouse click, which flips
 `lastInputSource` to `discrete` and fails `shouldShowTouchControls`. The pure
 reducer in `visibility.ts` is correct; the call site feeds it a synthesized
 click it cannot distinguish from a real one.
+
+**Also found during this pass:** at phone width the HUD readout, the mute
+button, and the theme picker overlap each other —
+[#35](https://github.com/charlesguse/whatever/issues/35), reported on Chrome on
+a Pixel 10 Pro. All three are `position: fixed` at `top: 0.5rem` — pinned left,
+centred at `left: 50%`, and pinned right — with nothing measuring between them.
+The mute button's own comment asserts it sits "clear of the HUD readout
+(top-left), the theme picker (top-right)", which was true at the width it was
+written at and is enforced nowhere. `themePickerRightPx` does position the
+picker dynamically, but only to inset it from the cave's right edge in
+landscape; in portrait the cave spans the full inset width, so it reduces to a
+flat 8 px and the picker sits at the viewport edge exactly as it would with no
+rule at all.
+
+No test could have caught this. 007's non-overlap guarantee is enforced
+structurally by `containRect` and pinned by `layout.test.ts`, but it covers the
+*touch controls* only — these three occupants are plain CSS outside that layout
+system, so nothing in the node suite can fail when they collide.
+
+**Both defects from this pass share a cause with 008's SC-009 gap:** a
+guarantee held by a comment or a CSS assumption rather than by one testable
+function. Specs 011 and 012 each move their guarantee into a pure function with
+node coverage, and 011 adds a standing checks section to this file so the
+touch-only case is re-run against every touch-affecting change rather than once.
 
 Desktop with a controller: **not run**, parked until the controller is found.
 
