@@ -2,7 +2,8 @@
   "issue": 31,
   "spec_dir": "specs/011-fix-touch-tap-visibility",
   "feature_num": "011",
-  "stage": "implement",
+  "stage": "review",
   "iteration": 1,
-  "spec_branch": "spec/011-fix-touch-tap-visibility"
+  "spec_branch": "spec/011-fix-touch-tap-visibility",
+  "pending_re_review_from": []
 }
