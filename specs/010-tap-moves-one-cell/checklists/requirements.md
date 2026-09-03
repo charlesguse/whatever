@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,19 +31,25 @@
 
 ## Notes
 
-- **Two [NEEDS CLARIFICATION] markers remain, deliberately.** FR-003 (repeat
-  delay and its length) and FR-004 (which input sources the rule covers) are the
-  two questions issue #30 explicitly asks the spec to surface rather than decide
-  silently. They are posted to the lifecycle issue for the maintainer to answer;
-  the pipeline resolves them before planning.
+- **Both [NEEDS CLARIFICATION] markers are resolved.** The two questions issue
+  #30 asked the spec to surface rather than decide silently were answered by the
+  maintainer on that issue: FR-003 takes a **one-tick (125 ms) repeat delay**,
+  and FR-004 covers **all three input sources**. The Clarifications section
+  records both decisions and the reasoning behind them; FR-018 carries the
+  maintainer's rider that the rule be one shared unit rather than three copies.
+- **One manual check is deferred, not dropped.** No gamepad is on hand, so
+  maintainer check 7 ships stated and unchecked. The gamepad *requirement*
+  (FR-004) and its node-level assertion (FR-019) are not deferred and must pass
+  before merge. SC-005 records the same split.
 - **Content Quality, "no implementation details"**: the spec names `src/sim/`
   and `dist/index.html` in FR-011 and FR-016. Both are constitutional boundaries
   quoted as constraints on the change, and both follow the house style set by
   the 006/007/008 specs. They describe what must not move, not how to build
   anything.
-- **FR-020 authorizes an intentional test change.** If FR-004 resolves to "all
-  sources", the existing touch and gamepad tests that assert a held direction is
-  reported on every consecutive read must be updated. The constitution requires
-  a spec to say so rather than let it appear in a diff; FR-020 is that
-  statement, and it is scoped to those assertions only.
-- Items marked incomplete require spec updates before `/speckit-plan`.
+- **FR-020 authorizes an intentional test change.** Now that FR-004 resolves to
+  "all sources", the existing touch and gamepad tests that assert a held
+  direction is reported on every consecutive read must be updated to the new
+  cadence. The constitution requires a spec to say so rather than let it appear
+  in a diff; FR-020 is that statement, and it is scoped to those assertions
+  only.
+- All items are complete; the spec is ready for `/speckit-plan`.
