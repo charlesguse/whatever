@@ -13,6 +13,23 @@ run.
 
 ---
 
+## Standing checks
+
+Unlike the dated per-spec sections below, these are re-runnable items with no
+single "done" date — re-run each one against any change that touches the area
+it covers, not just once at the owning spec's review.
+
+### Touch-only tap visibility (011, `#31`)
+
+On a real touch-only device — no keyboard, no mouse — tap the movement pad,
+grab, pause, restart, the theme picker, and the mute button repeatedly, and
+confirm the on-screen touch controls never disappear. Emulated touch in
+desktop devtools does not reproduce the defect this guards against (a tap's
+browser-synthesized `click` being mistaken for a real mouse click); a real
+device is required.
+
+---
+
 ## 008 — Synthesized sound, per theme, always mutable
 
 Checklist: `specs/008-synthesized-sound/spec.md`, "What the maintainer listens
