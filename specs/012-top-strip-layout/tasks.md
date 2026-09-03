@@ -413,3 +413,51 @@ different inputs to the same function. User Stories 2-4 are therefore
 entirely test-coverage phases over the implementation User Story 1 already
 built, exactly as their own "Independent Test" sections in spec.md describe
 ("run the same pure placement rule over landscape boxes...").
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Close gaps found by assessing the merged implementation against
+spec.md/plan.md/tasks.md that the node-only test suite, which exercises only
+the pure `computeTopStripLayout` function, cannot itself catch.
+
+- [ ] T019 Add `box-sizing: border-box` to the `.readout`, `.mute-button`, and
+  `.theme-option` CSS rules in `src/App.svelte` (or a project-wide reset,
+  whichever the maintainer prefers). Every `Size` fed into
+  `computeTopStripLayout` and returned in `TopStripLayout` is measured via
+  `getBoundingClientRect()`, which always reports the border box; the project
+  has no `box-sizing: border-box` reset anywhere, so the default `content-box`
+  means the `width`/`height` inline styles T008 added to those same classes
+  are interpreted as the *content* box, and the browser then adds
+  `.readout`/`.mute-button`/`.theme-option`'s own padding (and, for the
+  latter two, border) on top — inflating every rendered occupant beyond the
+  size the pure function measured and placed it at. This silently
+  reintroduces the exact defect this feature exists to eliminate (two
+  occupants' real hit targets touching or overlapping in the browser even
+  though the pure function proved they should not), and no test in
+  `tests/lib/layout/topStrip.test.ts` can catch it, since that suite never
+  touches the DOM. Per FR-007, FR-008, FR-010 (contradicts).
+- [ ] T020 Give the top-strip band a leading/trailing edge margin equal to
+  `computeTopStripLayout`'s own `MARGIN` constant (`src/lib/layout/
+  topStrip.ts`), inset from `availableBox`'s left and right edges before any
+  `reservedRects` subtraction, so the readout's leading edge and the theme
+  picker's trailing edge sit the same ~8px (`0.5rem`) off-screen-edge that
+  the pre-feature `.readout`/`.theme-picker` CSS (`left: 0.5rem`/`right:
+  0.5rem`) used. Currently `usableLeft`/`usableRight` start flush at
+  `availableBox`'s own edges, so at a wide desktop window the readout and
+  theme picker render flush against the viewport edge instead of the "one
+  that ships today" FR-020 requires and SC-007 asks the maintainer to
+  confirm is "visually indistinguishable" — a difference `tests/lib/layout/
+  topStrip.test.ts`'s existing assertions (ordering only, not edge offsets)
+  do not catch. Add a test asserting the leading/trailing edge margins at
+  `WIDE_DESKTOP`. Per FR-020, SC-007 (partial).
+- [ ] T021 Broaden the SC-010 idempotence test in `tests/lib/layout/
+  topStrip.test.ts` (currently one assertion, over one occupant-size sample —
+  `OCCUPANT_SIZE_SAMPLES.collapseForcing` — at one viewport,
+  `NARROWEST_PORTRAIT`) to assert idempotence for **both** the expanded and
+  the collapsed form, **over the whole pinned viewport set**
+  (`NARROWEST_PORTRAIT`, `NARROWEST_LANDSCAPE`, `WIDE_DESKTOP`), exactly as
+  SC-010 states: "Re-running the rule on its own output's available box
+  returns an identical arrangement for both the expanded and the collapsed
+  case, over the whole pinned viewport set." Per SC-010 (partial).
