@@ -2,7 +2,7 @@
   "issue": 30,
   "spec_dir": "specs/010-tap-moves-one-cell",
   "feature_num": "010",
-  "stage": "tasks",
-  "iteration": 0,
+  "stage": "implement",
+  "iteration": 1,
   "spec_branch": "spec/010-tap-moves-one-cell"
 }
