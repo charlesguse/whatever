@@ -196,3 +196,59 @@ describe('computeTopStripLayout — reserved regions and rotation (US2, FR-009, 
     }
   });
 });
+
+describe('computeTopStripLayout — theme count scaling (US3, FR-012, FR-014, SC-009)', () => {
+  // READOUT_TITLE_WIDE forces the collapse decision at every one of these
+  // theme counts (the point of this describe block: the collapsed form's
+  // width, not the expanded form's, must stay constant as the count grows).
+  const themeCountSamples: [string, TopStripOccupantSizes][] = [
+    ['one theme', { readout: READOUT_TITLE_WIDE, muteButton: MUTE_BUTTON, themePicker: THEME_PICKER_SAMPLES.oneTheme }],
+    ['two themes', { readout: READOUT_TITLE_WIDE, muteButton: MUTE_BUTTON, themePicker: THEME_PICKER_SAMPLES.twoThemes }],
+    ['three themes', { readout: READOUT_TITLE_WIDE, muteButton: MUTE_BUTTON, themePicker: THEME_PICKER_SAMPLES.threeThemes }],
+    ['four themes', { readout: READOUT_TITLE_WIDE, muteButton: MUTE_BUTTON, themePicker: THEME_PICKER_SAMPLES.fourThemes }],
+    [
+      'one unusually long theme name',
+      { readout: READOUT_TITLE_WIDE, muteButton: MUTE_BUTTON, themePicker: THEME_PICKER_SAMPLES.longThemeName },
+    ],
+  ];
+
+  for (const [label, sizes] of themeCountSamples) {
+    it(`non-overlap and containment hold at NARROWEST_PORTRAIT (${label})`, () => {
+      const layout = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+      const rects = collectRects(layout);
+      for (let i = 0; i < rects.length; i++) {
+        for (let j = i + 1; j < rects.length; j++) {
+          expect(rectsIntersect(rects[i], rects[j])).toBe(false);
+        }
+      }
+      for (const rect of rects) {
+        expect(rectFullyInside(rect, NARROWEST_PORTRAIT)).toBe(true);
+      }
+    });
+  }
+
+  it("the collapsed form's width never grows with the theme count", () => {
+    const layouts = themeCountSamples.map(([, sizes]) => computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes));
+    for (const layout of layouts) {
+      expect(layout.themePicker!.collapsed).toBe(true);
+    }
+    const widths = layouts.map((layout) => layout.themePicker!.rect.width);
+    for (const width of widths) {
+      expect(width).toBe(widths[0]);
+    }
+  });
+});
+
+describe('computeTopStripLayout — freed space with no theme picker (US3, Edge Cases: "One registered theme")', () => {
+  it('the mute button and readout occupy more width than the equivalent two-occupant case with a picker present', () => {
+    const withoutPicker = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.noThemePicker);
+    const withPicker = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
+    expect(withoutPicker.themePicker).toBeUndefined();
+    for (const rect of collectRects(withoutPicker)) {
+      expect(rectFullyInside(rect, NARROWEST_PORTRAIT)).toBe(true);
+    }
+    const usedWidthWithout = withoutPicker.readout!.width + withoutPicker.muteButton.width;
+    const usedWidthWith = withPicker.readout!.width + withPicker.muteButton.width;
+    expect(usedWidthWithout).toBeGreaterThan(usedWidthWith);
+  });
+});

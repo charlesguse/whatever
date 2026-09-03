@@ -244,14 +244,14 @@ Acceptance Scenarios 1-3).
 
 ### Tests for User Story 3
 
-- [ ] T013 [US3] In `tests/lib/layout/topStrip.test.ts`, add a parameterized
+- [X] T013 [US3] In `tests/lib/layout/topStrip.test.ts`, add a parameterized
   test over `OCCUPANT_SIZE_SAMPLES`'s one-through-four-theme and
   long-theme-name `themePicker.expanded` samples at `NARROWEST_PORTRAIT`:
   assert the non-overlap (FR-007) and containment (FR-008) properties hold
   for every sample (FR-014), and assert `themePicker.collapsed`'s resulting
   `rect` width is identical across all of them — the collapsed form's width
   never grows with the count (FR-012, SC-009).
-- [ ] T014 [US3] In `tests/lib/layout/topStrip.test.ts`, add a freed-space
+- [X] T014 [US3] In `tests/lib/layout/topStrip.test.ts`, add a freed-space
   test: with `themePicker` absent (standing in for a one-theme registry) at
   `NARROWEST_PORTRAIT`, assert the property still holds and that the mute
   button and readout occupy more of the band's width than they do in the
