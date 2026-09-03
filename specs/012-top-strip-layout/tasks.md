@@ -310,12 +310,12 @@ recorded for future specs to re-run.
 **Purpose**: Confirm the feature ships clean, per FR-022 and the plan's
 Constitution Check.
 
-- [ ] T017 [P] Run `npm test` (builds `dist/`, then the full `vitest`
+- [X] T017 [P] Run `npm test` (builds `dist/`, then the full `vitest`
   suite) and confirm every test from features 001-011 still passes
   unchanged alongside the new `tests/lib/layout/topStrip.test.ts` cases, and
   that `dist/` still holds exactly one self-contained `index.html` (FR-022,
   SC-006).
-- [ ] T018 [P] Review the full diff against `main` and confirm it touches no
+- [X] T018 [P] Review the full diff against `main` and confirm it touches no
   file under `src/sim/`, no cave data file, and no theme data file — only
   `src/lib/layout/topStrip.ts` (new), `src/App.svelte`,
   `tests/lib/layout/topStrip.test.ts` (new), and
