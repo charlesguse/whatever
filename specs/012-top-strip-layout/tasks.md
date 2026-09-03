@@ -49,7 +49,7 @@ split), unchanged from every prior feature:
 **Purpose**: Establish the new module's surface before any test or
 implementation task depends on it.
 
-- [ ] T001 Create the `src/lib/layout/` directory and add
+- [X] T001 Create the `src/lib/layout/` directory and add
   `src/lib/layout/topStrip.ts` with the `Size`, `TopStripOccupantSizes`, and
   `TopStripLayout` type exports and the `computeTopStripLayout` function
   signature, exactly as specified in
@@ -69,7 +69,7 @@ tables.
 **⚠️ CRITICAL**: No user story's tests can be written until this phase is
 complete.
 
-- [ ] T002 Create the `tests/lib/layout/` directory and add
+- [X] T002 Create the `tests/lib/layout/` directory and add
   `tests/lib/layout/topStrip.test.ts` importing `computeTopStripLayout` and
   the types from `src/lib/layout/topStrip.ts`. Add: (1) `rectsIntersect` and
   `rectFullyInside` helpers, mirroring
@@ -109,7 +109,7 @@ available box (spec.md User Story 1, Acceptance Scenarios 1-2, 4-5, 7-9).
 
 > Write these first; they fail against T001's stub until T005 lands.
 
-- [ ] T003 [US1] In `tests/lib/layout/topStrip.test.ts`, add non-overlap and
+- [X] T003 [US1] In `tests/lib/layout/topStrip.test.ts`, add non-overlap and
   containment tests at `NARROWEST_PORTRAIT` with no reserved rects, asserting
   no two of `readout`/`muteButton`/`themePicker.rect` intersect (FR-007) and
   every returned box lies fully inside `availableBox` (FR-008), across these
@@ -117,7 +117,7 @@ available box (spec.md User Story 1, Acceptance Scenarios 1-2, 4-5, 7-9).
   title screen's widest width (spec.md Acceptance Scenario 4), no readout
   present (Edge Cases: "No readout on screen"), and no theme picker present
   (Edge Cases: "One registered theme").
-- [ ] T004 [US1] In `tests/lib/layout/topStrip.test.ts`, add collapse-decision
+- [X] T004 [US1] In `tests/lib/layout/topStrip.test.ts`, add collapse-decision
   tests at `NARROWEST_PORTRAIT`: (a) with occupant sizes whose natural-size
   sum exceeds the band's usable width, assert `themePicker.collapsed` is
   `true` and `themePicker.rect`'s size equals `sizes.themePicker.collapsed`
@@ -132,7 +132,7 @@ available box (spec.md User Story 1, Acceptance Scenarios 1-2, 4-5, 7-9).
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Implement `computeTopStripLayout` in
+- [X] T005 [US1] Implement `computeTopStripLayout` in
   `src/lib/layout/topStrip.ts` per the six-step algorithm in
   `specs/012-top-strip-layout/data-model.md`'s "Top-Strip Placement" section:
   (1) form the strip band spanning `availableBox`'s full width at its top
@@ -150,7 +150,7 @@ available box (spec.md User Story 1, Acceptance Scenarios 1-2, 4-5, 7-9).
   (6) clamp every returned rect into `availableBox` with a `containRect`
   helper mirroring `src/lib/input/touch/layout.ts` lines 84-90 (`clamp` +
   `containRect`). This must make T003 and T004 pass.
-- [ ] T006 [US1] In `src/App.svelte`, add hidden natural-size probe elements
+- [X] T006 [US1] In `src/App.svelte`, add hidden natural-size probe elements
   mirroring the existing `.safe-area-probe` pattern (script setup at lines
   90-101, markup at line 409, CSS at lines 490-497: `position: fixed;
   visibility: hidden; pointer-events: none;`, never `display: none`) for the
@@ -161,13 +161,13 @@ available box (spec.md User Story 1, Acceptance Scenarios 1-2, 4-5, 7-9).
   omitted when `listThemes().length <= 1`), re-measured on the existing
   `resize`/`orientationchange` listeners (lines 377-378, 398) plus whenever
   `hudText` or `listThemes()`'s derived label list changes.
-- [ ] T007 [US1] In `src/App.svelte`, add
+- [X] T007 [US1] In `src/App.svelte`, add
   `topStripLayout = $derived.by(() => computeTopStripLayout(insetBox,
   touchLayout?.reservedRects ?? [], topStripSizes))`, mirroring
   `touchLayout`'s own `$derived.by` at lines 140-143, importing
   `computeTopStripLayout` from `./lib/layout/topStrip`. `topStripLayout` is
   `undefined` until `insetBox` and `topStripSizes` are both measured.
-- [ ] T008 [US1] In `src/App.svelte`, replace the fixed `.readout` (lines
+- [X] T008 [US1] In `src/App.svelte`, replace the fixed `.readout` (lines
   510-520) and `.mute-button` (lines 536-552) CSS position rules, and the
   `.theme-picker` rule's `top`/`right` (lines 554-560), with inline `style`
   bindings driven by `topStripLayout.readout` / `topStripLayout.muteButton` /
@@ -175,7 +175,7 @@ available box (spec.md User Story 1, Acceptance Scenarios 1-2, 4-5, 7-9).
   `touchLayout` inline-style pattern already used at lines 153-157 and
   450-477. Remove the now-unused `themePickerRightPx` derived value (lines
   161-164) and its binding at line 430.
-- [ ] T009 [US1] In `src/App.svelte`, render the collapsed theme control when
+- [X] T009 [US1] In `src/App.svelte`, render the collapsed theme control when
   `topStripLayout.themePicker?.collapsed` is `true`: a single button
   positioned at `topStripLayout.themePicker.rect`, its label showing the
   active theme's `displayName`, `onclick` calling
