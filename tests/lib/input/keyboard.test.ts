@@ -312,6 +312,27 @@ describe('KeyboardInput.consumeDirection — held still means "keep going" (FR-0
   });
 });
 
+describe('a gap in consumeDirection() calls (e.g. App.svelte not calling it while paused) grants no extra move on resume (FR-015)', () => {
+  it('a held direction resumes exactly where its repeat count left off, never re-reporting on the first call after a gap', () => {
+    const { target, dispatch } = fakeTarget();
+    const keyboard = new KeyboardInput();
+    keyboard.attach(target);
+
+    dispatch({ type: 'keydown', key: 'ArrowUp' });
+    expect(keyboard.consumeDirection()).toBe('up'); // tick 1: reports
+
+    // Simulate App.svelte not calling consumeDirection() at all for several
+    // ticks (e.g. session.screen === 'paused', stepTickInner's paused branch
+    // never reaches the consumeDirection() call) — no calls happen here.
+
+    // The next call after the gap must not report again just because time
+    // passed without a call; it continues the same tick-2-suppressed cadence
+    // as if the gap never happened.
+    expect(keyboard.consumeDirection()).toBeUndefined(); // tick 2: still suppressed
+    expect(keyboard.consumeDirection()).toBe('up'); // tick 3: resumes normal cadence
+  });
+});
+
 describe('MUTE_KEYS is disjoint from every other key set (FR-025)', () => {
   it('shares no member with direction/grab/restart/start/pause/cycle-theme keys', () => {
     const otherKeySets = [

@@ -144,10 +144,10 @@ Test).
 **Purpose**: Confirm the feature-wide guarantees that span all three
 stories (FR-011, FR-012, FR-015, FR-016, FR-021, SC-006, SC-007, SC-008).
 
-- [ ] T021 [P] Run `npm test` (builds `dist/` first, then the full vitest suite) and confirm the suite is green, `dist/` holds exactly one self-contained `index.html`, and no file under `src/sim/` or `tests/sim/` shows a diff (FR-011, FR-012, SC-006, SC-007).
-- [ ] T022 [P] Review the full diff against FR-021: confirm every test that passed before this feature still passes, except the two FR-020-named assertions in `TouchInput.test.ts` and `GamepadInput.test.ts`, and that no other assertion in those two files changed.
-- [ ] T023 [P] Confirm no move is reported while the cave is not in play and none is owed on the first tick after play resumes (FR-015) — add a targeted test in `tests/lib/input/keyboard.test.ts` (or the existing session-transition test file, if one already exercises this path) if not already covered; otherwise cross-reference the existing coverage rather than duplicating it.
-- [ ] T024 Update `specs/010-tap-moves-one-cell/quickstart.md`'s "Expected outcome" checklist against the actual final test file names if any diverged during implementation (keep in sync, no behavior change).
+- [X] T021 [P] Run `npm test` (builds `dist/` first, then the full vitest suite) and confirm the suite is green, `dist/` holds exactly one self-contained `index.html`, and no file under `src/sim/` or `tests/sim/` shows a diff (FR-011, FR-012, SC-006, SC-007).
+- [X] T022 [P] Review the full diff against FR-021: confirm every test that passed before this feature still passes, except the two FR-020-named assertions in `TouchInput.test.ts` and `GamepadInput.test.ts`, and that no other assertion in those two files changed.
+- [X] T023 [P] Confirm no move is reported while the cave is not in play and none is owed on the first tick after play resumes (FR-015) — add a targeted test in `tests/lib/input/keyboard.test.ts` (or the existing session-transition test file, if one already exercises this path) if not already covered; otherwise cross-reference the existing coverage rather than duplicating it.
+- [X] T024 Update `specs/010-tap-moves-one-cell/quickstart.md`'s "Expected outcome" checklist against the actual final test file names if any diverged during implementation (keep in sync, no behavior change).
 - [ ] T025 Perform the maintainer's manual checklist from `spec.md`'s "What the maintainer checks by hand" (items 1–6, 8–9; item 7 gamepad-hardware remains deferred) against a built `dist/index.html` opened via `file://`, and record the outcome for the PR/issue.
 
 ---
