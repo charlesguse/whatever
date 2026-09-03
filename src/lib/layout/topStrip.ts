@@ -95,9 +95,11 @@ export function computeTopStripLayout(
   }
   const pickerSize = sizes.themePicker ? (collapsed ? sizes.themePicker.collapsed : sizes.themePicker.expanded) : undefined;
 
-  // Step 4: the theme picker (if present), in the form chosen above, claims
+  // Step 3: the theme picker (if present), in the form chosen above, claims
   // a fixed-width block at the band's trailing edge, at full natural size
-  // (FR-011: it never shrinks).
+  // (FR-011: it never shrinks). Placed before the readout and the mute
+  // button because FR-013 makes it the first occupant to give up space —
+  // everything else's cap is computed against its already-fixed width.
   const pickerRect: Rect | undefined = pickerSize
     ? {
         x: usableLeft + usableWidth - pickerSize.width,
@@ -107,30 +109,38 @@ export function computeTopStripLayout(
       }
     : undefined;
 
-  // Step 3: the mute button is placed at full natural size (FR-011),
-  // centered in whatever usable width remains once the picker's trailing
-  // block (if any) is set aside — this is what keeps the two structurally
-  // disjoint (data-model.md's "Properties this guarantees") rather than
-  // merely centered-and-hoping.
-  const muteRegionWidth = pickerRect ? pickerRect.x - MARGIN - usableLeft : usableWidth;
-  const muteRect: Rect = {
-    x: usableLeft + (muteRegionWidth - sizes.muteButton.width) / 2,
-    y: centerY(sizes.muteButton.height),
-    width: sizes.muteButton.width,
-    height: sizes.muteButton.height,
-  };
-
-  // Step 5: the readout (if present) takes the band's leading edge, capped
-  // at whatever space remains before the mute button's left edge — narrower
-  // than natural only when space is tight, never wider, never overlapping.
+  // Step 4: the readout (if present) takes the band's leading edge, capped
+  // by the space left once the picker's fixed block and the mute button's
+  // full natural width are both set aside (FR-013: the picker gives way
+  // first, the mute never shrinks, so the readout's cap is computed against
+  // their natural sizes directly — never against the mute's eventual
+  // centered position, which would starve the readout for no reason).
+  const readoutOthersWidth = sizes.muteButton.width + (pickerRect?.width ?? 0);
+  const readoutGaps = pickerRect ? 2 : 1; // readout-to-mute, and mute-to-picker if present
+  const readoutCap = usableWidth - readoutOthersWidth - MARGIN * readoutGaps;
   const readoutRect: Rect | undefined = sizes.readout
     ? {
         x: usableLeft,
         y: centerY(sizes.readout.height),
-        width: Math.max(0, Math.min(sizes.readout.width, muteRect.x - MARGIN - usableLeft)),
+        width: Math.max(0, Math.min(sizes.readout.width, readoutCap)),
         height: sizes.readout.height,
       }
     : undefined;
+
+  // Step 5: the mute button is placed at full natural size (FR-011),
+  // centered in the gap between the readout's trailing edge (or the band's
+  // leading edge, if no readout) and the picker's leading edge (or the
+  // band's trailing edge, if no picker) — its historical desktop-centered
+  // position, not the whole region left of the picker (FR-013).
+  const muteLeftBound = readoutRect ? readoutRect.x + readoutRect.width + MARGIN : usableLeft;
+  const muteRightBound = pickerRect ? pickerRect.x - MARGIN : usableLeft + usableWidth;
+  const muteRegionWidth = muteRightBound - muteLeftBound;
+  const muteRect: Rect = {
+    x: muteLeftBound + (muteRegionWidth - sizes.muteButton.width) / 2,
+    y: centerY(sizes.muteButton.height),
+    width: sizes.muteButton.width,
+    height: sizes.muteButton.height,
+  };
 
   // Step 6: clamp every returned rect into availableBox, so no box can ever
   // extend beyond it regardless of the arithmetic above (FR-008).

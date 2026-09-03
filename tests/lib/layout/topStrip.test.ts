@@ -24,6 +24,10 @@ const NARROWEST_PORTRAIT: InsetBox = { x: 0, y: 0, width: 320, height: 480 };
 const NARROWEST_LANDSCAPE: InsetBox = { x: 0, y: 0, width: 480, height: 320 };
 // FR-020: a wide desktop-sized box for the no-regression checks.
 const WIDE_DESKTOP: InsetBox = { x: 0, y: 0, width: 1024, height: 768 };
+// A widely reported phone viewport width (issue #35's own repro) — expanded
+// picker still fits here, so this is where FR-013's priority order (picker
+// gives way first, never the readout) matters most.
+const REPORTING_DEVICE_PORTRAIT: InsetBox = { x: 0, y: 0, width: 412, height: 915 };
 
 // Matching reservedRects samples, shaped exactly like
 // computeTouchControlLayout's own output (a bottom band in portrait, two
@@ -80,12 +84,27 @@ const OCCUPANT_SIZE_SAMPLES = {
   },
   noReadout: { muteButton: MUTE_BUTTON, themePicker: THEME_PICKER_SAMPLES.twoThemes },
   noThemePicker: { readout: READOUT_TYPICAL, muteButton: MUTE_BUTTON },
+  // Same readout/mute as titleWideReadout, but with no picker to give way —
+  // used by the freed-space test below, where the readout must be wide
+  // enough that it is still genuinely cap-constrained in the with-picker
+  // case even after FR-013's picker-gives-way-first fix (T022), so the
+  // comparison keeps testing something.
+  noThemePickerWide: { readout: READOUT_TITLE_WIDE, muteButton: MUTE_BUTTON },
   // Forces the collapse decision at NARROWEST_PORTRAIT: the natural-size sum
   // (260 + 44 + 298 + margins) far exceeds a 320 CSS px band's usable width.
   collapseForcing: {
     readout: READOUT_TITLE_WIDE,
     muteButton: MUTE_BUTTON,
     themePicker: THEME_PICKER_SAMPLES.fourThemes,
+  },
+  // Forces the collapse decision at NARROWEST_PORTRAIT via an unusually wide
+  // picker (not a wide readout) — the readout here is the typical width, so
+  // this pins that the picker gives way first (FR-013) and the readout is
+  // left untouched once it does.
+  collapseForcingTypicalReadout: {
+    readout: READOUT_TYPICAL,
+    muteButton: MUTE_BUTTON,
+    themePicker: THEME_PICKER_SAMPLES.longThemeName,
   },
 } satisfies Record<string, TopStripOccupantSizes>;
 
@@ -160,6 +179,24 @@ describe('computeTopStripLayout — collapse decision (US1, FR-011, FR-012, FR-0
     // readout leading edge, mute centered between it and the picker, picker trailing edge
     expect(layout.readout!.x).toBeLessThan(layout.muteButton.x);
     expect(layout.muteButton.x + layout.muteButton.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
+  });
+});
+
+describe('computeTopStripLayout — degradation priority order (FR-013)', () => {
+  it('does not starve the readout at a reported phone width where the picker still fits expanded', () => {
+    const layout = computeTopStripLayout(REPORTING_DEVICE_PORTRAIT, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
+    expect(layout.themePicker?.collapsed).toBe(false);
+    expect(layout.readout!.width).toBe(READOUT_TYPICAL.width);
+  });
+
+  it('does not starve the readout once the picker has already given way to its collapsed form', () => {
+    const layout = computeTopStripLayout(
+      NARROWEST_PORTRAIT,
+      NO_RESERVED_RECTS,
+      OCCUPANT_SIZE_SAMPLES.collapseForcingTypicalReadout
+    );
+    expect(layout.themePicker?.collapsed).toBe(true);
+    expect(layout.readout!.width).toBe(READOUT_TYPICAL.width);
   });
 });
 
@@ -263,8 +300,13 @@ describe('computeTopStripLayout — theme count scaling (US3, FR-012, FR-014, SC
 
 describe('computeTopStripLayout — freed space with no theme picker (US3, Edge Cases: "One registered theme")', () => {
   it('the mute button and readout occupy more width than the equivalent two-occupant case with a picker present', () => {
-    const withoutPicker = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.noThemePicker);
-    const withPicker = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
+    // Uses the wide readout on both sides: with FR-013's picker-gives-way-
+    // first priority (T022), a typical-width readout already fits at natural
+    // size whether or not a picker is present, so it would no longer show a
+    // difference here — the wide readout keeps this test meaningful by
+    // staying genuinely cap-constrained in the with-picker case.
+    const withoutPicker = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.noThemePickerWide);
+    const withPicker = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.titleWideReadout);
     expect(withoutPicker.themePicker).toBeUndefined();
     for (const rect of collectRects(withoutPicker)) {
       expect(rectFullyInside(rect, NARROWEST_PORTRAIT)).toBe(true);

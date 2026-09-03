@@ -464,6 +464,19 @@ the pure `computeTopStripLayout` function, cannot itself catch.
 
 ## Maintainer Feedback
 
-- [ ] T022 In `src/lib/layout/topStrip.ts`, fix `computeTopStripLayout`'s allocation order to match FR-013's stated priority (picker gives way first, then the readout caps, and the mute never shrinks): (1) keep choosing the picker's expanded/collapsed form from natural sizes exactly as today (unchanged); (2) give the readout `width = min(sizes.readout.width, usableWidth - pickerSize.width - sizes.muteButton.width - 2 * MARGIN)` instead of capping it against the centered mute's left edge; (3) center the mute button in the gap between the readout's trailing edge and the picker's leading edge, rather than in the whole region left of the picker. This must not change how the picker's own form is chosen (FR-012a) or introduce any dependence on a previously-returned or rendered size (FR-012a/FR-012b unaffected) — every input stays a natural size.
-- [ ] T023 In `tests/lib/layout/topStrip.test.ts`, add an assertion pinning FR-013's priority order: `layout.readout.width === READOUT_TYPICAL.width` at the reporting-device-representative expanded case (~412 CSS px, two-theme sample) and again at `NARROWEST_PORTRAIT` (320 px) in the collapsed case — so the readout getting starved while the picker sits at full width can never again pass the suite silently.
-- [ ] T024 Re-verify (no production change expected) that the existing desktop-regression and collapse-forcing tests (T004, T011) still pass with the reordered allocation, and manually confirm at 1024 px that the mute button's x-position matches its pre-feature centered position (~490 px) rather than the ~413 px the current centered-in-region-left-of-picker rule produces (SC-007).
+- [X] T022 In `src/lib/layout/topStrip.ts`, fix `computeTopStripLayout`'s allocation order to match FR-013's stated priority (picker gives way first, then the readout caps, and the mute never shrinks): (1) keep choosing the picker's expanded/collapsed form from natural sizes exactly as today (unchanged); (2) give the readout `width = min(sizes.readout.width, usableWidth - pickerSize.width - sizes.muteButton.width - 2 * MARGIN)` instead of capping it against the centered mute's left edge; (3) center the mute button in the gap between the readout's trailing edge and the picker's leading edge, rather than in the whole region left of the picker. This must not change how the picker's own form is chosen (FR-012a) or introduce any dependence on a previously-returned or rendered size (FR-012a/FR-012b unaffected) — every input stays a natural size.
+- [X] T023 In `tests/lib/layout/topStrip.test.ts`, add an assertion pinning FR-013's priority order: `layout.readout.width === READOUT_TYPICAL.width` at the reporting-device-representative expanded case (~412 CSS px, two-theme sample) and again at `NARROWEST_PORTRAIT` (320 px) in the collapsed case — so the readout getting starved while the picker sits at full width can never again pass the suite silently.
+- [X] T024 Re-verify (no production change expected) that the existing desktop-regression and collapse-forcing tests (T004, T011) still pass with the reordered allocation, and manually confirm at 1024 px that the mute button's x-position matches its pre-feature centered position (~490 px) rather than the ~413 px the current centered-in-region-left-of-picker rule produces (SC-007).
+  - `npm test` (610 tests, 49 files) passes, including T004/T011 unchanged.
+    Worked by hand for `WIDE_DESKTOP` (1024 CSS px) with the typical-readout,
+    two-theme sample: `usableWidth = 1008`, picker stays expanded at
+    `x = 870` (width 146), the readout takes its full natural 140px
+    (`x = 8`), and the mute button — now centered in the 706px gap between
+    the readout's trailing edge (148) and the picker's leading edge (870) —
+    lands at `x = 487`, matching the ~490px pre-feature centered position
+    (not the ~413px the region-left-of-picker rule produced). The
+    freed-space test (US3) needed its fixture widened (`noThemePickerWide`/
+    `titleWideReadout`) since a typical-width readout no longer gets
+    starved with or without a picker present — the bug this leg fixes — so
+    the old typical-width samples stopped showing a difference; verified by
+    hand this is the fix working as intended, not a lost property.
