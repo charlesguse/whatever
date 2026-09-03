@@ -2,7 +2,8 @@
   "issue": 26,
   "spec_dir": "specs/009-fix-stall-catch-up",
   "feature_num": "009",
-  "stage": "implement",
+  "stage": "review",
   "iteration": 1,
-  "spec_branch": "spec/009-fix-stall-catch-up"
+  "spec_branch": "spec/009-fix-stall-catch-up",
+  "pending_re_review_from": []
 }
