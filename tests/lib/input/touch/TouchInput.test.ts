@@ -277,16 +277,82 @@ describe('consumeStart() — set only by a touchstart while no layout is active 
 });
 
 describe('a held pad direction produces the identical per-tick action a held keyboard key produces (SC-003)', () => {
-  it('one direction, no repeat, no acceleration, across many consumeDirection() calls', () => {
+  it('reports the same one-tick-delay cadence as keyboard: report, suppress, report every tick after (FR-020)', () => {
     const { target, dispatch } = fakeTarget();
     const touch = new TouchInput();
     touch.setLayout(makeLayout());
     touch.attach(target);
 
     dispatch({ type: 'touchstart', changedTouches: [{ identifier: 1, clientX: 100, clientY: 100 }] }); // up
+    expect(touch.consumeDirection()).toBe('up'); // tick 1: reports
+    expect(touch.consumeDirection()).toBeUndefined(); // tick 2: the one-tick delay
     for (let tick = 0; tick < 5; tick++) {
-      expect(touch.consumeDirection()).toBe('up');
+      expect(touch.consumeDirection()).toBe('up'); // tick 3+: reports every tick
     }
+  });
+});
+
+describe('TouchInput.consumeDirection — one tap, one cell (FR-001, FR-006, FR-009 equivalent, SC-001)', () => {
+  const tapShapes: Record<string, ['start' | 'end' | 'tick', ...Array<'start' | 'end' | 'tick'>]> = {
+    'one observed tick': ['start', 'tick', 'end', 'tick'],
+    'two observed ticks': ['start', 'tick', 'tick', 'end', 'tick'],
+  };
+
+  for (const [shape, steps] of Object.entries(tapShapes)) {
+    for (let offset = 0; offset <= 2; offset += 1) {
+      it(`reports exactly once for a tap spanning ${shape}, at offset ${offset}`, () => {
+        const { target, dispatch } = fakeTarget();
+        const touch = new TouchInput();
+        touch.setLayout(makeLayout());
+        touch.attach(target);
+
+        const reported: Array<string | undefined> = [];
+        for (let i = 0; i < offset; i += 1) reported.push(touch.consumeDirection());
+        for (const step of steps) {
+          if (step === 'start') {
+            dispatch({ type: 'touchstart', changedTouches: [{ identifier: 1, clientX: 100, clientY: 100 }] });
+          } else if (step === 'end') {
+            dispatch({ type: 'touchend', changedTouches: [{ identifier: 1, clientX: 100, clientY: 100 }] });
+          } else {
+            reported.push(touch.consumeDirection());
+          }
+        }
+        reported.push(touch.consumeDirection());
+        reported.push(touch.consumeDirection());
+
+        expect(reported.filter((d) => d !== undefined)).toEqual(['up']);
+      });
+    }
+  }
+
+  it('release then no more moves, then an immediate re-press reports again on its own first tick (FR-006)', () => {
+    const { target, dispatch } = fakeTarget();
+    const touch = new TouchInput();
+    touch.setLayout(makeLayout());
+    touch.attach(target);
+
+    dispatch({ type: 'touchstart', changedTouches: [{ identifier: 1, clientX: 100, clientY: 100 }] }); // up
+    expect(touch.consumeDirection()).toBe('up');
+    dispatch({ type: 'touchend', changedTouches: [{ identifier: 1, clientX: 100, clientY: 100 }] });
+    expect(touch.consumeDirection()).toBeUndefined();
+    expect(touch.consumeDirection()).toBeUndefined();
+
+    dispatch({ type: 'touchstart', changedTouches: [{ identifier: 1, clientX: 100, clientY: 100 }] }); // up again
+    expect(touch.consumeDirection()).toBe('up');
+  });
+
+  it('a slide between pad zones (direction change while held) reports the new direction on the very next tick (FR-007)', () => {
+    const { target, dispatch } = fakeTarget();
+    const touch = new TouchInput();
+    touch.setLayout(makeLayout());
+    touch.attach(target);
+
+    dispatch({ type: 'touchstart', changedTouches: [{ identifier: 1, clientX: 100, clientY: 100 }] }); // up
+    expect(touch.consumeDirection()).toBe('up'); // tick 1: reports
+    expect(touch.consumeDirection()).toBeUndefined(); // tick 2: suppressed
+
+    dispatch({ type: 'touchmove', changedTouches: [{ identifier: 1, clientX: 170, clientY: 150 }] }); // right
+    expect(touch.consumeDirection()).toBe('right'); // fresh press, reports immediately
   });
 });
 

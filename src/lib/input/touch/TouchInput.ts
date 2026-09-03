@@ -1,5 +1,6 @@
 import type { Direction } from '../../../sim/tick';
 import { resolveTouchPoint, type ControlHit, type TouchControlLayout } from './layout';
+import { advanceRepeat, INITIAL_REPEAT_STATE, type RepeatState } from '../repeat';
 
 // A touch's control kind is fixed the instant it lands (touchstart) and
 // never changes for that touch's lifetime — only a pad-kind touch's
@@ -16,6 +17,11 @@ interface TouchAssignment {
 // control (FR-011).
 export class TouchInput {
   private assignments = new Map<number, TouchAssignment>();
+  // The pad direction's repeat state (FR-004, FR-018), and the direction it
+  // was last resolved as — a changed value (including a slide between pad
+  // zones) is a fresh press (research.md D3).
+  private repeatState: RepeatState = INITIAL_REPEAT_STATE;
+  private lastDirection: Direction | undefined;
   private grabTouchId: number | undefined;
   private restartPending = false;
   private pausePending = false;
@@ -120,10 +126,21 @@ export class TouchInput {
   // wins (see data-model.md — palm-on-glass is already funneled to 'none'
   // well before this point).
   consumeDirection(): Direction | undefined {
+    let rawDirection: Direction | undefined;
     for (const hit of this.assignments.values()) {
-      if (hit.kind === 'pad' && hit.direction !== undefined) return hit.direction;
+      if (hit.kind === 'pad' && hit.direction !== undefined) {
+        rawDirection = hit.direction;
+        break;
+      }
     }
-    return undefined;
+
+    if (rawDirection !== this.lastDirection) {
+      this.repeatState = INITIAL_REPEAT_STATE;
+    }
+    const { state, report } = advanceRepeat(this.repeatState, rawDirection !== undefined);
+    this.repeatState = state;
+    this.lastDirection = rawDirection;
+    return report ? rawDirection : undefined;
   }
 
   consumeGrab(): boolean {
