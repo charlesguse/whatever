@@ -252,3 +252,22 @@ describe('computeTopStripLayout — freed space with no theme picker (US3, Edge 
     expect(usedWidthWithout).toBeGreaterThan(usedWidthWith);
   });
 });
+
+describe('computeTopStripLayout — the suite catches a real regression (US4, SC-005)', () => {
+  it('a broken placement that ignores the other occupants fails the non-overlap assertion', () => {
+    // A deliberate regression, local to this test only: pins the mute
+    // button to a fixed box regardless of its inputs, exactly the kind of
+    // "assumed position" bug issue #35 reported — never a change to
+    // computeTopStripLayout itself.
+    function brokenPlacement(sizes: TopStripOccupantSizes): Rect {
+      return { x: 0, y: 0, width: sizes.muteButton.width, height: sizes.muteButton.height };
+    }
+    const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+    const brokenMuteButton = brokenPlacement(sizes);
+    const layout = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+    // The readout also starts at the leading edge (x: 0), so the broken
+    // mute button — pinned to (0, 0) regardless of input — collides with it.
+    expect(layout.readout!.x).toBe(0);
+    expect(rectsIntersect(brokenMuteButton, layout.readout!)).toBe(true);
+  });
+});

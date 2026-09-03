@@ -278,7 +278,7 @@ Story 4, Acceptance Scenario 1).
 
 ### Tests for User Story 4
 
-- [ ] T015 [US4] In `tests/lib/layout/topStrip.test.ts`, add a deliberate-
+- [X] T015 [US4] In `tests/lib/layout/topStrip.test.ts`, add a deliberate-
   regression test (SC-005, quickstart.md "A deliberate regression fails the
   suite"): define a small test-local `brokenPlacement` function that pins
   the mute button to a fixed `{ x: 0, y: 0, ... }` box regardless of its
@@ -290,7 +290,7 @@ Story 4, Acceptance Scenario 1).
 
 ### Documentation for User Story 4
 
-- [ ] T016 [P] [US4] In `docs/manual-verification.md`, add a new item to the
+- [X] T016 [P] [US4] In `docs/manual-verification.md`, add a new item to the
   existing `## Standing checks` section (after the "Touch-only tap
   visibility (011, `#31`)" entry, lines 16-30), instructing the maintainer
   to confirm on a real phone, in both orientations, that the readout, the
