@@ -67,14 +67,16 @@ Independent Test).
 
 ### Implementation for User Story 1
 
-- [ ] T003 [US1] Edit `src/lib/input/keyboard.ts`: add `private repeatStates = new Map<Direction, RepeatState>()` (importing `RepeatState`, `INITIAL_REPEAT_STATE`, `advanceRepeat` from `./repeat`). On `keydown` for a direction not already in `held`, `repeatStates.set(direction, INITIAL_REPEAT_STATE)`. On `keyup` for a direction, `repeatStates.delete(direction)`.
-- [ ] T004 [US1] Edit `src/lib/input/keyboard.ts`'s `consumeDirection()`: before computing the return value, for every direction currently in `held`, call `advanceRepeat(repeatStates.get(d) ?? INITIAL_REPEAT_STATE, true)` exactly once and store the resulting state back into `repeatStates`. The direction ultimately picked (`held[held.length - 1]`, unchanged precedence) is returned only if that direction's `report` was `true` this call; otherwise return `undefined` for the held path. Leave the existing `pendingTap` sub-tick path untouched (FR-009, research.md D4).
+- [X] T003 [US1] Edit `src/lib/input/keyboard.ts`: add `private repeatStates = new Map<Direction, RepeatState>()` (importing `RepeatState`, `INITIAL_REPEAT_STATE`, `advanceRepeat` from `./repeat`). On `keydown` for a direction not already in `held`, `repeatStates.set(direction, INITIAL_REPEAT_STATE)`. On `keyup` for a direction, `repeatStates.delete(direction)`.
+- [X] T004 [US1] Edit `src/lib/input/keyboard.ts`'s `consumeDirection()`: before computing the return value, for every direction currently in `held`, call `advanceRepeat(repeatStates.get(d) ?? INITIAL_REPEAT_STATE, true)` exactly once and store the resulting state back into `repeatStates`. The direction ultimately picked (`held[held.length - 1]`, unchanged precedence) is returned only if that direction's `report` was `true` this call; otherwise return `undefined` for the held path. Leave the existing `pendingTap` sub-tick path untouched (FR-009, research.md D4).
+
+  **Note**: implementation also fixes a latent bug uncovered while writing T005's sweep — `pendingTap` was never invalidated once a direction had been observed via the `held` branch, so a tap observed as held for exactly one tick reported twice (once from `held`, once more from the stale `pendingTap` after release). `consumeDirection()`'s `held`-branch now clears `pendingTap` on entry, since any tick that observes a held direction means that direction is no longer a "never observed held" sub-tick tap. This was necessary for FR-001/SC-001 to actually hold for the one-observed-tick case; D4's "untouched" describes not adding repeat-state gating to the sub-tick path, not preserving this bug.
 
 ### Tests for User Story 1
 
-- [ ] T005 [US1] Edit `tests/lib/input/keyboard.test.ts`: add a tap-length/tick-offset sweep — for every tap that no more than two consecutive `consumeDirection()` calls observe down, including a tap spanning zero, one, and two observed ticks, assert exactly one reported direction, at every tick-boundary offset (FR-001, SC-001, SC-002).
-- [ ] T006 [US1] Edit `tests/lib/input/keyboard.test.ts`: add an assertion that the existing sub-tick `pendingTap` guarantee still reports exactly one move for a press and release no tick observes down (FR-009), unaffected by the new repeat state.
-- [ ] T007 [US1] Edit `tests/lib/input/keyboard.test.ts`: add an acceptance-scenario check that three consecutive taps in the same direction produce three reported moves (spec.md US1 AC5).
+- [X] T005 [US1] Edit `tests/lib/input/keyboard.test.ts`: add a tap-length/tick-offset sweep — for every tap that no more than two consecutive `consumeDirection()` calls observe down, including a tap spanning zero, one, and two observed ticks, assert exactly one reported direction, at every tick-boundary offset (FR-001, SC-001, SC-002).
+- [X] T006 [US1] Edit `tests/lib/input/keyboard.test.ts`: add an assertion that the existing sub-tick `pendingTap` guarantee still reports exactly one move for a press and release no tick observes down (FR-009), unaffected by the new repeat state.
+- [X] T007 [US1] Edit `tests/lib/input/keyboard.test.ts`: add an acceptance-scenario check that three consecutive taps in the same direction produce three reported moves (spec.md US1 AC5).
 
 **Checkpoint**: At this point, User Story 1 is fully functional and testable independently on the keyboard — the reported defect is fixed.
 
@@ -94,14 +96,14 @@ gaps, for an arbitrary number of ticks (spec.md US2 Independent Test).
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] Verify (and adjust if needed) `src/lib/input/keyboard.ts`'s `consumeDirection()` so that *every* direction currently in `held` — not only the one about to be returned — gets its `advanceRepeat` call each tick (research.md D2: a preempted-then-resumed direction's `ticksSincePress` must keep advancing while it is held but not top-of-stack, so it does not re-pay the one-tick hitch on resume). This task depends on T004's loop already covering all held directions; use it to confirm the loop shape, not to introduce a second one.
+- [X] T008 [US2] Verify (and adjust if needed) `src/lib/input/keyboard.ts`'s `consumeDirection()` so that *every* direction currently in `held` — not only the one about to be returned — gets its `advanceRepeat` call each tick (research.md D2: a preempted-then-resumed direction's `ticksSincePress` must keep advancing while it is held but not top-of-stack, so it does not re-pay the one-tick hitch on resume). This task depends on T004's loop already covering all held directions; use it to confirm the loop shape, not to introduce a second one.
 
 ### Tests for User Story 2
 
-- [ ] T009 [P] [US2] Edit `tests/lib/input/keyboard.test.ts`: add a held-cadence test — hold one direction across 100+ consecutive `consumeDirection()` calls and assert the pattern report/suppress/report×N with exactly one suppressed tick and no further gaps (FR-002, FR-003, SC-003, SC-004).
-- [ ] T010 [P] [US2] Edit `tests/lib/input/keyboard.test.ts`: add a release-then-no-more-moves test (spec.md US2 AC2) and a release-then-immediate-re-press test asserting the second press is treated as fresh — reports on its own first tick, not a continuation (FR-006, spec.md US2 AC5).
-- [ ] T011 [P] [US2] Edit `tests/lib/input/keyboard.test.ts`: add a direction-change-while-held test — press a second direction without releasing the first, assert the new direction reports on the very next tick (FR-007, spec.md US2 AC3), then release the second and assert the first direction resumes without re-paying the one-tick hitch (research.md D2, spec.md US2 AC4).
-- [ ] T012 [P] [US2] Edit `tests/lib/input/keyboard.test.ts`: add an assertion that holding a direction while the grab modifier is also held leaves the grab modifier's own reporting unaffected (spec.md US2 AC6, FR-013).
+- [X] T009 [P] [US2] Edit `tests/lib/input/keyboard.test.ts`: add a held-cadence test — hold one direction across 100+ consecutive `consumeDirection()` calls and assert the pattern report/suppress/report×N with exactly one suppressed tick and no further gaps (FR-002, FR-003, SC-003, SC-004).
+- [X] T010 [P] [US2] Edit `tests/lib/input/keyboard.test.ts`: add a release-then-no-more-moves test (spec.md US2 AC2) and a release-then-immediate-re-press test asserting the second press is treated as fresh — reports on its own first tick, not a continuation (FR-006, spec.md US2 AC5).
+- [X] T011 [P] [US2] Edit `tests/lib/input/keyboard.test.ts`: add a direction-change-while-held test — press a second direction without releasing the first, assert the new direction reports on the very next tick (FR-007, spec.md US2 AC3), then release the second and assert the first direction resumes without re-paying the one-tick hitch (research.md D2, spec.md US2 AC4).
+- [X] T012 [P] [US2] Edit `tests/lib/input/keyboard.test.ts`: add an assertion that holding a direction while the grab modifier is also held leaves the grab modifier's own reporting unaffected (spec.md US2 AC6, FR-013).
 
 **Checkpoint**: At this point, User Stories 1 AND 2 both work independently on the keyboard — taps are reliable and sustained holds keep their cadence.
 

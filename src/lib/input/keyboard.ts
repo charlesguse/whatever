@@ -1,4 +1,5 @@
 import type { Direction } from '../../sim/tick';
+import { advanceRepeat, INITIAL_REPEAT_STATE, type RepeatState } from './repeat';
 
 export const KEY_TO_DIRECTION: Readonly<Record<string, Direction>> = {
   ArrowUp: 'up',
@@ -47,6 +48,11 @@ export const MUTE_KEYS = new Set(['m', 'M']);
 export class KeyboardInput {
   private held: Direction[] = [];
   private pendingTap: Direction | undefined;
+  // One RepeatState per direction currently in `held` (FR-004, FR-018) — a
+  // preempted-then-resumed direction keeps advancing while held but not
+  // top-of-stack, so it does not re-pay the one-tick hitch on resume
+  // (research.md D2).
+  private repeatStates = new Map<Direction, RepeatState>();
   private grabHeld = false;
   private restartPending = false;
   private startPending = false;
@@ -104,6 +110,7 @@ export class KeyboardInput {
 
     if (!this.held.includes(direction)) {
       this.held.push(direction);
+      this.repeatStates.set(direction, INITIAL_REPEAT_STATE);
     }
     this.pendingTap = direction;
   };
@@ -119,6 +126,7 @@ export class KeyboardInput {
     if (direction === undefined) return;
     event.preventDefault();
     this.held = this.held.filter((d) => d !== direction);
+    this.repeatStates.delete(direction);
   };
 
   attach(target: Window = window): void {
@@ -132,11 +140,31 @@ export class KeyboardInput {
   }
 
   // Reports one direction-or-nothing for the tick about to run. A held
-  // direction wins (most recently pressed still-held direction, FR-020); a
-  // tap released before this was called is still reported once (FR-019).
+  // direction wins (most recently pressed still-held direction, FR-020),
+  // gated by the one-tick repeat delay (FR-001-FR-003); a tap released
+  // before this was called is still reported once (FR-019), unaffected by
+  // repeat state (research.md D4).
   consumeDirection(): Direction | undefined {
     if (this.held.length > 0) {
-      return this.held[this.held.length - 1];
+      // This tick already observes a direction as held, so whatever
+      // pendingTap was tracking is no longer a "never observed held"
+      // sub-tick tap (FR-009) — leaving it set would let it fire a second,
+      // phantom report once the key is later released (FR-001).
+      this.pendingTap = undefined;
+      // Every held direction advances every tick, not only the one about to
+      // be returned (research.md D2).
+      let reportsTopOfStack = false;
+      for (const direction of this.held) {
+        const { state, report } = advanceRepeat(
+          this.repeatStates.get(direction) ?? INITIAL_REPEAT_STATE,
+          true
+        );
+        this.repeatStates.set(direction, state);
+        if (direction === this.held[this.held.length - 1]) {
+          reportsTopOfStack = report;
+        }
+      }
+      return reportsTopOfStack ? this.held[this.held.length - 1] : undefined;
     }
     if (this.pendingTap !== undefined) {
       const direction = this.pendingTap;
