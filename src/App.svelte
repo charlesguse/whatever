@@ -14,7 +14,7 @@
   import { TouchInput } from './lib/input/touch/TouchInput';
   import { GamepadInput } from './lib/input/gamepad/GamepadInput';
   import { computeOrientation, computeTouchControlLayout, type InsetBox } from './lib/input/touch/layout';
-  import { nextLastInputSource, shouldShowTouchControls, type LastInputSource } from './lib/input/visibility';
+  import { nextLastInputSource, shouldShowTouchControls, type InputOrigin, type LastInputSource } from './lib/input/visibility';
   import { orAll, resolveDirection } from './lib/input/merge';
   import { createRenderLoop, type RenderLoop } from './lib/render/canvas';
   import './lib/themes';
@@ -80,9 +80,9 @@
   // effect, no error, when the API is absent.
   const gamepadSupported = typeof navigator.getGamepads === 'function';
 
-  // FR-027a: advanced only by window-level keydown/click/touchstart
-  // listeners below — no fourth listener, so pointer movement structurally
-  // cannot change it.
+  // FR-027a: advanced only by window-level keydown/pointerdown/touchstart/click
+  // listeners below — none wired to pointer/mouse movement, so pointer
+  // movement structurally cannot change it.
   let lastInputSource: LastInputSource = $state('none');
 
   // The safe-area-inset box, read from a hidden probe element's computed
@@ -108,16 +108,23 @@
   // key/click/touch gesture listeners — never at module/page load, never
   // from gamepad polling.
   const onAnyKeyDown = (): void => {
-    lastInputSource = nextLastInputSource(lastInputSource, 'keydown');
+    lastInputSource = nextLastInputSource(lastInputSource, 'keyboard');
     audioEngine.unlock('key');
   };
   const onAnyClick = (): void => {
-    lastInputSource = nextLastInputSource(lastInputSource, 'click');
+    lastInputSource = nextLastInputSource(lastInputSource, 'unknown');
     audioEngine.unlock('click');
   };
   const onAnyTouchStart = (): void => {
-    lastInputSource = nextLastInputSource(lastInputSource, 'touchstart');
+    lastInputSource = nextLastInputSource(lastInputSource, 'touch');
     audioEngine.unlock('touch');
+  };
+  const onAnyPointerDown = (event: PointerEvent): void => {
+    const origin: InputOrigin =
+      event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen'
+        ? event.pointerType
+        : 'unknown';
+    lastInputSource = nextLastInputSource(lastInputSource, origin);
   };
 
   // FR-008, FR-027, FR-027a: three independent, separately testable gates —
@@ -365,6 +372,7 @@
     window.addEventListener('keydown', onAnyKeyDown);
     window.addEventListener('click', onAnyClick);
     window.addEventListener('touchstart', onAnyTouchStart);
+    window.addEventListener('pointerdown', onAnyPointerDown);
     refreshInsetBox();
     window.addEventListener('resize', refreshInsetBox);
     window.addEventListener('orientationchange', refreshInsetBox);
@@ -386,6 +394,7 @@
     window.removeEventListener('keydown', onAnyKeyDown);
     window.removeEventListener('click', onAnyClick);
     window.removeEventListener('touchstart', onAnyTouchStart);
+    window.removeEventListener('pointerdown', onAnyPointerDown);
     window.removeEventListener('resize', refreshInsetBox);
     window.removeEventListener('orientationchange', refreshInsetBox);
     renderLoop?.stop();
