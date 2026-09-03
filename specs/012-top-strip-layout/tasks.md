@@ -422,7 +422,7 @@ built, exactly as their own "Independent Test" sections in spec.md describe
 spec.md/plan.md/tasks.md that the node-only test suite, which exercises only
 the pure `computeTopStripLayout` function, cannot itself catch.
 
-- [ ] T019 Add `box-sizing: border-box` to the `.readout`, `.mute-button`, and
+- [X] T019 Add `box-sizing: border-box` to the `.readout`, `.mute-button`, and
   `.theme-option` CSS rules in `src/App.svelte` (or a project-wide reset,
   whichever the maintainer prefers). Every `Size` fed into
   `computeTopStripLayout` and returned in `TopStripLayout` is measured via
@@ -438,7 +438,7 @@ the pure `computeTopStripLayout` function, cannot itself catch.
   though the pure function proved they should not), and no test in
   `tests/lib/layout/topStrip.test.ts` can catch it, since that suite never
   touches the DOM. Per FR-007, FR-008, FR-010 (contradicts).
-- [ ] T020 Give the top-strip band a leading/trailing edge margin equal to
+- [X] T020 Give the top-strip band a leading/trailing edge margin equal to
   `computeTopStripLayout`'s own `MARGIN` constant (`src/lib/layout/
   topStrip.ts`), inset from `availableBox`'s left and right edges before any
   `reservedRects` subtraction, so the readout's leading edge and the theme
@@ -452,7 +452,7 @@ the pure `computeTopStripLayout` function, cannot itself catch.
   topStrip.test.ts`'s existing assertions (ordering only, not edge offsets)
   do not catch. Add a test asserting the leading/trailing edge margins at
   `WIDE_DESKTOP`. Per FR-020, SC-007 (partial).
-- [ ] T021 Broaden the SC-010 idempotence test in `tests/lib/layout/
+- [X] T021 Broaden the SC-010 idempotence test in `tests/lib/layout/
   topStrip.test.ts` (currently one assertion, over one occupant-size sample —
   `OCCUPANT_SIZE_SAMPLES.collapseForcing` — at one viewport,
   `NARROWEST_PORTRAIT`) to assert idempotence for **both** the expanded and

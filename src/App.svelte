@@ -593,7 +593,12 @@
   .readout {
     /* Positioned by topStripLayout.readout's inline style below — never a
        fixed offset (spec 012: nothing here measures whether it overlaps the
-       mute button or theme picker). */
+       mute button or theme picker). box-sizing: border-box keeps the
+       width/height inline styles (measured via getBoundingClientRect, which
+       always reports the border box) from being inflated by this rule's own
+       padding — otherwise the rendered size would exceed what
+       computeTopStripLayout measured and placed it at. */
+    box-sizing: border-box;
     position: fixed;
     padding: 0.25rem 0.6rem;
     background: rgba(0, 0, 0, 0.55);
@@ -630,7 +635,8 @@
     /* Positioned by topStripLayout.muteButton's inline style below — always
        centered between the readout and the theme picker, never shrinking
        (FR-011), computed fresh from measured sizes instead of a fixed
-       top/left guess (spec 012). */
+       top/left guess (spec 012). box-sizing: border-box, see .readout. */
+    box-sizing: border-box;
     position: fixed;
     padding: 0.25rem 0.6rem;
     background: rgba(0, 0, 0, 0.55);
@@ -649,6 +655,9 @@
   }
 
   .theme-option {
+    /* box-sizing: border-box, see .readout — this rule also has a border,
+       which content-box sizing would additionally add on top. */
+    box-sizing: border-box;
     padding: 0.25rem 0.6rem;
     background: rgba(0, 0, 0, 0.55);
     color: #fff;

@@ -64,8 +64,12 @@ export function computeTopStripLayout(
   // without an orientation-specific branch (research.md).
   const bandHeight = Math.max(...heights) + MARGIN * 2;
   const band: Rect = { x: availableBox.x, y: availableBox.y, width: availableBox.width, height: bandHeight };
-  let usableLeft = band.x;
-  let usableRight = band.x + band.width;
+  // Inset the band's own leading/trailing edges by MARGIN before subtracting
+  // any reservedRects, so the readout's leading edge and the theme picker's
+  // trailing edge sit off the screen edge by the same ~8px (0.5rem) the
+  // pre-feature fixed `.readout`/`.theme-picker` CSS used (FR-020).
+  let usableLeft = band.x + MARGIN;
+  let usableRight = band.x + band.width - MARGIN;
   for (const reserved of reservedRects) {
     if (!overlapsVertically(reserved, band)) continue;
     const reservedLeft = reserved.x;

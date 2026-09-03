@@ -132,10 +132,23 @@ describe('computeTopStripLayout — collapse decision (US1, FR-011, FR-012, FR-0
     expect(layout.themePicker?.rect.height).toBe(THEME_PICKER_COLLAPSED.height);
   });
 
-  it('is idempotent: identical arguments return a deep-equal layout, including the same collapsed value (SC-010)', () => {
-    const first = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.collapseForcing);
-    const second = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.collapseForcing);
-    expect(second).toEqual(first);
+  it('is idempotent for both the expanded and collapsed form, over the whole pinned viewport set (SC-010)', () => {
+    const viewports: [string, InsetBox][] = [
+      ['NARROWEST_PORTRAIT', NARROWEST_PORTRAIT],
+      ['NARROWEST_LANDSCAPE', NARROWEST_LANDSCAPE],
+      ['WIDE_DESKTOP', WIDE_DESKTOP],
+    ];
+    const forms: [string, TopStripOccupantSizes][] = [
+      ['expanded', OCCUPANT_SIZE_SAMPLES.typicalReadout],
+      ['collapsed', OCCUPANT_SIZE_SAMPLES.collapseForcing],
+    ];
+    for (const [, box] of viewports) {
+      for (const [, sizes] of forms) {
+        const first = computeTopStripLayout(box, NO_RESERVED_RECTS, sizes);
+        const second = computeTopStripLayout(box, NO_RESERVED_RECTS, sizes);
+        expect(second).toEqual(first);
+      }
+    }
   });
 
   it('stays expanded, at natural size, arranged leading/centered/trailing, when everything fits (FR-020)', () => {
@@ -182,6 +195,15 @@ describe('computeTopStripLayout — reserved regions and rotation (US2, FR-009, 
     expect(layout.readout!.x).toBeLessThan(layout.muteButton.x);
     expect(layout.muteButton.x + layout.muteButton.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
     expect(layout.themePicker!.collapsed).toBe(false);
+  });
+
+  it('insets the leading and trailing edges by the same ~0.5rem margin the pre-feature CSS used (FR-020, SC-007)', () => {
+    const layout = computeTopStripLayout(WIDE_DESKTOP, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
+    const EDGE_MARGIN = 8; // mirrors computeTopStripLayout's own MARGIN constant (0.5rem)
+    expect(layout.readout!.x).toBe(WIDE_DESKTOP.x + EDGE_MARGIN);
+    expect(layout.themePicker!.rect.x + layout.themePicker!.rect.width).toBe(
+      WIDE_DESKTOP.x + WIDE_DESKTOP.width - EDGE_MARGIN
+    );
   });
 
   it('a degenerate available box (near-zero width or height) returns contained rects without throwing', () => {
@@ -265,9 +287,11 @@ describe('computeTopStripLayout — the suite catches a real regression (US4, SC
     const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
     const brokenMuteButton = brokenPlacement(sizes);
     const layout = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
-    // The readout also starts at the leading edge (x: 0), so the broken
-    // mute button — pinned to (0, 0) regardless of input — collides with it.
-    expect(layout.readout!.x).toBe(0);
+    // The readout also starts at the band's leading edge (x: MARGIN, not 0 —
+    // see T020's edge inset), well within the broken mute button's 0-44
+    // span, so the broken mute button — pinned to (0, 0) regardless of
+    // input — collides with it.
+    expect(layout.readout!.x).toBe(8);
     expect(rectsIntersect(brokenMuteButton, layout.readout!)).toBe(true);
   });
 });
