@@ -2,7 +2,8 @@
   "issue": 35,
   "spec_dir": "specs/012-top-strip-layout",
   "feature_num": "012",
-  "stage": "implement",
+  "stage": "review",
   "iteration": 2,
-  "spec_branch": "spec/012-top-strip-layout"
+  "spec_branch": "spec/012-top-strip-layout",
+  "pending_re_review_from": []
 }
