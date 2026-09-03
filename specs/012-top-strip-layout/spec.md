@@ -36,9 +36,11 @@ holds by convention at a call site or in a stylesheet rather than by something
 the suite can hold up. The top strip's occupants should be placed by the same
 kind of measured, pure layout function the touch controls already use, so that
 "these controls never overlap each other, and never overlap the readout" becomes
-a property a node test asserts at phone widths. The issue also asks that 007's
-Maintainer Review Notes gain the matching by-hand item, which today has no
-entry for this check.
+a property a node test asserts at phone widths. The issue also asks for the
+matching by-hand item, which today has no entry anywhere; per the clarification
+on #35 it lands in a new "Standing checks" section of
+`docs/manual-verification.md` rather than being back-filled into 007's own
+Maintainer Review Notes.
 
 This spec changes no physics, no cave, and no theme data. It moves three
 positions out of a stylesheet and into a rule, and pins the rule.
@@ -51,10 +53,12 @@ A player picks up a phone in portrait, opens the game, and starts cave one. The
 readout along the top tells them how many diamonds they have of the quota, how
 much time is left, their score, and their lives — every character of it legible,
 none of it behind a button. The mute control is a whole button they can see and
-press. The theme buttons are whole buttons they can see and press, and pressing
-one switches the theme rather than doing nothing because a different element was
-on top at that point. They can read the score while they play and find the mute
-control without hunting, on the narrowest phone the game supports.
+press. The theme control is a whole button they can see and press — at phone
+width it is the single cycle control of FR-012, showing the active theme and
+advancing to the next one on each tap — and pressing it switches the theme
+rather than doing nothing because a different element was on top at that point.
+They can read the score while they play and find the mute control without
+hunting, on the narrowest phone the game supports (320 CSS px, FR-023).
 
 **Why this priority**: This is the reported defect, and it is the entire
 feature. Everything below is this same property under rotation, under more
@@ -85,11 +89,19 @@ maintainer's check — see "Maintainer Review Notes".
    control and theme picker are placed, **Then** neither overlaps the other and
    neither is pushed off the available box.
 6. **Given** any placement the rule returns, **When** a player taps the mute
-   control or a theme button, **Then** the tap reaches that control — no other
+   control or the theme control, **Then** the tap reaches that control — no other
    occupant's box covers any part of its hit target.
 7. **Given** the same inputs twice, **When** the rule runs, **Then** it returns
    the same boxes — placement is deterministic, with no dependence on the tick,
    the clock, or randomness.
+8. **Given** a viewport too narrow for the three at their natural sizes, **When**
+   they are placed, **Then** the theme picker is the collapsed cycle control,
+   every registered theme is still reachable by repeated taps, and the same
+   non-overlap and containment properties hold.
+9. **Given** the collapsed arrangement on screen, **When** placement is recomputed
+   from the same available box, **Then** the arrangement stays collapsed — the
+   decision reads natural sizes, not the sizes currently rendered, so the strip
+   cannot flip back and forth.
 
 ---
 
@@ -137,11 +149,12 @@ occupant's box intersects any reserved touch-control region.
 
 ### User Story 3 - A third theme does not break the strip (Priority: P3)
 
-A contributor adds a third theme. It appears in the picker beside Classroom and
-Classic, with its own name. On a phone the top strip is still three separate,
-whole, tappable things — the arrangement absorbed the extra button rather than
-pushing the readout under it. They add a fourth with a long name and the same
-holds. They never touch the placement rule to make this true.
+A contributor adds a third theme. On a desktop window it appears in the picker
+beside Classroom and Classic, with its own name. On a phone the top strip is
+still three separate, whole, tappable things — the collapsed cycle control
+absorbed the extra theme without growing by so much as a pixel, so nothing was
+pushed under anything. They add a fourth with a long name and the same holds.
+They never touch the placement rule to make this true.
 
 **Why this priority**: The constitution makes adding a theme a data-only change,
 and the issue names this explicitly: the picker's width grows with the number of
@@ -169,6 +182,10 @@ assert the same non-overlap and containment properties for every one.
 5. **Given** a hypothetical third theme added to the registry, **When** the
    build and suite run, **Then** the only changed files are that theme's data
    and its registry entry.
+6. **Given** the collapsed cycle control, **When** the number of registered
+   themes grows, **Then** its width does not grow with the count — the strip's
+   fit at the narrowest supported viewport does not become a question that has
+   to be re-answered for every new theme.
 
 ---
 
@@ -203,26 +220,33 @@ fails those assertions.
 4. **Given** the diff, **When** it is reviewed, **Then** it touches no file
    under `src/sim/` and changes no physics rule, cave, theme table, or input
    binding.
-5. **Given** 007's Maintainer Review Notes, **When** they are read after this
-   feature, **Then** they carry an item for confirming by hand that the readout,
-   the mute control, and the theme picker do not overlap at phone width in both
-   orientations.
+5. **Given** `docs/manual-verification.md`, **When** it is read after this
+   feature, **Then** it carries a "Standing checks" section, separate from its
+   dated per-spec pass log, with a re-runnable item for confirming by hand that
+   the readout, the mute control, and the theme control do not overlap at phone
+   width in both orientations — and 007's own Maintainer Review Notes are
+   unchanged.
 
 ---
 
 ### Edge Cases
 
-- **The narrowest supported viewport with the longest possible content**: the
-  widest readout line and the widest picker at once. This is the case the rule
-  is written for, not an exception to it; if the three cannot fit at their
-  natural sizes, the arrangement degrades under FR-012 and the property still
-  holds.
+- **The narrowest supported viewport (320 CSS px) with the longest possible
+  content**: the widest readout line and the widest picker at once. This is the
+  case the rule is written for, not an exception to it; the three do not fit at
+  their natural sizes here, so the picker collapses under FR-012 and the property
+  still holds.
 - **A readout that is wider than the whole screen on its own**: the readout
   gets the space that remains after the other two are placed, and is shortened
   to fit rather than allowed to run under them.
 - **A theme name long enough that one theme button alone fills the strip**: the
-  picker degrades under FR-012 like any other over-wide occupant; a theme's data
-  can never push another occupant off the screen.
+  picker collapses under FR-012, and because the collapsed control's width does
+  not depend on the registered names it stays within its share of the strip; a
+  theme's data can never push another occupant off the screen.
+- **A collapsed control that is still too wide** (a very long active-theme name
+  on a 320 px screen): the control's own presentation gives way before the
+  arrangement does — it stays a whole, tappable control inside the available box
+  at no less than today's hit-target size (FR-011), and still cycles every theme.
 - **No readout on screen** (cave intro, life lost, game over on some screens):
   the other two are placed as if the strip were otherwise empty, and still do
   not overlap each other.
@@ -243,6 +267,10 @@ fails those assertions.
   placement is a function of the latest measurement only, and repeated
   measurement of an unchanged screen returns an unchanged arrangement — the rule
   cannot oscillate between two arrangements on successive measurements.
+- **A window sitting exactly at the width where the strip collapses**: the
+  collapse decision reads natural sizes, never rendered ones (FR-012a), so a
+  collapsed strip re-measured at the same width stays collapsed instead of
+  expanding, failing to fit, and collapsing again.
 - **A degenerate available box** (zero or near-zero width or height, as a
   browser can briefly report mid-rotation): the rule returns boxes rather than
   failing, and no box escapes the available box.
@@ -296,16 +324,33 @@ fails those assertions.
 **Growing with the number of themes**
 
 - **FR-012**: When the occupants cannot all fit at their natural sizes, the
-  arrangement MUST degrade by one stated, deterministic rule rather than by
-  overlapping. [NEEDS CLARIFICATION: which degradation is wanted at phone width
-  — shorten the theme buttons' labels, collapse the picker to a single control
-  that cycles themes, or wrap the strip into a second row?]
+  arrangement MUST degrade by collapsing the theme picker to a single control
+  that advances to the next registered theme and shows which theme is currently
+  active. Labels MUST NOT be abbreviated to fit and the strip MUST NOT wrap to a
+  second row: both of those keep the picker's width proportional to the number of
+  registered themes, which re-opens FR-014 at every new theme, and the wrapped
+  form spends vertical space on the devices with the least of it. The collapsed
+  control's width MUST be independent of how many themes are registered.
+- **FR-012a**: The choice between the expanded and the collapsed arrangement
+  MUST be a function of the occupants' **natural (expanded) sizes** measured
+  against the available box — never of the sizes currently on screen. Deciding
+  from rendered sizes is what makes a layout oscillate: collapsing makes the
+  strip fit, which makes the fit test pass, which expands it, which makes it not
+  fit again.
+- **FR-012b**: A node test MUST pin idempotence directly: feeding the rule the
+  available box that produced a collapsed arrangement MUST yield the collapsed
+  arrangement again, and likewise for the expanded arrangement. FR-018 states
+  no-oscillation as a property; this is the assertion that makes it true rather
+  than hoped for.
 - **FR-013**: Degradation MUST follow a stated priority: the readout stays
   readable during play (005 FR-021) and the mute control stays visible and
   operable on every screen (008 FR-041). The theme picker is the first occupant
-  to give up space, and it MUST remain a way for a touch-only player to change
-  theme however it degrades, so touch does not lose a capability keyboard and
-  gamepad keep (Principle V).
+  to give up space, and its collapsed form MUST remain a way for a touch-only
+  player to reach every registered theme — repeated taps cycle through all of
+  them — so touch does not lose a capability keyboard and gamepad keep
+  (Principle V). The collapsed control performs the same advance-to-next-theme
+  action the cycle-theme key and the gamepad binding already perform, rather
+  than introducing a second, touch-only concept for changing themes.
 - **FR-014**: The rule MUST hold for one registered theme and for any larger
   number, with the picker's contribution a function of its measured size — not
   of an assumed count of two.
@@ -343,17 +388,29 @@ fails those assertions.
 
 **Coverage this feature owes**
 
-- **FR-023**: A node test MUST assert FR-007 through FR-010 over a pinned set of
-  viewport boxes that includes the narrowest supported viewport in both
-  orientations [NEEDS CLARIFICATION: what is the narrowest viewport the game
-  supports — 320 CSS px wide, 360, or the reporter's ~412 px device as the
-  floor?], both with and without the touch controls' reserved regions, and over
-  a range of occupant sizes standing in for one through four themes and for an
-  unusually long theme name.
-- **FR-024**: 007's Maintainer Review Notes MUST gain an item instructing the
+- **FR-023**: The narrowest supported viewport is **320 CSS px** on its short
+  edge, in both orientations. A node test MUST assert FR-007 through FR-010 over
+  a pinned set of viewport boxes that includes that size in both orientations,
+  both with and without the touch controls' reserved regions, and over a range of
+  occupant sizes standing in for one through four themes and for an unusually
+  long theme name. Pinning the reporter's ~412 px device, or 360 px, would repeat
+  the practice that produced this issue — a layout correct on the screen it was
+  written on.
+- **FR-023a**: A consequence of FR-023 with FR-012 is accepted deliberately: at
+  ordinary phone widths the collapsed strip is the common arrangement rather than
+  a rare edge case. This is wanted. One wide cycle button is a better thumb target
+  than several narrow ones, it makes FR-011 easier to satisfy rather than harder,
+  and it means the degraded path is the one exercised constantly instead of an
+  untested branch that quietly rots.
+- **FR-024**: The phone-width non-overlap check MUST be recorded as a re-runnable
+  item in a **"Standing checks"** section of `docs/manual-verification.md`, kept
+  clearly apart from that file's dated per-spec pass log, instructing the
   maintainer to confirm on a real phone, in both orientations, that the readout,
   the mute control, and the theme picker do not overlap and that each is fully
-  legible and tappable.
+  legible and tappable. The item also stays in this feature's own Maintainer
+  Review Notes. Feature 007's Maintainer Review Notes MUST NOT be edited: a
+  merged spec is the record of what that feature required, and adding items to it
+  later stops it reading as that record.
 
 ### Key Entities
 
@@ -362,6 +419,11 @@ fails those assertions.
   natural size, a minimum size it will not shrink below, and a stated priority
   used when space runs out. The set is closed; adding a fourth occupant is a
   spec change.
+- **Theme Picker, expanded and collapsed**: the picker has two forms — the row of
+  one button per registered theme, whose width grows with the registry, and the
+  single cycle control of FR-012, whose width does not. Which form is used is
+  chosen by the placement rule from natural sizes alone (FR-012a); both forms
+  reach every registered theme by touch.
 - **Available Screen Box**: the safe-area-inset box already measured for the
   touch controls — the region every occupant must stay inside.
 - **Reserved Region**: a rectangle the on-screen touch controls occupy, which no
@@ -374,15 +436,15 @@ fails those assertions.
 
 ### Measurable Outcomes
 
-- **SC-001**: Across the pinned viewport set — narrowest supported size in both
-  orientations, with and without touch controls, across occupant sizes standing
-  in for one through four themes — zero pairs of occupant boxes intersect, and
-  100% of boxes lie inside the available box and outside every reserved region.
-  Enforced by a node test, not by inspection.
+- **SC-001**: Across the pinned viewport set — 320 CSS px on the short edge in
+  both orientations, with and without touch controls, across occupant sizes
+  standing in for one through four themes — zero pairs of occupant boxes
+  intersect, and 100% of boxes lie inside the available box and outside every
+  reserved region. Enforced by a node test, not by inspection.
 - **SC-002**: On the reporting device (a Pixel 10 Pro in portrait, Chrome), all
-  four readout values, the mute control, and every theme button are fully
-  visible and individually tappable — the reported defect is gone, confirmed by
-  the maintainer.
+  four readout values, the mute control, and the theme control are fully visible
+  and individually tappable, and repeated taps on the theme control reach every
+  registered theme — the reported defect is gone, confirmed by the maintainer.
 - **SC-003**: Rotating a real phone mid-cave leaves all three occupants
   separate, whole, and clear of the thumb margins, in both orientations,
   confirmed by the maintainer.
@@ -397,8 +459,17 @@ fails those assertions.
   and `dist/` still holds exactly one self-contained `index.html`.
 - **SC-007**: At a desktop window width, the top strip is visually
   indistinguishable from the pre-feature build, confirmed by the maintainer.
-- **SC-008**: 007's Maintainer Review Notes contain the overlap item, so the
-  next manual pass checks it by instruction rather than by luck.
+- **SC-008**: `docs/manual-verification.md` carries a "Standing checks" section
+  containing the overlap item, separate from its dated per-spec pass log, so the
+  next manual pass checks it by instruction rather than by luck — and 007's
+  Maintainer Review Notes are byte-for-byte unchanged.
+- **SC-009**: The collapsed-arrangement width is the same for one, two, three,
+  and four registered themes in the pinned test — the strip's fit at 320 px does
+  not have to be re-answered when a theme is added.
+- **SC-010**: Re-running the rule on its own output's available box returns an
+  identical arrangement for both the expanded and the collapsed case, over the
+  whole pinned viewport set — asserted by a node test, so the collapse threshold
+  cannot flicker.
 
 ## Maintainer Review Notes
 
@@ -410,8 +481,10 @@ opened via `file://`:
 
 1. Start a cave and read the whole readout — diamonds of quota, time, score,
    lives. Every character legible, nothing behind a button.
-2. Press the mute control, then each theme button. Each press lands on the
-   control you aimed at, and the theme actually changes.
+2. Press the mute control, then the theme control. Each press lands on the
+   control you aimed at, and the theme actually changes. Where the strip is
+   collapsed, tap the cycle control repeatedly and confirm it reaches every
+   registered theme and comes back around.
 3. Rotate mid-cave with a thumb on the screen. Confirm all three are still
    separate and whole, that none has landed under a thumb margin where the
    touch controls live, and that the run continues.
@@ -419,9 +492,10 @@ opened via `file://`:
    nothing starts overlapping as it does.
 5. Look at the title screen, whose readout line is the longest one in the game,
    and confirm it too is clear of the other two.
-6. If the arrangement degrades at this width under FR-012, confirm the degraded
-   form is still obvious: you can tell what the buttons do and you can still
-   reach every theme.
+6. At this width the strip is expected to be collapsed (FR-023a). Confirm the
+   collapsed form is obvious without explanation: you can tell the control
+   changes the theme, you can see which theme is active, and it is at least as
+   easy to hit as the buttons it replaced.
 
 **On the narrowest device to hand:**
 
@@ -430,16 +504,20 @@ opened via `file://`:
 
 **On a desktop window:**
 
-8. Confirm the top strip looks exactly as it did before this feature, and resize
-   the window slowly from wide to narrow — nothing should ever overlap on the
-   way through, and the change into the narrow arrangement should not flicker
-   back and forth at the width where it switches.
+8. Confirm the top strip looks exactly as it did before this feature — the full
+   row of theme buttons, not the collapsed control — and resize the window
+   slowly from wide to narrow. Nothing should ever overlap on the way through,
+   and the switch to the collapsed form should happen once and stay, with no
+   flicker back and forth at the width where it switches.
 
 **In the diff:**
 
 9. Confirm no file under `src/sim/` changed, no theme id appears in placement or
    rendering code, and the three positions now come from the placement rule
    rather than from fixed stylesheet offsets.
+10. Confirm `docs/manual-verification.md` gained a "Standing checks" section
+    carrying the phone-width overlap item, that it is clearly separate from the
+    dated per-spec pass log, and that 007's spec file is untouched.
 
 ## Assumptions
 
@@ -469,9 +547,19 @@ opened via `file://`:
 - **The three occupants are the whole set**: nothing else is added to the top
   strip by this feature. If a later feature wants a fourth, it declares it as an
   occupant with a size and a priority rather than pinning it in a stylesheet.
-- **Degradation is a layout change, not a capability change**: whatever form
-  FR-012 takes, every theme stays reachable by touch and mute stays one tap
-  away. A degraded strip is smaller, never shorter on function.
+- **Degradation is a layout change, not a capability change**: under FR-012's
+  collapse every theme stays reachable by touch — through repeated taps rather
+  than one tap each — and mute stays one tap away. A degraded strip is smaller,
+  never shorter on function.
+- **006 is not contradicted by the collapse**: that spec requires the registry be
+  enumerable "so the UI *can* render one option per theme" — a capability the
+  registry provides, not a shape the UI is obliged to keep at every width. The
+  one-option-per-theme row survives wherever there is room for it, which FR-020
+  already pins.
+- **The collapsed control reuses the existing action**: advancing to the next
+  theme is what the cycle-theme key and the gamepad binding already do, so the
+  collapse adds a surface for an action the game has rather than a second,
+  touch-only way to change themes.
 - **No new dependency, no browser test harness**: the property is asserted over
   a pure function in the existing suite, in keeping with Principle VII's
   prohibition on browser-automation test infrastructure.

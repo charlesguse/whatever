@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,24 +31,33 @@
 
 ## Notes
 
-- Two `[NEEDS CLARIFICATION]` markers remain, both posted to the lifecycle issue
-  for the requester rather than guessed:
-  - **FR-012** — which degradation the maintainer wants when the three
-    occupants cannot fit at their natural sizes at phone width. The three
-    candidates (shorter theme labels, a single cycling control, a wrapped second
-    row) produce visibly different phones and different amounts of work, and no
-    one of them is the obvious default. Everything the choice must preserve is
-    already stated as requirements (FR-013's priority, FR-011's hit targets,
-    Principle V's touch parity), so the answer sets the form, not the
-    guarantees.
-  - **FR-023** — what counts as the narrowest supported viewport, which decides
-    whether degradation ever triggers on real devices and what the pinned test
-    actually pins. The reporter's device is ~412 CSS px wide; the classic floor
-    is 320.
-- Neither marker blocks planning of the structural half of the feature: the
-  placement rule, its purity, its inputs, and the properties it must satisfy
-  (FR-001 through FR-011, FR-014 through FR-022) are fully stated and testable
-  without them.
+- Both `[NEEDS CLARIFICATION]` markers were answered on the lifecycle issue and
+  are now folded into the spec:
+  - **FR-012** — degradation collapses the theme picker to a single control that
+    cycles themes and shows the active one. Shortened labels and a wrapped
+    second row were both rejected for the same reason: they keep the picker's
+    width proportional to the theme count, so FR-014 re-opens at every new
+    theme, and the wrapped form spends vertical space where there is least of
+    it. The collapse also reuses the existing cycle-theme action rather than
+    inventing a touch-only concept. The answer added a mechanism the spec now
+    carries as **FR-012a** (the collapse decision reads natural, not rendered,
+    sizes — the classic oscillation) and **FR-012b** (idempotence pinned by a
+    node test, with SC-010 as its measurable outcome).
+  - **FR-023** — the narrowest supported viewport is 320 CSS px on the short
+    edge in both orientations. 412 px would pin the reporting device and little
+    else, which is the practice that produced this issue; 360 still leaves real
+    phones untested. **FR-023a** records the accepted consequence: the collapsed
+    strip is the ordinary phone arrangement rather than a rare branch, which is
+    wanted — a wide cycle button is a better thumb target and the degraded path
+    gets exercised constantly instead of rotting.
+- One rider arrived outside the two questions and is folded in as well:
+  **FR-024** no longer edits 007's Maintainer Review Notes, since a merged spec
+  is the record of what that feature required. The phone-width overlap item goes
+  to a new "Standing checks" section of `docs/manual-verification.md`, kept apart
+  from that file's dated per-spec pass log, and stays in 012's own review notes.
+  US4 scenario 5, SC-008, and review-note item 10 track the change. The same
+  decision was made on #31 question 3, so the two features should land on the
+  same shape whichever merges first.
 - Three terms name surfaces that already exist in this repository — the
   safe-area-inset box, the touch controls' reserved regions, and 007's
   Maintainer Review Notes. They are named because the requirement is that this
