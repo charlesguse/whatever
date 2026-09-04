@@ -14,6 +14,7 @@
   import { TouchInput } from './lib/input/touch/TouchInput';
   import { GamepadInput } from './lib/input/gamepad/GamepadInput';
   import { computeOrientation, computeTouchControlLayout, type InsetBox } from './lib/input/touch/layout';
+  import { computeTopStripLayout, type Size, type TopStripOccupantSizes } from './lib/layout/topStrip';
   import { nextLastInputSource, shouldShowTouchControls, type InputOrigin, type LastInputSource } from './lib/input/visibility';
   import { orAll, resolveDirection } from './lib/input/merge';
   import { createRenderLoop, type RenderLoop } from './lib/render/canvas';
@@ -102,7 +103,21 @@
 
   function refreshInsetBox(): void {
     insetBox = measureInsetBox();
+    topStripProbeTick++;
   }
+
+  // Hidden natural-size probes for the top strip's occupants (research.md's
+  // "always-mounted, visually-hidden probe" decision) — mirrors probeEl
+  // above, styled with the same classes as the real elements so their
+  // getBoundingClientRect() reports the same natural size.
+  let readoutProbeEl: HTMLDivElement | undefined = $state();
+  let muteProbeEl: HTMLButtonElement | undefined = $state();
+  let themeRowProbeEl: HTMLDivElement | undefined = $state();
+  let themeCollapsedProbeEl: HTMLButtonElement | undefined = $state();
+  // Bumped alongside insetBox on resize/orientationchange so the probes are
+  // re-measured on the same triggers, in addition to the natural reactivity
+  // of reading hudText/theme.displayName below.
+  let topStripProbeTick = $state(0);
 
   // FR-016, FR-043: device creation happens only inside these existing
   // key/click/touch gesture listeners — never at module/page load, never
@@ -155,13 +170,6 @@
       ? `left:${touchLayout.caveRect.x}px;top:${touchLayout.caveRect.y}px;width:${touchLayout.caveRect.width}px;height:${touchLayout.caveRect.height}px;`
       : ''
   );
-
-  // FR-015: keeps the theme picker inside caveRect's right edge instead of
-  // the viewport's, so it never sits under a landscape reserved margin.
-  let themePickerRightPx = $derived.by(() => {
-    if (!touchLayout || !insetBox) return undefined;
-    return insetBox.x + insetBox.width - (touchLayout.caveRect.x + touchLayout.caveRect.width) + 8;
-  });
 
   // FR-039: writeSave only ever grows a stored value, so passing the other
   // field's minimum here is a safe no-op on that field. Called only on the
@@ -319,6 +327,35 @@
     return [stars, time, score, lives].filter((part) => part !== undefined).join(' — ');
   });
 
+  // Natural sizes measured from the hidden top-strip probes (research.md's
+  // "always-mounted, visually-hidden probe" decision) — re-measured on the
+  // same resize/orientationchange listeners as insetBox (topStripProbeTick),
+  // and whenever hudText or the active theme's label changes (both read
+  // below, giving this its own reactive dependency on each).
+  let topStripSizes: TopStripOccupantSizes | undefined = $derived.by(() => {
+    topStripProbeTick;
+    // theme.displayName is what themeCollapsedProbeEl renders below; reading
+    // it here keeps this measurement in step with a theme switch too.
+    void theme.displayName;
+    if (!muteProbeEl || !themeRowProbeEl || !themeCollapsedProbeEl) return undefined;
+    const toSize = (el: Element): Size => {
+      const rect = el.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    };
+    const readout = hudText !== undefined && readoutProbeEl ? toSize(readoutProbeEl) : undefined;
+    const themePicker =
+      listThemes().length > 1 ? { expanded: toSize(themeRowProbeEl), collapsed: toSize(themeCollapsedProbeEl) } : undefined;
+    return { readout, muteButton: toSize(muteProbeEl), themePicker };
+  });
+
+  // FR-017: recomputed only when insetBox, the touch layout's reservedRects,
+  // or topStripSizes changes — never per tick or per frame, mirroring
+  // touchLayout's own $derived.by above.
+  let topStripLayout = $derived.by(() => {
+    if (!insetBox || !topStripSizes) return undefined;
+    return computeTopStripLayout(insetBox, touchLayout?.reservedRects ?? [], topStripSizes);
+  });
+
   // FR-020: the bonus is already final the instant 'caveComplete' is
   // entered (session.ts adds it atomically) — this only animates the
   // *display* toward it, counting up from the pre-bonus score as
@@ -408,8 +445,32 @@
      never a CSS env() read from inside the pure layout module. -->
 <div bind:this={probeEl} class="safe-area-probe" aria-hidden="true"></div>
 <canvas bind:this={canvas} style={canvasStyle}></canvas>
-{#if hudText}
-  <div class="readout">{hudText}</div>
+
+<!-- Hidden natural-size probes for the top strip (T006, research.md) —
+     styled identically to their visible counterparts below so
+     getBoundingClientRect() reports the same natural size regardless of
+     which form (expanded/collapsed) is currently rendered. -->
+<div bind:this={readoutProbeEl} class="readout top-strip-probe" aria-hidden="true">{hudText ?? ''}</div>
+<button bind:this={muteProbeEl} type="button" class="mute-button top-strip-probe" aria-hidden="true" tabindex="-1">
+  {muted ? '🔇' : '🔊'}
+</button>
+<div bind:this={themeRowProbeEl} class="theme-picker top-strip-probe" aria-hidden="true">
+  {#each listThemes() as themeOption (themeOption.id)}
+    <button type="button" class="theme-option" tabindex="-1">{themeOption.displayName}</button>
+  {/each}
+</div>
+<button bind:this={themeCollapsedProbeEl} type="button" class="theme-option top-strip-probe" aria-hidden="true" tabindex="-1">
+  {theme.displayName}
+</button>
+
+{#if topStripLayout?.readout}
+  <div
+    class="readout"
+    style="left:{topStripLayout.readout.x}px; top:{topStripLayout.readout.y}px; width:{topStripLayout.readout
+      .width}px; height:{topStripLayout.readout.height}px;"
+  >
+    {hudText}
+  </div>
 {/if}
 {#if overlayText}
   <div class="status-banner">{overlayText}</div>
@@ -418,28 +479,50 @@
   <div class="status-banner">{statusMessage}</div>
 {/if}
 
-<button
-  type="button"
-  class="mute-button"
-  aria-pressed={muted}
-  onclick={toggleMuted}
->
-  {muted ? '🔇' : '🔊'}
-</button>
-{#if listThemes().length > 1}
-  <div class="theme-picker" style={themePickerRightPx !== undefined ? `right:${themePickerRightPx}px` : undefined}>
-    {#each listThemes() as themeOption (themeOption.id)}
-      <button
-        type="button"
-        class="theme-option"
-        class:active={themeOption.id === activeThemeId}
-        aria-pressed={themeOption.id === activeThemeId}
-        onclick={() => selectTheme(themeOption.id)}
-      >
-        {themeOption.displayName}
-      </button>
-    {/each}
-  </div>
+{#if topStripLayout}
+  <button
+    type="button"
+    class="mute-button"
+    aria-pressed={muted}
+    onclick={toggleMuted}
+    style="left:{topStripLayout.muteButton.x}px; top:{topStripLayout.muteButton.y}px; width:{topStripLayout.muteButton
+      .width}px; height:{topStripLayout.muteButton.height}px;"
+  >
+    {muted ? '🔇' : '🔊'}
+  </button>
+{/if}
+{#if topStripLayout?.themePicker}
+  {#if topStripLayout.themePicker.collapsed}
+    <!-- FR-013: the same advance-to-next-theme action already used by the
+         keyboard/gamepad/touch cycle-theme dispatch (App.svelte:213). -->
+    <button
+      type="button"
+      class="theme-option theme-collapsed"
+      onclick={() => selectTheme(cycleThemeId(activeThemeId, listThemes().map((t) => t.id)))}
+      style="left:{topStripLayout.themePicker.rect.x}px; top:{topStripLayout.themePicker.rect.y}px; width:{topStripLayout
+        .themePicker.rect.width}px; height:{topStripLayout.themePicker.rect.height}px;"
+    >
+      {theme.displayName}
+    </button>
+  {:else}
+    <div
+      class="theme-picker"
+      style="left:{topStripLayout.themePicker.rect.x}px; top:{topStripLayout.themePicker.rect.y}px; width:{topStripLayout
+        .themePicker.rect.width}px; height:{topStripLayout.themePicker.rect.height}px;"
+    >
+      {#each listThemes() as themeOption (themeOption.id)}
+        <button
+          type="button"
+          class="theme-option"
+          class:active={themeOption.id === activeThemeId}
+          aria-pressed={themeOption.id === activeThemeId}
+          onclick={() => selectTheme(themeOption.id)}
+        >
+          {themeOption.displayName}
+        </button>
+      {/each}
+    </div>
+  {/if}
 {/if}
 {#if touchLayout}
   <!-- FR-008, FR-009, FR-031: the reserved control region — a fixed pad
@@ -508,14 +591,29 @@
   }
 
   .readout {
+    /* Positioned by topStripLayout.readout's inline style below — never a
+       fixed offset (spec 012: nothing here measures whether it overlaps the
+       mute button or theme picker). box-sizing: border-box keeps the
+       width/height inline styles (measured via getBoundingClientRect, which
+       always reports the border box) from being inflated by this rule's own
+       padding — otherwise the rendered size would exceed what
+       computeTopStripLayout measured and placed it at. */
+    box-sizing: border-box;
     position: fixed;
-    top: 0.5rem;
-    left: 0.5rem;
     padding: 0.25rem 0.6rem;
     background: rgba(0, 0, 0, 0.55);
     color: #fff;
     font: 1rem sans-serif;
     border-radius: 0.3rem;
+    pointer-events: none;
+  }
+
+  .top-strip-probe {
+    /* Always mounted, never display:none (which reports zero size) — kept
+       out of layout flow's visible/interactive surface only via visibility
+       and pointer-events (research.md). */
+    position: fixed;
+    visibility: hidden;
     pointer-events: none;
   }
 
@@ -534,14 +632,12 @@
   }
 
   .mute-button {
-    /* Top-center: clear of the HUD readout (top-left), the theme picker
-       (top-right), and the touch pad/grab/pause/restart controls (the
-       bottom band in portrait, the full-height side margins in landscape
-       — src/lib/input/touch/layout.ts). */
+    /* Positioned by topStripLayout.muteButton's inline style below — always
+       centered between the readout and the theme picker, never shrinking
+       (FR-011), computed fresh from measured sizes instead of a fixed
+       top/left guess (spec 012). box-sizing: border-box, see .readout. */
+    box-sizing: border-box;
     position: fixed;
-    top: 0.5rem;
-    left: 50%;
-    transform: translateX(-50%);
     padding: 0.25rem 0.6rem;
     background: rgba(0, 0, 0, 0.55);
     color: #fff;
@@ -552,14 +648,16 @@
   }
 
   .theme-picker {
+    /* Positioned by topStripLayout.themePicker.rect's inline style below. */
     position: fixed;
-    top: 0.5rem;
-    right: 0.5rem;
     display: flex;
     gap: 0.35rem;
   }
 
   .theme-option {
+    /* box-sizing: border-box, see .readout — this rule also has a border,
+       which content-box sizing would additionally add on top. */
+    box-sizing: border-box;
     padding: 0.25rem 0.6rem;
     background: rgba(0, 0, 0, 0.55);
     color: #fff;
@@ -573,6 +671,13 @@
     background: rgba(255, 255, 255, 0.85);
     color: #111;
     border-color: #fff;
+  }
+
+  .theme-collapsed {
+    /* FR-012: the single cycle control replacing the theme-button row when
+       it does not fit at natural size — positioned the same way, by
+       topStripLayout.themePicker.rect's inline style below. */
+    position: fixed;
   }
 
   .touch-controls {

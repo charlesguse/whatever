@@ -28,6 +28,15 @@ desktop devtools does not reproduce the defect this guards against (a tap's
 browser-synthesized `click` being mistaken for a real mouse click); a real
 device is required.
 
+### Top-strip controls never overlap (012, `#35`)
+
+On a real phone, in both portrait and landscape, confirm the status readout,
+the mute control, and the theme picker (expanded or collapsed) never overlap
+each other or the on-screen touch controls, and that each is fully legible
+and tappable. Re-run against any change that touches `src/App.svelte`'s
+top-strip markup/CSS or `src/lib/layout/topStrip.ts`, not just once at this
+spec's review.
+
 ---
 
 ## 008 — Synthesized sound, per theme, always mutable
