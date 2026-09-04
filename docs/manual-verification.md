@@ -28,6 +28,11 @@ desktop devtools does not reproduce the defect this guards against (a tap's
 browser-synthesized `click` being mistaken for a real mouse click); a real
 device is required.
 
+**Run 2026-09-03, by the maintainer, on the Pixel 10 Pro against main at
+`b43cae8`: pass** — reported as "the pixel controls work well now". This is the
+first on-device run since 011 merged (`e0c5a48`), on the same device and the
+same no-keyboard situation that originally surfaced #31 during 007's pass.
+
 ### Top-strip controls never overlap (012, `#35`)
 
 On a real phone, in both portrait and landscape, confirm the status readout,
@@ -36,6 +41,16 @@ each other or the on-screen touch controls, and that each is fully legible
 and tappable. Re-run against any change that touches `src/App.svelte`'s
 top-strip markup/CSS or `src/lib/layout/topStrip.ts`, not just once at this
 spec's review.
+
+**Run 2026-09-03, by the maintainer, on the Pixel 10 Pro against main at
+`b43cae8`: pass**, reported together with the touch-control check above. The
+report was that the controls work; it did not itemise the sub-checks, so the
+following are **not** covered by it and remain to be run: landscape (the report
+does not say which orientation was used), rotation mid-cave with a thumb down
+(also 007's outstanding item), and repeated taps on the collapsed theme control
+reaching every theme in turn. The readout's sub-380px wrap (#43) is out of
+scope of this device: at the Pixel's 412px the band is already sized for two
+lines and nothing spills.
 
 ---
 
@@ -141,6 +156,11 @@ guarantee held by a comment or a CSS assumption rather than by one testable
 function. Specs 011 and 012 each move their guarantee into a pure function with
 node coverage, and 011 adds a standing checks section to this file so the
 touch-only case is re-run against every touch-affecting change rather than once.
+
+**Both are now confirmed fixed on the reporting device** — see the 2026-09-03
+Pixel 10 Pro entries under Standing checks. 007's own outstanding items
+(rotate mid-cave, controller, touchscreen laptop, title-to-win without a
+keyboard) are unaffected by that run and still stand.
 
 Desktop with a controller: **not run**, parked until the controller is found.
 
