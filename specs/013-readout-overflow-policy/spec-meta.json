@@ -2,7 +2,7 @@
   "issue": 43,
   "spec_dir": "specs/013-readout-overflow-policy",
   "feature_num": "013",
-  "stage": "spec",
+  "stage": "plan",
   "iteration": 0,
-  "spec_branch": null
+  "spec_branch": "spec/013-readout-overflow-policy"
 }
