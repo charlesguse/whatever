@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { computeTopStripLayout, type Size, type TopStripOccupantSizes } from '../../../src/lib/layout/topStrip';
+import {
+  computeReadoutWidthCap,
+  computeTopStripLayout,
+  type Size,
+  type TopStripOccupantSizes,
+} from '../../../src/lib/layout/topStrip';
 import { computeOrientation, computeTouchControlLayout, type InsetBox, type Rect } from '../../../src/lib/input/touch/layout';
 
 // Mirrors tests/lib/input/touch/layout.test.ts's own rectsIntersect/
@@ -28,6 +33,10 @@ const WIDE_DESKTOP: InsetBox = { x: 0, y: 0, width: 1024, height: 768 };
 // picker still fits here, so this is where FR-013's priority order (picker
 // gives way first, never the readout) matters most.
 const REPORTING_DEVICE_PORTRAIT: InsetBox = { x: 0, y: 0, width: 412, height: 915 };
+const REPORTING_DEVICE_LANDSCAPE: InsetBox = { x: 0, y: 0, width: 915, height: 412 };
+// FR-020's third pinned width: 360 CSS px, between 320 and 412.
+const PORTRAIT_360: InsetBox = { x: 0, y: 0, width: 360, height: 640 };
+const LANDSCAPE_360: InsetBox = { x: 0, y: 0, width: 640, height: 360 };
 
 // Matching reservedRects samples, shaped exactly like
 // computeTouchControlLayout's own output (a bottom band in portrait, two
@@ -41,9 +50,37 @@ const LANDSCAPE_RESERVED_RECTS: readonly Rect[] = computeTouchControlLayout(
   NARROWEST_LANDSCAPE,
   computeOrientation(NARROWEST_LANDSCAPE)
 ).reservedRects;
+const PORTRAIT_360_RESERVED_RECTS: readonly Rect[] = computeTouchControlLayout(
+  PORTRAIT_360,
+  computeOrientation(PORTRAIT_360)
+).reservedRects;
+const LANDSCAPE_360_RESERVED_RECTS: readonly Rect[] = computeTouchControlLayout(
+  LANDSCAPE_360,
+  computeOrientation(LANDSCAPE_360)
+).reservedRects;
+const REPORTING_DEVICE_PORTRAIT_RESERVED_RECTS: readonly Rect[] = computeTouchControlLayout(
+  REPORTING_DEVICE_PORTRAIT,
+  computeOrientation(REPORTING_DEVICE_PORTRAIT)
+).reservedRects;
+const REPORTING_DEVICE_LANDSCAPE_RESERVED_RECTS: readonly Rect[] = computeTouchControlLayout(
+  REPORTING_DEVICE_LANDSCAPE,
+  computeOrientation(REPORTING_DEVICE_LANDSCAPE)
+).reservedRects;
 // "No touch controls visible" cases (Edge Cases) — an empty array, exactly
 // what App.svelte passes when touchLayout is undefined.
 const NO_RESERVED_RECTS: readonly Rect[] = [];
+
+// FR-020's full pinned viewport set (320/360/412, both orientations), each
+// paired with its own reservedRects sample — used by every fit/cap
+// assertion below that must hold at all three pinned widths.
+const PINNED_VIEWPORTS: readonly [string, InsetBox, readonly Rect[]][] = [
+  ['320 portrait', NARROWEST_PORTRAIT, PORTRAIT_RESERVED_RECTS],
+  ['320 landscape', NARROWEST_LANDSCAPE, LANDSCAPE_RESERVED_RECTS],
+  ['360 portrait', PORTRAIT_360, PORTRAIT_360_RESERVED_RECTS],
+  ['360 landscape', LANDSCAPE_360, LANDSCAPE_360_RESERVED_RECTS],
+  ['412 portrait', REPORTING_DEVICE_PORTRAIT, REPORTING_DEVICE_PORTRAIT_RESERVED_RECTS],
+  ['412 landscape', REPORTING_DEVICE_LANDSCAPE, REPORTING_DEVICE_LANDSCAPE_RESERVED_RECTS],
+];
 
 // A typical in-play readout and the title screen's widest readout line
 // (spec.md Acceptance Scenario 4) — both natural sizes, never hard-coded
@@ -51,6 +88,18 @@ const NO_RESERVED_RECTS: readonly Rect[] = [];
 const READOUT_TYPICAL: Size = { width: 140, height: 24 };
 const READOUT_TITLE_WIDE: Size = { width: 260, height: 24 };
 const MUTE_BUTTON: Size = { width: 44, height: 32 };
+
+// A plain stand-in for what the browser's text metrics would report for a
+// readout wrapped to a given capped width (data-model.md's Occupant Content
+// Size entity: "no DOM") — narrower widths need more lines and so report a
+// taller height, and any width at or beyond the readout's own natural width
+// needs only its one natural line. Deliberately invented numbers, not the
+// maintainer's measured 44/62/80px or 18/36px spill figures (SC-002).
+function heightForWidth(readout: Size, capWidth: number): number {
+  if (capWidth >= readout.width) return readout.height;
+  const lines = Math.ceil(readout.width / Math.max(1, capWidth));
+  return readout.height * lines;
+}
 
 // One theme button's natural width plus its row gap, standing in for the
 // measured widths of one through four registered themes (data-model.md's
@@ -109,11 +158,92 @@ const OCCUPANT_SIZE_SAMPLES = {
 } satisfies Record<string, TopStripOccupantSizes>;
 
 function collectRects(layout: ReturnType<typeof computeTopStripLayout>): Rect[] {
-  const rects: Rect[] = [layout.muteButton];
-  if (layout.readout) rects.push(layout.readout);
+  const rects: Rect[] = [layout.muteButton.rect];
+  if (layout.readout) rects.push(layout.readout.rect);
   if (layout.themePicker) rects.push(layout.themePicker.rect);
   return rects;
 }
+
+describe('computeTopStripLayout — fits the content at the width it was given (US1, FR-004, FR-009, FR-016a, SC-001)', () => {
+  const themePickerSamples: [string, NonNullable<TopStripOccupantSizes['themePicker']>][] = [
+    ['one theme', THEME_PICKER_SAMPLES.oneTheme],
+    ['two themes', THEME_PICKER_SAMPLES.twoThemes],
+    ['three themes', THEME_PICKER_SAMPLES.threeThemes],
+    ['four themes', THEME_PICKER_SAMPLES.fourThemes],
+    ['one unusually long theme name', THEME_PICKER_SAMPLES.longThemeName],
+  ];
+
+  for (const [viewportLabel, box, viewportReservedRects] of PINNED_VIEWPORTS) {
+    for (const [reservedLabel, rects] of [
+      ['with reservedRects', viewportReservedRects],
+      ['without reservedRects', NO_RESERVED_RECTS],
+    ] as const) {
+      for (const [themeLabel, picker] of themePickerSamples) {
+        it(`readout box is at least as tall as its content needs at the capped width (${viewportLabel}, ${reservedLabel}, ${themeLabel})`, () => {
+          const sizes: TopStripOccupantSizes = { readout: READOUT_TYPICAL, muteButton: MUTE_BUTTON, themePicker: picker };
+          const capWidth = computeReadoutWidthCap(box, rects, sizes);
+          const heightAtCap = heightForWidth(READOUT_TYPICAL, capWidth);
+          const layout = computeTopStripLayout(box, rects, sizes, heightAtCap);
+          const growthAllowance = box.height / 3;
+          expect(layout.readout).toBeDefined();
+          expect(layout.readout!.rect.height).toBeGreaterThanOrEqual(Math.min(heightAtCap, growthAllowance) - 1e-9);
+        });
+      }
+    }
+  }
+
+  it("the readout's width is unaffected by which height value it is given (FR-004, FR-016a)", () => {
+    const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+    const oneLine = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes, READOUT_TYPICAL.height);
+    const tallestStandIn = heightForWidth(READOUT_TYPICAL, 1); // as narrow a cap as this helper models
+    const grown = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes, tallestStandIn);
+    expect(grown.readout!.rect.width).toBe(oneLine.readout!.rect.width);
+    expect(grown.readout!.rect.x).toBe(oneLine.readout!.rect.x);
+  });
+});
+
+describe('computeTopStripLayout — 412px stays exactly as it ships today (US1, SC-003)', () => {
+  it('a height-for-width value that already fits on the shipped two lines leaves the readout rect unchanged', () => {
+    const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+    const capWidth = computeReadoutWidthCap(REPORTING_DEVICE_PORTRAIT, NO_RESERVED_RECTS, sizes);
+    const heightAtCap = heightForWidth(READOUT_TYPICAL, capWidth);
+    // 412 px is wide enough that nothing wraps here — the width that passes
+    // today and must keep passing (spec.md).
+    expect(heightAtCap).toBe(READOUT_TYPICAL.height);
+    const before = computeTopStripLayout(REPORTING_DEVICE_PORTRAIT, NO_RESERVED_RECTS, sizes);
+    const after = computeTopStripLayout(REPORTING_DEVICE_PORTRAIT, NO_RESERVED_RECTS, sizes, heightAtCap);
+    expect(after.readout!.rect).toEqual(before.readout!.rect);
+    expect(after.muteButton.rect).toEqual(before.muteButton.rect);
+    expect(after.themePicker!.rect).toEqual(before.themePicker!.rect);
+  });
+});
+
+describe('computeTopStripLayout — the widest readout line still fits at 320px (US1, AC5)', () => {
+  it('the title screen line is fully inside its box at the narrowest supported width', () => {
+    const sizes: TopStripOccupantSizes = {
+      readout: READOUT_TITLE_WIDE,
+      muteButton: MUTE_BUTTON,
+      themePicker: THEME_PICKER_SAMPLES.twoThemes,
+    };
+    const capWidth = computeReadoutWidthCap(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+    const heightAtCap = heightForWidth(READOUT_TITLE_WIDE, capWidth);
+    const layout = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes, heightAtCap);
+    const growthAllowance = NARROWEST_PORTRAIT.height / 3;
+    expect(layout.readout!.rect.height).toBeGreaterThanOrEqual(Math.min(heightAtCap, growthAllowance) - 1e-9);
+    expect(rectFullyInside(layout.readout!.rect, NARROWEST_PORTRAIT)).toBe(true);
+  });
+});
+
+describe('computeTopStripLayout — desktop stays uncapped (US1, AC6, FR-017)', () => {
+  it('nothing is capped, wrapped, or grown at a desktop width', () => {
+    const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+    const layout = computeTopStripLayout(WIDE_DESKTOP, NO_RESERVED_RECTS, sizes, READOUT_TYPICAL.height);
+    expect(layout.readout!.capped).toBe(false);
+    expect(layout.readout!.rect.height).toBe(READOUT_TYPICAL.height);
+    expect(layout.readout!.rect.x).toBeLessThan(layout.muteButton.rect.x);
+    expect(layout.muteButton.rect.x + layout.muteButton.rect.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
+  });
+});
 
 describe('computeTopStripLayout — non-overlap and containment (US1, FR-007, FR-008)', () => {
   const cases: [string, TopStripOccupantSizes][] = [
@@ -177,8 +307,8 @@ describe('computeTopStripLayout — collapse decision (US1, FR-011, FR-012, FR-0
     expect(layout.readout).toBeDefined();
     expect(layout.themePicker).toBeDefined();
     // readout leading edge, mute centered between it and the picker, picker trailing edge
-    expect(layout.readout!.x).toBeLessThan(layout.muteButton.x);
-    expect(layout.muteButton.x + layout.muteButton.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
+    expect(layout.readout!.rect.x).toBeLessThan(layout.muteButton.rect.x);
+    expect(layout.muteButton.rect.x + layout.muteButton.rect.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
   });
 });
 
@@ -186,7 +316,7 @@ describe('computeTopStripLayout — degradation priority order (FR-013)', () => 
   it('does not starve the readout at a reported phone width where the picker still fits expanded', () => {
     const layout = computeTopStripLayout(REPORTING_DEVICE_PORTRAIT, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
     expect(layout.themePicker?.collapsed).toBe(false);
-    expect(layout.readout!.width).toBe(READOUT_TYPICAL.width);
+    expect(layout.readout!.rect.width).toBe(READOUT_TYPICAL.width);
   });
 
   it('does not starve the readout once the picker has already given way to its collapsed form', () => {
@@ -196,7 +326,7 @@ describe('computeTopStripLayout — degradation priority order (FR-013)', () => 
       OCCUPANT_SIZE_SAMPLES.collapseForcingTypicalReadout
     );
     expect(layout.themePicker?.collapsed).toBe(true);
-    expect(layout.readout!.width).toBe(READOUT_TYPICAL.width);
+    expect(layout.readout!.rect.width).toBe(READOUT_TYPICAL.width);
   });
 });
 
@@ -229,15 +359,15 @@ describe('computeTopStripLayout — reserved regions and rotation (US2, FR-009, 
 
   it("matches today's shipped desktop arrangement: readout leading, mute centered, picker trailing (FR-020)", () => {
     const layout = computeTopStripLayout(WIDE_DESKTOP, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
-    expect(layout.readout!.x).toBeLessThan(layout.muteButton.x);
-    expect(layout.muteButton.x + layout.muteButton.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
+    expect(layout.readout!.rect.x).toBeLessThan(layout.muteButton.rect.x);
+    expect(layout.muteButton.rect.x + layout.muteButton.rect.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
     expect(layout.themePicker!.collapsed).toBe(false);
   });
 
   it('insets the leading and trailing edges by the same ~0.5rem margin the pre-feature CSS used (FR-020, SC-007)', () => {
     const layout = computeTopStripLayout(WIDE_DESKTOP, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
     const EDGE_MARGIN = 8; // mirrors computeTopStripLayout's own MARGIN constant (0.5rem)
-    expect(layout.readout!.x).toBe(WIDE_DESKTOP.x + EDGE_MARGIN);
+    expect(layout.readout!.rect.x).toBe(WIDE_DESKTOP.x + EDGE_MARGIN);
     expect(layout.themePicker!.rect.x + layout.themePicker!.rect.width).toBe(
       WIDE_DESKTOP.x + WIDE_DESKTOP.width - EDGE_MARGIN
     );
@@ -254,6 +384,97 @@ describe('computeTopStripLayout — reserved regions and rotation (US2, FR-009, 
       }
     }
   });
+});
+
+describe('computeTopStripLayout — the mute and picker boxes never depend on the readout (US2, FR-013, FR-022, SC-005)', () => {
+  it('muteButton and themePicker rects are identical across differing readout heights, at every pinned viewport', () => {
+    for (const [, box, reservedRects] of PINNED_VIEWPORTS) {
+      const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+      const growthAllowance = box.height / 3;
+      const oneLine = computeTopStripLayout(box, reservedRects, sizes, READOUT_TYPICAL.height);
+      const tallestPermitted = computeTopStripLayout(box, reservedRects, sizes, growthAllowance);
+      // Deliberately wrong: larger than growthAllowance, standing in for a
+      // stale or buggy measurement (FR-022).
+      const deliberatelyWrong = computeTopStripLayout(box, reservedRects, sizes, growthAllowance + 10_000);
+      expect(tallestPermitted.muteButton.rect).toEqual(oneLine.muteButton.rect);
+      expect(deliberatelyWrong.muteButton.rect).toEqual(oneLine.muteButton.rect);
+      expect(tallestPermitted.themePicker!.rect).toEqual(oneLine.themePicker!.rect);
+      expect(deliberatelyWrong.themePicker!.rect).toEqual(oneLine.themePicker!.rect);
+    }
+  });
+});
+
+describe('computeTopStripLayout — single-pass, structurally acyclic idempotence (US2, FR-016, FR-016a, FR-016b, SC-006)', () => {
+  it("computeReadoutWidthCap's result never depends on a later readoutHeightAtCapWidth", () => {
+    // True by signature — computeReadoutWidthCap never takes that parameter
+    // at all — asserted directly as a regression guard (FR-016).
+    const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+    const capA = computeReadoutWidthCap(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+    const capB = computeReadoutWidthCap(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+    expect(capB).toBe(capA);
+  });
+
+  it('two calls with identical arguments, including the same readoutHeightAtCapWidth, are deep-equal (statelessness)', () => {
+    for (const [, box, reservedRects] of PINNED_VIEWPORTS) {
+      const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+      const first = computeTopStripLayout(box, reservedRects, sizes, 48);
+      const second = computeTopStripLayout(box, reservedRects, sizes, 48);
+      expect(second).toEqual(first);
+    }
+  });
+
+  it('a deliberately wrong achieved band height only ever reaches the readout own rect.height/capped/maxLines', () => {
+    for (const [, box, reservedRects] of PINNED_VIEWPORTS) {
+      const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+      const growthAllowance = box.height / 3;
+      const correct = computeTopStripLayout(box, reservedRects, sizes, READOUT_TYPICAL.height);
+      const wrong = computeTopStripLayout(box, reservedRects, sizes, growthAllowance + 10_000);
+      expect(wrong.muteButton).toEqual(correct.muteButton);
+      expect(wrong.themePicker).toEqual(correct.themePicker);
+      expect(wrong.readout!.rect.x).toBe(correct.readout!.rect.x);
+      expect(wrong.readout!.rect.y).toBe(correct.readout!.rect.y);
+      expect(wrong.readout!.rect.width).toBe(correct.readout!.rect.width);
+    }
+  });
+});
+
+describe('computeTopStripLayout — a grown readout never flips the collapse decision (US2, FR-012a, FR-015, AC6)', () => {
+  it('themePicker.collapsed stays fixed across readout heights from one line to the tallest permitted, at a borderline viewport', () => {
+    // typicalReadout at PORTRAIT_360 is borderline: naturalSum (346) exceeds
+    // usableWidth (344) by only 2px — exactly where a height-dependent
+    // regression would flip the decision if one crept back in.
+    const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+    const growthAllowance = PORTRAIT_360.height / 3;
+    const heights = [READOUT_TYPICAL.height, heightForWidth(READOUT_TYPICAL, 1), growthAllowance];
+    const decisions = heights.map(
+      (h) => computeTopStripLayout(PORTRAIT_360, NO_RESERVED_RECTS, sizes, h).themePicker?.collapsed
+    );
+    for (const decision of decisions) {
+      expect(decision).toBe(decisions[0]);
+    }
+  });
+});
+
+describe('computeTopStripLayout — 012 properties still hold with a grown readout (US2, FR-007, FR-008, FR-009, FR-014)', () => {
+  for (const [label, box, reservedRects] of PINNED_VIEWPORTS) {
+    it(`no intersection, full containment, and reserved-region clearance hold at the tallest permitted readout height (${label})`, () => {
+      const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+      const growthAllowance = box.height / 3;
+      const layout = computeTopStripLayout(box, reservedRects, sizes, growthAllowance);
+      const rects = collectRects(layout);
+      for (let i = 0; i < rects.length; i++) {
+        for (let j = i + 1; j < rects.length; j++) {
+          expect(rectsIntersect(rects[i], rects[j])).toBe(false);
+        }
+      }
+      for (const rect of rects) {
+        expect(rectFullyInside(rect, box)).toBe(true);
+        for (const reserved of reservedRects) {
+          expect(rectsIntersect(rect, reserved)).toBe(false);
+        }
+      }
+    });
+  }
 });
 
 describe('computeTopStripLayout — theme count scaling (US3, FR-012, FR-014, SC-009)', () => {
@@ -296,6 +517,53 @@ describe('computeTopStripLayout — theme count scaling (US3, FR-012, FR-014, SC
       expect(width).toBe(widths[0]);
     }
   });
+
+  it("the collapsed form's capped flag reflects whether it fits, not the theme count (US3, SC-009)", () => {
+    // The shared THEME_PICKER_COLLAPSED size fits at every sampled count —
+    // capped is false here regardless of how many themes are registered, no
+    // per-count branch involved.
+    for (const [, sizes] of themeCountSamples) {
+      const layout = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+      expect(layout.themePicker!.capped).toBe(false);
+    }
+  });
+
+  it('a theme display name wide enough to overflow even the collapsed form is capped (US3 AC4)', () => {
+    // Only a wider sample is needed to demonstrate this generalizes to a
+    // future theme's display name — no change to
+    // src/lib/layout/topStrip.ts (User Story 3 AC4).
+    const widerCollapsedPicker: NonNullable<TopStripOccupantSizes['themePicker']> = {
+      expanded: THEME_PICKER_SAMPLES.longThemeName.expanded,
+      collapsed: { width: 500, height: THEME_PICKER_COLLAPSED.height },
+    };
+    const sizes: TopStripOccupantSizes = {
+      readout: READOUT_TITLE_WIDE,
+      muteButton: MUTE_BUTTON,
+      themePicker: widerCollapsedPicker,
+    };
+    const layout = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+    expect(layout.themePicker!.collapsed).toBe(true);
+    expect(layout.themePicker!.capped).toBe(true);
+    expect(rectFullyInside(layout.themePicker!.rect, NARROWEST_PORTRAIT)).toBe(true);
+  });
+});
+
+describe('computeTopStripLayout — any occupant that has to shrink is flagged capped (US3, SC-009)', () => {
+  it('an oversized collapsed theme-picker is contained and flagged capped, the same way the readout is', () => {
+    const oversizedCollapsedPicker: NonNullable<TopStripOccupantSizes['themePicker']> = {
+      expanded: { width: 420, height: 32 },
+      collapsed: { width: 500, height: 32 },
+    };
+    const sizes: TopStripOccupantSizes = {
+      readout: READOUT_TYPICAL,
+      muteButton: MUTE_BUTTON,
+      themePicker: oversizedCollapsedPicker,
+    };
+    const layout = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+    expect(layout.themePicker!.collapsed).toBe(true);
+    expect(rectFullyInside(layout.themePicker!.rect, NARROWEST_PORTRAIT)).toBe(true);
+    expect(layout.themePicker!.capped).toBe(true);
+  });
 });
 
 describe('computeTopStripLayout — freed space with no theme picker (US3, Edge Cases: "One registered theme")', () => {
@@ -311,8 +579,8 @@ describe('computeTopStripLayout — freed space with no theme picker (US3, Edge 
     for (const rect of collectRects(withoutPicker)) {
       expect(rectFullyInside(rect, NARROWEST_PORTRAIT)).toBe(true);
     }
-    const usedWidthWithout = withoutPicker.readout!.width + withoutPicker.muteButton.width;
-    const usedWidthWith = withPicker.readout!.width + withPicker.muteButton.width;
+    const usedWidthWithout = withoutPicker.readout!.rect.width + withoutPicker.muteButton.rect.width;
+    const usedWidthWith = withPicker.readout!.rect.width + withPicker.muteButton.rect.width;
     expect(usedWidthWithout).toBeGreaterThan(usedWidthWith);
   });
 });
@@ -333,7 +601,47 @@ describe('computeTopStripLayout — the suite catches a real regression (US4, SC
     // see T020's edge inset), well within the broken mute button's 0-44
     // span, so the broken mute button — pinned to (0, 0) regardless of
     // input — collides with it.
-    expect(layout.readout!.x).toBe(8);
-    expect(rectsIntersect(brokenMuteButton, layout.readout!)).toBe(true);
+    expect(layout.readout!.rect.x).toBe(8);
+    expect(rectsIntersect(brokenMuteButton, layout.readout!.rect)).toBe(true);
+  });
+});
+
+describe('computeTopStripLayout — the suite catches the shipped regression (US4, FR-021, SC-007)', () => {
+  // A deliberate regression, local to this test only: pins the readout's
+  // placed height to its unwrapped natural height regardless of the width
+  // it was actually given — exactly today's shipped bug (spec.md User Story
+  // 4) — never a change to computeTopStripLayout itself.
+  function pinnedToUnwrappedNaturalHeight(
+    layout: ReturnType<typeof computeTopStripLayout>,
+    sizes: TopStripOccupantSizes
+  ): ReturnType<typeof computeTopStripLayout> {
+    if (!layout.readout || !sizes.readout) return layout;
+    return { ...layout, readout: { ...layout.readout, rect: { ...layout.readout.rect, height: sizes.readout.height } } };
+  }
+
+  it("pinning the readout's placed height to its unwrapped natural height fails the FR-004 fit assertion at 360px and 320px, both orientations", () => {
+    const sizes = OCCUPANT_SIZE_SAMPLES.titleWideReadout;
+    const viewports: [string, InsetBox, readonly Rect[]][] = [
+      ['320 portrait', NARROWEST_PORTRAIT, PORTRAIT_RESERVED_RECTS],
+      ['320 landscape', NARROWEST_LANDSCAPE, LANDSCAPE_RESERVED_RECTS],
+      ['360 portrait', PORTRAIT_360, PORTRAIT_360_RESERVED_RECTS],
+      ['360 landscape', LANDSCAPE_360, LANDSCAPE_360_RESERVED_RECTS],
+    ];
+    for (const [, box, reservedRects] of viewports) {
+      const capWidth = computeReadoutWidthCap(box, reservedRects, sizes);
+      const heightAtCap = heightForWidth(READOUT_TITLE_WIDE, capWidth);
+      const growthAllowance = box.height / 3;
+      const required = Math.min(heightAtCap, growthAllowance);
+      const correct = computeTopStripLayout(box, reservedRects, sizes, heightAtCap);
+      const broken = pinnedToUnwrappedNaturalHeight(correct, sizes);
+      // Sanity: this viewport actually needs more than one line, and the
+      // correct (T008) arithmetic satisfies it — otherwise this case would
+      // not exercise the regression at all.
+      expect(heightAtCap).toBeGreaterThan(READOUT_TITLE_WIDE.height);
+      expect(correct.readout!.rect.height).toBeGreaterThanOrEqual(required - 1e-9);
+      // The regression: pinning to the unwrapped natural height fails FR-004
+      // whenever the capped width needs more than that one line.
+      expect(broken.readout!.rect.height).toBeLessThan(required);
+    }
   });
 });

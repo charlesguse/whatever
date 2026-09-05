@@ -14,7 +14,7 @@
   import { TouchInput } from './lib/input/touch/TouchInput';
   import { GamepadInput } from './lib/input/gamepad/GamepadInput';
   import { computeOrientation, computeTouchControlLayout, type InsetBox } from './lib/input/touch/layout';
-  import { computeTopStripLayout, type Size, type TopStripOccupantSizes } from './lib/layout/topStrip';
+  import { computeReadoutWidthCap, computeTopStripLayout, type Size, type TopStripOccupantSizes } from './lib/layout/topStrip';
   import { nextLastInputSource, shouldShowTouchControls, type InputOrigin, type LastInputSource } from './lib/input/visibility';
   import { orAll, resolveDirection } from './lib/input/merge';
   import { createRenderLoop, type RenderLoop } from './lib/render/canvas';
@@ -111,6 +111,11 @@
   // above, styled with the same classes as the real elements so their
   // getBoundingClientRect() reports the same natural size.
   let readoutProbeEl: HTMLDivElement | undefined = $state();
+  // The shell's second DOM pass (FR-016b, data-model.md's Shell Wiring) — a
+  // hidden readout probe pinned to computeReadoutWidthCap's own result, with
+  // no nowrap, so its real wrapped height at exactly that width can be read
+  // back as readoutHeightAtCapWidth below.
+  let readoutCappedProbeEl: HTMLDivElement | undefined = $state();
   let muteProbeEl: HTMLButtonElement | undefined = $state();
   let themeRowProbeEl: HTMLDivElement | undefined = $state();
   let themeCollapsedProbeEl: HTMLButtonElement | undefined = $state();
@@ -348,12 +353,45 @@
     return { readout, muteButton: toSize(muteProbeEl), themePicker };
   });
 
+  // The width computeTopStripLayout will give the readout, computed with no
+  // knowledge of its height (FR-016a) — feeds the capped-width probe's
+  // inline width below, the shell's first of two DOM passes for the readout.
+  let readoutWidthCap = $derived.by(() => {
+    if (!insetBox || !topStripSizes) return undefined;
+    return computeReadoutWidthCap(insetBox, touchLayout?.reservedRects ?? [], topStripSizes);
+  });
+
+  // The shell's second-pass measurement (FR-016b): the readout's real
+  // wrapped height at exactly readoutWidthCap. Must re-run on every input
+  // that can change that cap width, or a stale height reaches
+  // computeTopStripLayout while -webkit-line-clamp silently cuts the text
+  // with no indication (FR-011). Four trigger inputs, all read below or via
+  // readoutWidthCap's own dependencies: insetBox, touchLayout/reservedRects
+  // (flips via controlsVisible/lastInputSource/session.screen), hudText, and
+  // theme.displayName. A future change adding a fifth cap input must extend
+  // this list, not rely on call-site convention.
+  //
+  // This is an $effect rather than a $derived: $effect is documented to run
+  // only after the DOM has been updated, so by the time it reads
+  // getBoundingClientRect() the probe's width style (also driven by
+  // readoutWidthCap) is guaranteed to already reflect the new value — a
+  // $derived reading readoutWidthCap directly would race the same DOM
+  // update with no such guarantee.
+  let readoutHeightAtCapWidth: number | undefined = $state(undefined);
+  $effect(() => {
+    topStripProbeTick;
+    void theme.displayName;
+    void readoutWidthCap;
+    readoutHeightAtCapWidth =
+      hudText === undefined || !readoutCappedProbeEl ? undefined : readoutCappedProbeEl.getBoundingClientRect().height;
+  });
+
   // FR-017: recomputed only when insetBox, the touch layout's reservedRects,
   // or topStripSizes changes — never per tick or per frame, mirroring
   // touchLayout's own $derived.by above.
   let topStripLayout = $derived.by(() => {
     if (!insetBox || !topStripSizes) return undefined;
-    return computeTopStripLayout(insetBox, touchLayout?.reservedRects ?? [], topStripSizes);
+    return computeTopStripLayout(insetBox, touchLayout?.reservedRects ?? [], topStripSizes, readoutHeightAtCapWidth);
   });
 
   // FR-020: the bonus is already final the instant 'caveComplete' is
@@ -450,7 +488,20 @@
      styled identically to their visible counterparts below so
      getBoundingClientRect() reports the same natural size regardless of
      which form (expanded/collapsed) is currently rendered. -->
-<div bind:this={readoutProbeEl} class="readout top-strip-probe" aria-hidden="true">{hudText ?? ''}</div>
+<div bind:this={readoutProbeEl} class="readout top-strip-probe" style="white-space: nowrap;" aria-hidden="true">
+  {hudText ?? ''}
+</div>
+<!-- The capped-width probe (T010, FR-016b): same styling, no nowrap, pinned
+     to the exact width computeReadoutWidthCap gives the readout, so its
+     real wrapped height at that width can be read back below. -->
+<div
+  bind:this={readoutCappedProbeEl}
+  class="readout top-strip-probe"
+  style="width:{readoutWidthCap ?? 0}px;"
+  aria-hidden="true"
+>
+  {hudText ?? ''}
+</div>
 <button bind:this={muteProbeEl} type="button" class="mute-button top-strip-probe" aria-hidden="true" tabindex="-1">
   {muted ? '🔇' : '🔊'}
 </button>
@@ -466,8 +517,10 @@
 {#if topStripLayout?.readout}
   <div
     class="readout"
-    style="left:{topStripLayout.readout.x}px; top:{topStripLayout.readout.y}px; width:{topStripLayout.readout
-      .width}px; height:{topStripLayout.readout.height}px;"
+    style="left:{topStripLayout.readout.rect.x}px; top:{topStripLayout.readout.rect.y}px; width:{topStripLayout.readout
+      .rect.width}px; height:{topStripLayout.readout.rect.height}px; overflow: hidden; display: -webkit-box;
+      -webkit-box-orient: vertical; -webkit-line-clamp: {topStripLayout.readout.maxLines};"
+    aria-label={topStripLayout.readout.capped ? hudText : undefined}
   >
     {hudText}
   </div>
@@ -485,8 +538,8 @@
     class="mute-button"
     aria-pressed={muted}
     onclick={toggleMuted}
-    style="left:{topStripLayout.muteButton.x}px; top:{topStripLayout.muteButton.y}px; width:{topStripLayout.muteButton
-      .width}px; height:{topStripLayout.muteButton.height}px;"
+    style="left:{topStripLayout.muteButton.rect.x}px; top:{topStripLayout.muteButton.rect.y}px; width:{topStripLayout
+      .muteButton.rect.width}px; height:{topStripLayout.muteButton.rect.height}px;"
   >
     {muted ? '🔇' : '🔊'}
   </button>
@@ -501,6 +554,7 @@
       onclick={() => selectTheme(cycleThemeId(activeThemeId, listThemes().map((t) => t.id)))}
       style="left:{topStripLayout.themePicker.rect.x}px; top:{topStripLayout.themePicker.rect.y}px; width:{topStripLayout
         .themePicker.rect.width}px; height:{topStripLayout.themePicker.rect.height}px;"
+      aria-label={topStripLayout.themePicker.capped ? theme.displayName : undefined}
     >
       {theme.displayName}
     </button>
@@ -676,8 +730,14 @@
   .theme-collapsed {
     /* FR-012: the single cycle control replacing the theme-button row when
        it does not fit at natural size — positioned the same way, by
-       topStripLayout.themePicker.rect's inline style below. */
+       topStripLayout.themePicker.rect's inline style below. Single-line
+       elision (overflow/text-overflow/nowrap), distinct from the readout's
+       multi-line clamp: the collapsed control is always exactly one line
+       (research.md). */
     position: fixed;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .touch-controls {

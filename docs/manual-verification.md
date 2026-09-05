@@ -52,6 +52,16 @@ reaching every theme in turn. The readout's sub-380px wrap (#43) is out of
 scope of this device: at the Pixel's 412px the band is already sized for two
 lines and nothing spills.
 
+### Top-strip content never renders outside its box (013, `#43`)
+
+On the narrowest real device to hand, in both portrait and landscape, confirm
+that the status readout, the mute control, and the theme picker (expanded or
+collapsed) never render any part of their text or content outside their own
+dark background — no white text directly on the cave, at any width down to
+320 CSS px. Re-run against any change that touches `src/App.svelte`'s
+top-strip markup/CSS or `src/lib/layout/topStrip.ts`, not just once at this
+spec's review.
+
 ---
 
 ## 008 — Synthesized sound, per theme, always mutable
