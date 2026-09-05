@@ -466,8 +466,8 @@
 {#if topStripLayout?.readout}
   <div
     class="readout"
-    style="left:{topStripLayout.readout.x}px; top:{topStripLayout.readout.y}px; width:{topStripLayout.readout
-      .width}px; height:{topStripLayout.readout.height}px;"
+    style="left:{topStripLayout.readout.rect.x}px; top:{topStripLayout.readout.rect.y}px; width:{topStripLayout.readout
+      .rect.width}px; height:{topStripLayout.readout.rect.height}px;"
   >
     {hudText}
   </div>
@@ -485,8 +485,8 @@
     class="mute-button"
     aria-pressed={muted}
     onclick={toggleMuted}
-    style="left:{topStripLayout.muteButton.x}px; top:{topStripLayout.muteButton.y}px; width:{topStripLayout.muteButton
-      .width}px; height:{topStripLayout.muteButton.height}px;"
+    style="left:{topStripLayout.muteButton.rect.x}px; top:{topStripLayout.muteButton.rect.y}px; width:{topStripLayout
+      .muteButton.rect.width}px; height:{topStripLayout.muteButton.rect.height}px;"
   >
     {muted ? '🔇' : '🔊'}
   </button>

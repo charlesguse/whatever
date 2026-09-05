@@ -109,8 +109,8 @@ const OCCUPANT_SIZE_SAMPLES = {
 } satisfies Record<string, TopStripOccupantSizes>;
 
 function collectRects(layout: ReturnType<typeof computeTopStripLayout>): Rect[] {
-  const rects: Rect[] = [layout.muteButton];
-  if (layout.readout) rects.push(layout.readout);
+  const rects: Rect[] = [layout.muteButton.rect];
+  if (layout.readout) rects.push(layout.readout.rect);
   if (layout.themePicker) rects.push(layout.themePicker.rect);
   return rects;
 }
@@ -177,8 +177,8 @@ describe('computeTopStripLayout — collapse decision (US1, FR-011, FR-012, FR-0
     expect(layout.readout).toBeDefined();
     expect(layout.themePicker).toBeDefined();
     // readout leading edge, mute centered between it and the picker, picker trailing edge
-    expect(layout.readout!.x).toBeLessThan(layout.muteButton.x);
-    expect(layout.muteButton.x + layout.muteButton.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
+    expect(layout.readout!.rect.x).toBeLessThan(layout.muteButton.rect.x);
+    expect(layout.muteButton.rect.x + layout.muteButton.rect.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
   });
 });
 
@@ -186,7 +186,7 @@ describe('computeTopStripLayout — degradation priority order (FR-013)', () => 
   it('does not starve the readout at a reported phone width where the picker still fits expanded', () => {
     const layout = computeTopStripLayout(REPORTING_DEVICE_PORTRAIT, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
     expect(layout.themePicker?.collapsed).toBe(false);
-    expect(layout.readout!.width).toBe(READOUT_TYPICAL.width);
+    expect(layout.readout!.rect.width).toBe(READOUT_TYPICAL.width);
   });
 
   it('does not starve the readout once the picker has already given way to its collapsed form', () => {
@@ -196,7 +196,7 @@ describe('computeTopStripLayout — degradation priority order (FR-013)', () => 
       OCCUPANT_SIZE_SAMPLES.collapseForcingTypicalReadout
     );
     expect(layout.themePicker?.collapsed).toBe(true);
-    expect(layout.readout!.width).toBe(READOUT_TYPICAL.width);
+    expect(layout.readout!.rect.width).toBe(READOUT_TYPICAL.width);
   });
 });
 
@@ -229,15 +229,15 @@ describe('computeTopStripLayout — reserved regions and rotation (US2, FR-009, 
 
   it("matches today's shipped desktop arrangement: readout leading, mute centered, picker trailing (FR-020)", () => {
     const layout = computeTopStripLayout(WIDE_DESKTOP, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
-    expect(layout.readout!.x).toBeLessThan(layout.muteButton.x);
-    expect(layout.muteButton.x + layout.muteButton.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
+    expect(layout.readout!.rect.x).toBeLessThan(layout.muteButton.rect.x);
+    expect(layout.muteButton.rect.x + layout.muteButton.rect.width).toBeLessThanOrEqual(layout.themePicker!.rect.x);
     expect(layout.themePicker!.collapsed).toBe(false);
   });
 
   it('insets the leading and trailing edges by the same ~0.5rem margin the pre-feature CSS used (FR-020, SC-007)', () => {
     const layout = computeTopStripLayout(WIDE_DESKTOP, NO_RESERVED_RECTS, OCCUPANT_SIZE_SAMPLES.typicalReadout);
     const EDGE_MARGIN = 8; // mirrors computeTopStripLayout's own MARGIN constant (0.5rem)
-    expect(layout.readout!.x).toBe(WIDE_DESKTOP.x + EDGE_MARGIN);
+    expect(layout.readout!.rect.x).toBe(WIDE_DESKTOP.x + EDGE_MARGIN);
     expect(layout.themePicker!.rect.x + layout.themePicker!.rect.width).toBe(
       WIDE_DESKTOP.x + WIDE_DESKTOP.width - EDGE_MARGIN
     );
@@ -311,8 +311,8 @@ describe('computeTopStripLayout — freed space with no theme picker (US3, Edge 
     for (const rect of collectRects(withoutPicker)) {
       expect(rectFullyInside(rect, NARROWEST_PORTRAIT)).toBe(true);
     }
-    const usedWidthWithout = withoutPicker.readout!.width + withoutPicker.muteButton.width;
-    const usedWidthWith = withPicker.readout!.width + withPicker.muteButton.width;
+    const usedWidthWithout = withoutPicker.readout!.rect.width + withoutPicker.muteButton.rect.width;
+    const usedWidthWith = withPicker.readout!.rect.width + withPicker.muteButton.rect.width;
     expect(usedWidthWithout).toBeGreaterThan(usedWidthWith);
   });
 });
@@ -333,7 +333,7 @@ describe('computeTopStripLayout — the suite catches a real regression (US4, SC
     // see T020's edge inset), well within the broken mute button's 0-44
     // span, so the broken mute button — pinned to (0, 0) regardless of
     // input — collides with it.
-    expect(layout.readout!.x).toBe(8);
-    expect(rectsIntersect(brokenMuteButton, layout.readout!)).toBe(true);
+    expect(layout.readout!.rect.x).toBe(8);
+    expect(rectsIntersect(brokenMuteButton, layout.readout!.rect)).toBe(true);
   });
 });

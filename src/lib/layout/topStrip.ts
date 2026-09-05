@@ -15,11 +15,19 @@ export interface TopStripOccupantSizes {
 }
 
 export interface TopStripLayout {
-  readonly readout?: Rect;
-  readonly muteButton: Rect;
+  readonly readout?: {
+    readonly rect: Rect;
+    readonly capped: boolean;
+    readonly maxLines: number;
+  };
+  readonly muteButton: {
+    readonly rect: Rect;
+    readonly capped: boolean;
+  };
   readonly themePicker?: {
     readonly rect: Rect;
     readonly collapsed: boolean;
+    readonly capped: boolean;
   };
 }
 
@@ -49,13 +57,28 @@ function overlapsVertically(a: Rect, b: Rect): boolean {
   return a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
-export function computeTopStripLayout(
+interface BandPlacement {
+  readonly usableLeft: number;
+  readonly usableWidth: number;
+  readonly centerY: (ownHeight: number) => number;
+  readonly collapsed: boolean;
+  readonly pickerRect: Rect | undefined;
+  readonly readoutCap: number;
+}
+
+// Steps 1-4 of the Top-Strip Placement algorithm (data-model.md): the band's
+// geometry and reserved-region subtraction, the collapse decision, the theme
+// picker's placement, and the readout's width cap arithmetic — none of which
+// ever reads the readout's own height. `readoutBandHeight` is the value
+// substituted for the readout in the band-height max (data-model.md step 2);
+// today that is the readout's natural height, unchanged from feature 012.
+function computeBandPlacement(
   availableBox: InsetBox,
   reservedRects: readonly Rect[],
-  sizes: TopStripOccupantSizes
-): TopStripLayout {
-  const heights = [sizes.muteButton.height];
-  if (sizes.readout) heights.push(sizes.readout.height);
+  sizes: TopStripOccupantSizes,
+  readoutBandHeight: number
+): BandPlacement {
+  const heights = [sizes.muteButton.height, readoutBandHeight];
   if (sizes.themePicker) heights.push(sizes.themePicker.expanded.height, sizes.themePicker.collapsed.height);
 
   // Step 1: form the band, then subtract any reservedRects entry that
@@ -109,15 +132,48 @@ export function computeTopStripLayout(
       }
     : undefined;
 
-  // Step 4: the readout (if present) takes the band's leading edge, capped
-  // by the space left once the picker's fixed block and the mute button's
-  // full natural width are both set aside (FR-013: the picker gives way
-  // first, the mute never shrinks, so the readout's cap is computed against
-  // their natural sizes directly — never against the mute's eventual
-  // centered position, which would starve the readout for no reason).
+  // Step 4: the readout's width cap — the space left once the picker's
+  // fixed block and the mute button's full natural width are both set aside
+  // (FR-013: the picker gives way first, the mute never shrinks, so the
+  // readout's cap is computed against their natural sizes directly — never
+  // against the mute's eventual centered position, which would starve the
+  // readout for no reason).
   const readoutOthersWidth = sizes.muteButton.width + (pickerRect?.width ?? 0);
   const readoutGaps = pickerRect ? 2 : 1; // readout-to-mute, and mute-to-picker if present
   const readoutCap = usableWidth - readoutOthersWidth - MARGIN * readoutGaps;
+
+  return { usableLeft, usableWidth, centerY, collapsed, pickerRect, readoutCap };
+}
+
+/**
+ * The width the readout will receive, computed with no knowledge of the
+ * readout's own height (FR-016a) — call this between the shell's two DOM
+ * passes (FR-016b) to learn the width to measure the readout's real height
+ * against.
+ */
+export function computeReadoutWidthCap(
+  availableBox: InsetBox,
+  reservedRects: readonly Rect[],
+  sizes: TopStripOccupantSizes
+): number {
+  return computeBandPlacement(availableBox, reservedRects, sizes, sizes.readout?.height ?? 0).readoutCap;
+}
+
+export function computeTopStripLayout(
+  availableBox: InsetBox,
+  reservedRects: readonly Rect[],
+  sizes: TopStripOccupantSizes,
+  readoutHeightAtCapWidth?: number
+): TopStripLayout {
+  // Not yet used — T008 wires this into the readout's height resolution.
+  void readoutHeightAtCapWidth;
+
+  const placement = computeBandPlacement(availableBox, reservedRects, sizes, sizes.readout?.height ?? 0);
+  const readoutCap = computeReadoutWidthCap(availableBox, reservedRects, sizes);
+  const { usableLeft, usableWidth, centerY, collapsed, pickerRect } = placement;
+
+  // Step 5 (readout placement): the readout (if present) takes the band's
+  // leading edge, capped by computeReadoutWidthCap's result above.
   const readoutRect: Rect | undefined = sizes.readout
     ? {
         x: usableLeft,
@@ -127,11 +183,11 @@ export function computeTopStripLayout(
       }
     : undefined;
 
-  // Step 5: the mute button is placed at full natural size (FR-011),
-  // centered in the gap between the readout's trailing edge (or the band's
-  // leading edge, if no readout) and the picker's leading edge (or the
-  // band's trailing edge, if no picker) — its historical desktop-centered
-  // position, not the whole region left of the picker (FR-013).
+  // The mute button is placed at full natural size (FR-011), centered in the
+  // gap between the readout's trailing edge (or the band's leading edge, if
+  // no readout) and the picker's leading edge (or the band's trailing edge,
+  // if no picker) — its historical desktop-centered position, not the whole
+  // region left of the picker (FR-013).
   const muteLeftBound = readoutRect ? readoutRect.x + readoutRect.width + MARGIN : usableLeft;
   const muteRightBound = pickerRect ? pickerRect.x - MARGIN : usableLeft + usableWidth;
   const muteRegionWidth = muteRightBound - muteLeftBound;
@@ -142,12 +198,12 @@ export function computeTopStripLayout(
     height: sizes.muteButton.height,
   };
 
-  // Step 6: clamp every returned rect into availableBox, so no box can ever
-  // extend beyond it regardless of the arithmetic above (FR-008).
+  // Clamp every returned rect into availableBox, so no box can ever extend
+  // beyond it regardless of the arithmetic above (FR-008).
   const bounds: Rect = { x: availableBox.x, y: availableBox.y, width: availableBox.width, height: availableBox.height };
   return {
-    readout: readoutRect ? containRect(readoutRect, bounds) : undefined,
-    muteButton: containRect(muteRect, bounds),
-    themePicker: pickerRect ? { rect: containRect(pickerRect, bounds), collapsed } : undefined,
+    readout: readoutRect ? { rect: containRect(readoutRect, bounds), capped: false, maxLines: 1 } : undefined,
+    muteButton: { rect: containRect(muteRect, bounds), capped: false },
+    themePicker: pickerRect ? { rect: containRect(pickerRect, bounds), collapsed, capped: false } : undefined,
   };
 }

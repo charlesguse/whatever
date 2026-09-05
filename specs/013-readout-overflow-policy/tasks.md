@@ -56,7 +56,7 @@ extract the band-geometry/collapse-decision/placement steps that never touch
 the readout's height into their own function, as a pure refactor with no
 behavior change — the surface every later task builds on.
 
-- [ ] T001 In `src/lib/layout/topStrip.ts`: (1) extract today's steps 1
+- [X] T001 In `src/lib/layout/topStrip.ts`: (1) extract today's steps 1
   (band + reserved-region subtraction), 2 (collapse decision), 3 (picker
   placement), 4 (readout width cap arithmetic) into a new exported function
   `computeReadoutWidthCap(availableBox, reservedRects, sizes): number`
