@@ -337,7 +337,7 @@ Acceptance Scenario 1).
 
 ### Tests for User Story 4
 
-- [ ] T019 [US4] In `tests/lib/layout/topStrip.test.ts`, add the FR-021/
+- [X] T019 [US4] In `tests/lib/layout/topStrip.test.ts`, add the FR-021/
   SC-007 deliberate-regression test: a small test-local wrapper around
   `computeTopStripLayout`'s result that overwrites `readout.rect.height`
   with `sizes.readout.height` (the natural, unwrapped height) regardless of
@@ -348,7 +348,7 @@ Acceptance Scenario 1).
 
 ### Documentation for User Story 4
 
-- [ ] T020 [P] [US4] In `docs/manual-verification.md`, add a new item to the
+- [X] T020 [P] [US4] In `docs/manual-verification.md`, add a new item to the
   existing `## Standing checks` section (alongside the "Top-strip controls
   never overlap (012, `#35`)" entry), instructing the maintainer to confirm
   on the narrowest real device to hand, in both orientations, that no

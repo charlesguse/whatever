@@ -605,3 +605,43 @@ describe('computeTopStripLayout — the suite catches a real regression (US4, SC
     expect(rectsIntersect(brokenMuteButton, layout.readout!.rect)).toBe(true);
   });
 });
+
+describe('computeTopStripLayout — the suite catches the shipped regression (US4, FR-021, SC-007)', () => {
+  // A deliberate regression, local to this test only: pins the readout's
+  // placed height to its unwrapped natural height regardless of the width
+  // it was actually given — exactly today's shipped bug (spec.md User Story
+  // 4) — never a change to computeTopStripLayout itself.
+  function pinnedToUnwrappedNaturalHeight(
+    layout: ReturnType<typeof computeTopStripLayout>,
+    sizes: TopStripOccupantSizes
+  ): ReturnType<typeof computeTopStripLayout> {
+    if (!layout.readout || !sizes.readout) return layout;
+    return { ...layout, readout: { ...layout.readout, rect: { ...layout.readout.rect, height: sizes.readout.height } } };
+  }
+
+  it("pinning the readout's placed height to its unwrapped natural height fails the FR-004 fit assertion at 360px and 320px, both orientations", () => {
+    const sizes = OCCUPANT_SIZE_SAMPLES.titleWideReadout;
+    const viewports: [string, InsetBox, readonly Rect[]][] = [
+      ['320 portrait', NARROWEST_PORTRAIT, PORTRAIT_RESERVED_RECTS],
+      ['320 landscape', NARROWEST_LANDSCAPE, LANDSCAPE_RESERVED_RECTS],
+      ['360 portrait', PORTRAIT_360, PORTRAIT_360_RESERVED_RECTS],
+      ['360 landscape', LANDSCAPE_360, LANDSCAPE_360_RESERVED_RECTS],
+    ];
+    for (const [, box, reservedRects] of viewports) {
+      const capWidth = computeReadoutWidthCap(box, reservedRects, sizes);
+      const heightAtCap = heightForWidth(READOUT_TITLE_WIDE, capWidth);
+      const growthAllowance = box.height / 3;
+      const required = Math.min(heightAtCap, growthAllowance);
+      const correct = computeTopStripLayout(box, reservedRects, sizes, heightAtCap);
+      const broken = pinnedToUnwrappedNaturalHeight(correct, sizes);
+      // Sanity: this viewport actually needs more than one line, and the
+      // correct (T008) arithmetic satisfies it — otherwise this case would
+      // not exercise the regression at all.
+      expect(heightAtCap).toBeGreaterThan(READOUT_TITLE_WIDE.height);
+      expect(correct.readout!.rect.height).toBeGreaterThanOrEqual(required - 1e-9);
+      // The regression: pinning to the unwrapped natural height fails FR-004
+      // whenever the capped width needs more than that one line.
+      expect(broken.readout!.rect.height).toBeLessThan(required);
+    }
+  });
+});
