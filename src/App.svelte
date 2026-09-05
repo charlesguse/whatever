@@ -541,6 +541,7 @@
       onclick={() => selectTheme(cycleThemeId(activeThemeId, listThemes().map((t) => t.id)))}
       style="left:{topStripLayout.themePicker.rect.x}px; top:{topStripLayout.themePicker.rect.y}px; width:{topStripLayout
         .themePicker.rect.width}px; height:{topStripLayout.themePicker.rect.height}px;"
+      aria-label={topStripLayout.themePicker.capped ? theme.displayName : undefined}
     >
       {theme.displayName}
     </button>
@@ -716,8 +717,14 @@
   .theme-collapsed {
     /* FR-012: the single cycle control replacing the theme-button row when
        it does not fit at natural size — positioned the same way, by
-       topStripLayout.themePicker.rect's inline style below. */
+       topStripLayout.themePicker.rect's inline style below. Single-line
+       elision (overflow/text-overflow/nowrap), distinct from the readout's
+       multi-line clamp: the collapsed control is always exactly one line
+       (research.md). */
     position: fixed;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .touch-controls {

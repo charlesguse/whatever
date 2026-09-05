@@ -517,6 +517,53 @@ describe('computeTopStripLayout — theme count scaling (US3, FR-012, FR-014, SC
       expect(width).toBe(widths[0]);
     }
   });
+
+  it("the collapsed form's capped flag reflects whether it fits, not the theme count (US3, SC-009)", () => {
+    // The shared THEME_PICKER_COLLAPSED size fits at every sampled count —
+    // capped is false here regardless of how many themes are registered, no
+    // per-count branch involved.
+    for (const [, sizes] of themeCountSamples) {
+      const layout = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+      expect(layout.themePicker!.capped).toBe(false);
+    }
+  });
+
+  it('a theme display name wide enough to overflow even the collapsed form is capped (US3 AC4)', () => {
+    // Only a wider sample is needed to demonstrate this generalizes to a
+    // future theme's display name — no change to
+    // src/lib/layout/topStrip.ts (User Story 3 AC4).
+    const widerCollapsedPicker: NonNullable<TopStripOccupantSizes['themePicker']> = {
+      expanded: THEME_PICKER_SAMPLES.longThemeName.expanded,
+      collapsed: { width: 500, height: THEME_PICKER_COLLAPSED.height },
+    };
+    const sizes: TopStripOccupantSizes = {
+      readout: READOUT_TITLE_WIDE,
+      muteButton: MUTE_BUTTON,
+      themePicker: widerCollapsedPicker,
+    };
+    const layout = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+    expect(layout.themePicker!.collapsed).toBe(true);
+    expect(layout.themePicker!.capped).toBe(true);
+    expect(rectFullyInside(layout.themePicker!.rect, NARROWEST_PORTRAIT)).toBe(true);
+  });
+});
+
+describe('computeTopStripLayout — any occupant that has to shrink is flagged capped (US3, SC-009)', () => {
+  it('an oversized collapsed theme-picker is contained and flagged capped, the same way the readout is', () => {
+    const oversizedCollapsedPicker: NonNullable<TopStripOccupantSizes['themePicker']> = {
+      expanded: { width: 420, height: 32 },
+      collapsed: { width: 500, height: 32 },
+    };
+    const sizes: TopStripOccupantSizes = {
+      readout: READOUT_TYPICAL,
+      muteButton: MUTE_BUTTON,
+      themePicker: oversizedCollapsedPicker,
+    };
+    const layout = computeTopStripLayout(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+    expect(layout.themePicker!.collapsed).toBe(true);
+    expect(rectFullyInside(layout.themePicker!.rect, NARROWEST_PORTRAIT)).toBe(true);
+    expect(layout.themePicker!.capped).toBe(true);
+  });
 });
 
 describe('computeTopStripLayout — freed space with no theme picker (US3, Edge Cases: "One registered theme")', () => {

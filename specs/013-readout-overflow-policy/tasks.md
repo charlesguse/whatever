@@ -290,14 +290,14 @@ own flag (spec.md User Story 3, Acceptance Scenarios 1-4).
 
 ### Tests for User Story 3
 
-- [ ] T016 [P] [US3] In `tests/lib/layout/topStrip.test.ts`, add the SC-009
+- [X] T016 [P] [US3] In `tests/lib/layout/topStrip.test.ts`, add the SC-009
   generic-capped assertion: at `NARROWEST_PORTRAIT` with
   `THEME_PICKER_SAMPLES.longThemeName`'s collapsed `Size` widened further
   than the space the other occupants leave for it, assert the returned
   `themePicker.rect` is fully inside `availableBox` and `themePicker.capped`
   is `true` — the same `capped` field the readout uses, not a second
   mechanism (data-model.md's "Capped Occupant" is not a hard-coded list).
-- [ ] T017 [US3] In `tests/lib/layout/topStrip.test.ts`, extend the existing
+- [X] T017 [US3] In `tests/lib/layout/topStrip.test.ts`, extend the existing
   theme-count-scaling describe block (`THEME_PICKER_SAMPLES`, including
   `longThemeName`) with a `capped` assertion at `NARROWEST_PORTRAIT`,
   confirming the mechanism generalizes across theme counts with no
@@ -307,7 +307,7 @@ own flag (spec.md User Story 3, Acceptance Scenarios 1-4).
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] In `src/App.svelte`, add `overflow: hidden; text-overflow:
+- [X] T018 [US3] In `src/App.svelte`, add `overflow: hidden; text-overflow:
   ellipsis; white-space: nowrap;` to the `.theme-collapsed` rule (single-line
   elision, distinct from the readout's multi-line clamp per research.md —
   the collapsed control is always exactly one line) and set an `aria-label`
