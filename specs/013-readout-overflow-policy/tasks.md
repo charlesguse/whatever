@@ -137,7 +137,7 @@ Acceptance Scenarios 1-7).
 > `capped`/`maxLines` and today's height-ignoring-width arithmetic until T008
 > lands.
 
-- [ ] T004 [P] [US1] In `tests/lib/layout/topStrip.test.ts`, add the FR-004/
+- [X] T004 [P] [US1] In `tests/lib/layout/topStrip.test.ts`, add the FR-004/
   SC-001 fit assertion: parameterized over the pinned viewport set (320,
   360, 412, both orientations, with and without each viewport's
   `reservedRects`) and occupant-size samples standing in for one through
@@ -145,17 +145,17 @@ Acceptance Scenarios 1-7).
   least `min(readoutHeightAtCapWidth, growthAllowance)` for the width T003's
   helper supplies at that box, and that `readout.rect.width` is unaffected
   by which height value was supplied (FR-004, FR-016a).
-- [ ] T005 [P] [US1] In `tests/lib/layout/topStrip.test.ts`, add the SC-003
+- [X] T005 [P] [US1] In `tests/lib/layout/topStrip.test.ts`, add the SC-003
   regression guard: at `REPORTING_DEVICE_PORTRAIT` (412 px) with a
   height-for-width value that fits in two lines, assert the resulting
   `readout.rect` is unchanged from what T001's pre-growth-allowance
   arithmetic already produces there — 412 px is "the width that passes
   today and must keep passing" (spec.md).
-- [ ] T006 [US1] In `tests/lib/layout/topStrip.test.ts`, add the widest-line
+- [X] T006 [US1] In `tests/lib/layout/topStrip.test.ts`, add the widest-line
   fit assertion (AC5): using `READOUT_TITLE_WIDE` with T003's helper's
   tallest 320 px value, assert the returned box is at least that tall and
   `rectFullyInside(readout.rect, NARROWEST_PORTRAIT)` holds.
-- [ ] T007 [US1] In `tests/lib/layout/topStrip.test.ts`, add the desktop
+- [X] T007 [US1] In `tests/lib/layout/topStrip.test.ts`, add the desktop
   no-capping regression guard (AC6, FR-017): at `WIDE_DESKTOP` with a
   height-for-width value equal to the natural single-line height (nothing
   capped), assert `readout.capped` is `false`, `readout.rect.height` equals
@@ -164,7 +164,7 @@ Acceptance Scenarios 1-7).
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] In `src/lib/layout/topStrip.ts`, implement the
+- [X] T008 [US1] In `src/lib/layout/topStrip.ts`, implement the
   growth-allowance / cap-severing algorithm per data-model.md's eight-step
   "Top-Strip Placement" section: (1) compute `growthAllowance =
   availableBox.height / 3` before anything else — depends only on
@@ -185,13 +185,13 @@ Acceptance Scenarios 1-7).
   degenerate near-zero-`availableBox` edge case is covered by the same flag
   (data-model.md's step 8 note). This must make T004-T007 pass without
   changing any pre-existing 012 assertion (FR-014).
-- [ ] T009 [US1] In `src/App.svelte`, force `white-space: nowrap` on the
+- [X] T009 [US1] In `src/App.svelte`, force `white-space: nowrap` on the
   readout's natural-size probe only (`readoutProbeEl` / its
   `.top-strip-probe` styling) so `topStripSizes.readout` reports a true
   single-line natural size regardless of viewport width, never one the
   viewport already wrapped (FR-005, research.md's `nowrap`-probe decision).
   Do not add `nowrap` to the visible `.readout` rule or any other probe.
-- [ ] T010 [US1] In `src/App.svelte`, add a second hidden "capped-width"
+- [X] T010 [US1] In `src/App.svelte`, add a second hidden "capped-width"
   readout probe styled like `.readout` but with an explicit inline `width`
   bound to a new `readoutWidthCap = $derived.by(() =>
   computeReadoutWidthCap(insetBox, touchLayout?.reservedRects ?? [],
@@ -203,7 +203,7 @@ Acceptance Scenarios 1-7).
   `computeTopStripLayout`'s fourth argument in the existing `topStripLayout`
   `$derived.by`. This is the shell's fixed two-DOM-pass measurement
   (FR-016b) — no third pass, no per-frame recomputation.
-- [ ] T011 [US1] In `src/App.svelte`, add `overflow: hidden; display:
+- [X] T011 [US1] In `src/App.svelte`, add `overflow: hidden; display:
   -webkit-box; -webkit-box-orient: vertical;` and a `-webkit-line-clamp:
   {topStripLayout.readout.maxLines}` inline style to the visible `.readout`
   element (FR-002's structural clip: the box is physically incapable of
