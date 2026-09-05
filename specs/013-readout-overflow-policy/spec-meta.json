@@ -2,7 +2,8 @@
   "issue": 43,
   "spec_dir": "specs/013-readout-overflow-policy",
   "feature_num": "013",
-  "stage": "implement",
+  "stage": "review",
   "iteration": 1,
-  "spec_branch": "spec/013-readout-overflow-policy"
+  "spec_branch": "spec/013-readout-overflow-policy",
+  "pending_re_review_from": []
 }
