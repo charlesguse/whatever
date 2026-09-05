@@ -55,6 +55,32 @@ phone.
 
 This spec changes no physics, no cave, and no theme data.
 
+## Clarifications
+
+### Session 2026-09-05 — maintainer review on issue #43
+
+- **FR-011, overflow policy**: **grow-then-elide, as drafted**. One-line ellipsis
+  drops values at 320 px and contradicts 005 FR-021 and 012 SC-002, which both
+  require all four readout values visible; clipping with no indication is
+  undiagnosable from a bug report; theme-provided short labels add a
+  theme-contract field for a problem that is not about theming and do not help
+  the case that actually lengthens the string, a five-digit score.
+- **FR-009, growth ceiling**: **one third of the available box height stands** —
+  measurable, testable without a browser, and generous enough never to bind in
+  practice. Restated as a backstop that should never be reached rather than a
+  budget to spend, so that routinely hitting it reads as an alarm.
+- **FR-016 / FR-016a / FR-016b and SC-006, settling**: the width/height feedback
+  loop is severed **structurally rather than by bounding iterations**. The band's
+  usable width is computed from the growth allowance rather than from the height
+  the band achieves, which makes the placement graph acyclic and placement
+  single-pass; idempotence becomes provable from the rule's inputs instead of
+  asserted by watching it converge. The shell's two DOM measurement passes are a
+  measurement detail with a fixed count, not a convergence loop.
+- **FR-017**: "byte-for-byte" replaced with "visually indistinguishable" — an
+  arrangement is not bytes, and SC-004 already states the testable form.
+- **SC-002**: the 18 px and 36 px spill figures are reference measurements of one
+  string in one build, and must not be hard-coded by a test as expected values.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - The whole readout, inside its own box, on a small phone (Priority: P1)
@@ -121,8 +147,8 @@ the fix additive rather than a trade.
 content ranging from one line to the tallest the cap permits, and assert that
 the mute and picker boxes are identical to the ones produced for the one-line
 case, that all 012 properties (non-overlap, containment, clear of reserved
-regions) still hold, and that re-running the rule on its own output converges to
-the same arrangement.
+regions) still hold, and that re-running the rule on its own output returns the
+same arrangement in a single pass — with no iteration to converge.
 
 **Acceptance Scenarios**:
 
@@ -139,14 +165,16 @@ the same arrangement.
    is placed, **Then** its box does not intersect the reserved bottom band, and
    the cave and the controls below remain reachable.
 5. **Given** the arrangement the rule returns, **When** placement is recomputed
-   from the same measurements, **Then** it returns the same arrangement — the
-   readout's height feeding back into the layout cannot make the strip oscillate
-   between a tall and a short state.
+   from the same measurements, **Then** it returns the same arrangement — and it
+   does so because the readout's achieved height is not an input to the layout
+   at all, so there is no feedback that could make the strip oscillate between a
+   tall and a short state.
 6. **Given** a grown readout, **When** the theme picker's collapse decision is
    made, **Then** it is still made from natural (unwrapped) sizes as 012 FR-012a
    requires — a readout that wraps must not change whether the picker collapses.
 7. **Given** a resize or rotation, **When** the strip is recomputed, **Then**
-   it settles within a bounded number of measurement passes, and not once per
+   the shell measures a fixed two times — natural sizes, then heights at the
+   capped widths — places once from those numbers, and does not recompute per
    frame or per simulation tick.
 
 ---
@@ -258,8 +286,8 @@ those assertions.
   phone, a short score): the readout stays one line and looks as it does today —
   growth is a consequence of need, not a new baseline.
 - **A resize arriving while a height measurement for the previous width is still
-  in effect**: placement is a function of the latest measurement only, and
-  settles within a bounded number of passes rather than chasing itself.
+  in effect**: placement is a function of the latest measurement only, computed
+  in one pass, so a stale height is replaced rather than chased.
 - **Desktop, unchanged**: at a wide window nothing is capped, so nothing wraps,
   elides, or grows, and the strip is visually identical to today's.
 
@@ -314,10 +342,12 @@ those assertions.
   FR-004, bounded so that the grown box still lies entirely inside the available
   box, still clears every region the on-screen touch controls reserve, and still
   leaves the cave playable. The bound is at most **one third of the available
-  box's height**. [NEEDS CLARIFICATION: is one third of the available height the
-  right ceiling for how much of a small screen the readout may claim — at 320 px
-  the text needs about 80 px, which is well inside it, but a future longer
-  readout could take much more?]
+  box's height**. This ceiling is a **backstop, not a budget**: at 320 px the
+  measured need is about 80 px, and even a phone in landscape leaves room for
+  roughly four lines inside the bound, so in normal operation the bound is never
+  reached. A change that starts routinely hitting the ceiling — and so routinely
+  eliding under FR-010 — is a signal that the readout's content has outgrown the
+  strip, not a normal outcome to be accommodated by raising the bound.
 - **FR-010**: When an occupant's content cannot fit even at the FR-009 bound,
   the content MUST be reduced to fit — elided with a visible indication that it
   is truncated — while FR-001 continues to hold. The box never yields, and the
@@ -325,13 +355,15 @@ those assertions.
 - **FR-011**: The policy for a capped occupant MUST be **grow the box to fit the
   content, then elide what still does not fit**, applied uniformly to every
   occupant the rule places smaller than its natural size. It MUST NOT be
-  configured per occupant, per theme, or per screen. [NEEDS CLARIFICATION: is
-  grow-then-elide the policy the maintainer wants? The alternatives named in the
-  issue are (a) keep the readout one line and ellipsize it, which loses values
-  at 320 px, and (b) leave the band's height alone and clip, which hides text
-  with no indication. A fourth option — theme-provided short-form readout labels
-  for narrow screens — would keep every value visible on one line but adds a
-  field to the theme contract.]
+  configured per occupant, per theme, or per screen. The three alternatives the
+  issue named are rejected on the record: a one-line ellipsis drops values at
+  320 px, contradicting 005 FR-021 and 012 SC-002, which both require all four
+  readout values visible; clipping with no indication hides text with nothing to
+  signal it is hidden, which is undiagnosable from a bug report; and
+  theme-provided short-form labels add a theme-contract field for a problem that
+  is not about theming and does not help the case that actually lengthens the
+  string — a five-digit score. Grow-then-elide keeps every value visible in
+  every realistic case and lets FR-001 be absolute in the ones nobody predicted.
 - **FR-012**: No occupant's hit target may end up smaller than it is today as a
   result of this feature (012 FR-011), and no control may become unreachable or
   unlabelled because its content was elided.
@@ -349,17 +381,35 @@ those assertions.
 - **FR-015**: The theme picker's expanded-versus-collapsed decision MUST remain a
   function of natural sizes only (012 FR-012a). Whether the readout wraps MUST
   NOT change that decision in either direction.
-- **FR-016**: Recomputation MUST remain idempotent (012 FR-018): feeding the
-  rule an unchanged screen and unchanged content MUST yield an unchanged
-  arrangement. Because an occupant's height now depends on the width the rule
-  gave it, and the rule's caps depend on heights, the shell MUST settle this in
-  a **bounded** number of measurement passes per resize, orientation change, or
-  content change — with a stated maximum, no unbounded loop, and no
-  recomputation per frame or per simulation tick.
+- **FR-016**: The arrangement MUST be a **single-pass** function of (available
+  box, reserved regions, natural sizes, height-for-width metrics), with **no
+  fixed-point iteration**. Idempotence (012 FR-018) is therefore structural, in
+  the same way 012 FR-012a's collapse decision is: it follows from the rule
+  reading only its inputs, not from watching a loop converge.
+- **FR-016a**: To make FR-016 achievable, the band's usable width MUST be
+  computed from the **growth allowance** — the maximum height the band may reach
+  under FR-009 — and never from the height the band actually achieves. Today's
+  only cycle runs: achieved band height → which reserved regions overlap the
+  band vertically → the band's usable width → the readout's width cap → the
+  readout's height at that cap → achieved band height. Subtracting reserved
+  regions against the allowance rather than the achievement severs that cycle at
+  its only closing edge, because the allowance depends on inputs alone. Every
+  other edge is already acyclic: the readout's cap is computed against the mute
+  control's and the picker's *natural* widths (012 step 4), and FR-013 keeps
+  their boxes independent of the readout's height. It is not enough that the
+  loop would not oscillate on the device shapes checked so far — that is exactly
+  the class of guarantee 012 exists to eliminate, and an iteration count is a
+  convention no node test can fail when a later change breaks it.
+- **FR-016b**: The shell MAY take a **fixed count of two** DOM measurement
+  passes per resize, orientation change, or content change — natural sizes
+  first, then heights at the capped widths — and MUST take no more. That is a
+  measurement detail with a fixed count, not a convergence loop: placement
+  itself is computed once, from those numbers. There MUST be no recomputation
+  per frame or per simulation tick.
 - **FR-017**: At viewport sizes where nothing is capped, the rendered result MUST
-  be byte-for-byte the arrangement that ships today: a single-line readout, the
-  familiar leading/centre/trailing positions (012 FR-020), no wrapping and no
-  elision.
+  be visually indistinguishable from the arrangement that ships today: a
+  single-line readout, the familiar leading/centre/trailing positions (012
+  FR-020), no wrapping and no elision.
 - **FR-018**: Every existing behavior of the three controls MUST be preserved —
   the mute control still reports its pressed state to assistive technology, the
   theme picker still marks and reports the active theme, activating either still
@@ -384,7 +434,10 @@ those assertions.
   it was given MUST fail at 360 px and 320 px.
 - **FR-022**: A node test MUST pin FR-013 — that the mute and picker boxes are
   identical across readout contents of differing heights at the same viewport —
-  and FR-016's bounded settling.
+  and FR-016's single-pass idempotence, including FR-016a: an arrangement
+  computed from a deliberately wrong achieved band height MUST be identical to
+  one computed from the correct height, because the achieved height is not an
+  input to the usable-width calculation.
 - **FR-023**: The by-hand check MUST be recorded as an item in the existing
   **"Standing checks"** section of `docs/manual-verification.md`, alongside the
   012 item and clearly apart from the dated per-spec pass log, instructing the
@@ -406,7 +459,11 @@ those assertions.
   and never derived from a measurement the viewport was allowed to wrap.
 - **Growth Allowance**: the bounded extra height an occupant's box may take to
   fit its content (FR-009), derived from the available box and the reserved
-  regions. Zero when there is no room to grow.
+  regions. Zero when there is no room to grow. It is also what the reserved-region
+  subtraction is computed against (FR-016a) — the allowance, never the height a
+  box achieves — which is what keeps the placement graph acyclic and placement
+  single-pass. Because it depends only on inputs, it is a backstop the rule
+  reasons with, not a value the rule discovers.
 - **Capped Occupant**: an occupant whose placed box is smaller than its natural
   size in either dimension. The set is data, not a hard-coded list — the readout
   is the only member today, and the policy applies to any future member without
@@ -427,8 +484,10 @@ those assertions.
   Enforced by a node test, not by inspection.
 - **SC-002**: At 360 px and 320 px, the readout's rendered text is entirely on
   the readout's own background, with zero pixels of text on the cave —
-  confirmed by the maintainer on a real device or a device-emulated width, and
-  measured as 18 px and 36 px of spill today.
+  confirmed by the maintainer on a real device or a device-emulated width. The
+  18 px and 36 px of spill measured today are the maintainer's reading of one
+  string in one build: reference points for what the defect looks like, and
+  explicitly NOT values any test may hard-code as expected.
 - **SC-003**: At 412 px the rendered result is unchanged from the current build:
   a two-line readout with its text inside the band. Spec 012's SC-002 continues
   to pass, confirmed by the maintainer.
@@ -438,11 +497,12 @@ those assertions.
 - **SC-005**: For any two readout contents needing different heights at the same
   viewport, the mute control's box and the theme picker's box are identical,
   asserted by a node test.
-- **SC-006**: Re-running the rule on its own output returns an identical
-  arrangement for the grown, ungrown, expanded, and collapsed cases across the
-  whole pinned viewport set, and the shell settles each reflow within its stated
-  maximum number of measurement passes — asserted by a node test, so a
-  height-feeds-width dependency cannot flicker.
+- **SC-006**: Placement is one pass and there is no second one: re-running the
+  rule on its own output returns an identical arrangement for the grown,
+  ungrown, expanded, and collapsed cases across the whole pinned viewport set,
+  and an arrangement computed from a deliberately wrong achieved band height is
+  identical to one computed from the correct height — asserted by a node test,
+  so there is no height-feeds-width dependency left to flicker.
 - **SC-007**: A deliberate regression that pins an occupant's placed height to
   its unwrapped natural height fails the suite at 360 px and 320 px on a runner
   with no browser.

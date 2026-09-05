@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -32,23 +32,31 @@
 ## Notes
 
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`
+- All items now pass; clarifications resolved 2026-09-05, spec is ready to plan
 
-### Open [NEEDS CLARIFICATION] markers (2 of a maximum 3)
+### Resolved [NEEDS CLARIFICATION] markers (0 open)
 
-Both are carried deliberately. The issue itself states the overflow behaviour is
-"an open design question — clip, ellipsis, or grow the band to fit — that needs
-its own spec decision before implementation", so the spec states a default for
-each and flags the choice rather than silently deciding it. Both markers sit on
-requirements that are otherwise fully specified, so the spec is implementable as
-written if the defaults stand.
+Both markers the draft carried were resolved by the maintainer's review on issue
+#43 and are recorded in the spec's **Clarifications** section. Both defaults
+stood:
 
-1. **FR-011** — is grow-then-elide the wanted policy, versus one-line ellipsis,
-   clip, or theme-provided short labels? Default in the spec: grow, then elide.
-   Scope impact: the alternatives change what a player can read at 320 px, and
-   the theme-labels option would add a field to the theme contract.
-2. **FR-009** — is one third of the available box height the right ceiling for
-   growth? Default in the spec: one third. UX impact: bounds how much cave a
-   long readout may cover on a small screen.
+1. **FR-011** — grow-then-elide confirmed, with the three rejected alternatives
+   (one-line ellipsis, clip-with-no-indication, theme-provided short labels) and
+   the reason each was rejected now stated in the requirement itself.
+2. **FR-009** — one third of the available box height confirmed, restated as a
+   backstop that should never be reached rather than a budget to spend.
+
+### Requirement restated during clarification
+
+The same review required FR-016 be reworked: the draft asked the shell to settle
+in "a bounded number of measurement passes ... with a stated maximum" and stated
+no maximum, which deferred a real decision to the plan stage. The width/height
+feedback loop is now severed structurally instead — the band's usable width is
+computed from the growth allowance rather than from the height the band achieves
+(FR-016a), making placement single-pass (FR-016) and the shell's two DOM
+measurement passes a fixed-count measurement detail (FR-016b). SC-006 and FR-022
+were updated to match, and the "settles within a bounded number of passes"
+language was removed from US2 and the edge cases.
 
 ### Content-quality note
 
