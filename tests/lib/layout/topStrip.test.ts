@@ -386,6 +386,97 @@ describe('computeTopStripLayout — reserved regions and rotation (US2, FR-009, 
   });
 });
 
+describe('computeTopStripLayout — the mute and picker boxes never depend on the readout (US2, FR-013, FR-022, SC-005)', () => {
+  it('muteButton and themePicker rects are identical across differing readout heights, at every pinned viewport', () => {
+    for (const [, box, reservedRects] of PINNED_VIEWPORTS) {
+      const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+      const growthAllowance = box.height / 3;
+      const oneLine = computeTopStripLayout(box, reservedRects, sizes, READOUT_TYPICAL.height);
+      const tallestPermitted = computeTopStripLayout(box, reservedRects, sizes, growthAllowance);
+      // Deliberately wrong: larger than growthAllowance, standing in for a
+      // stale or buggy measurement (FR-022).
+      const deliberatelyWrong = computeTopStripLayout(box, reservedRects, sizes, growthAllowance + 10_000);
+      expect(tallestPermitted.muteButton.rect).toEqual(oneLine.muteButton.rect);
+      expect(deliberatelyWrong.muteButton.rect).toEqual(oneLine.muteButton.rect);
+      expect(tallestPermitted.themePicker!.rect).toEqual(oneLine.themePicker!.rect);
+      expect(deliberatelyWrong.themePicker!.rect).toEqual(oneLine.themePicker!.rect);
+    }
+  });
+});
+
+describe('computeTopStripLayout — single-pass, structurally acyclic idempotence (US2, FR-016, FR-016a, FR-016b, SC-006)', () => {
+  it("computeReadoutWidthCap's result never depends on a later readoutHeightAtCapWidth", () => {
+    // True by signature — computeReadoutWidthCap never takes that parameter
+    // at all — asserted directly as a regression guard (FR-016).
+    const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+    const capA = computeReadoutWidthCap(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+    const capB = computeReadoutWidthCap(NARROWEST_PORTRAIT, NO_RESERVED_RECTS, sizes);
+    expect(capB).toBe(capA);
+  });
+
+  it('two calls with identical arguments, including the same readoutHeightAtCapWidth, are deep-equal (statelessness)', () => {
+    for (const [, box, reservedRects] of PINNED_VIEWPORTS) {
+      const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+      const first = computeTopStripLayout(box, reservedRects, sizes, 48);
+      const second = computeTopStripLayout(box, reservedRects, sizes, 48);
+      expect(second).toEqual(first);
+    }
+  });
+
+  it('a deliberately wrong achieved band height only ever reaches the readout own rect.height/capped/maxLines', () => {
+    for (const [, box, reservedRects] of PINNED_VIEWPORTS) {
+      const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+      const growthAllowance = box.height / 3;
+      const correct = computeTopStripLayout(box, reservedRects, sizes, READOUT_TYPICAL.height);
+      const wrong = computeTopStripLayout(box, reservedRects, sizes, growthAllowance + 10_000);
+      expect(wrong.muteButton).toEqual(correct.muteButton);
+      expect(wrong.themePicker).toEqual(correct.themePicker);
+      expect(wrong.readout!.rect.x).toBe(correct.readout!.rect.x);
+      expect(wrong.readout!.rect.y).toBe(correct.readout!.rect.y);
+      expect(wrong.readout!.rect.width).toBe(correct.readout!.rect.width);
+    }
+  });
+});
+
+describe('computeTopStripLayout — a grown readout never flips the collapse decision (US2, FR-012a, FR-015, AC6)', () => {
+  it('themePicker.collapsed stays fixed across readout heights from one line to the tallest permitted, at a borderline viewport', () => {
+    // typicalReadout at PORTRAIT_360 is borderline: naturalSum (346) exceeds
+    // usableWidth (344) by only 2px — exactly where a height-dependent
+    // regression would flip the decision if one crept back in.
+    const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+    const growthAllowance = PORTRAIT_360.height / 3;
+    const heights = [READOUT_TYPICAL.height, heightForWidth(READOUT_TYPICAL, 1), growthAllowance];
+    const decisions = heights.map(
+      (h) => computeTopStripLayout(PORTRAIT_360, NO_RESERVED_RECTS, sizes, h).themePicker?.collapsed
+    );
+    for (const decision of decisions) {
+      expect(decision).toBe(decisions[0]);
+    }
+  });
+});
+
+describe('computeTopStripLayout — 012 properties still hold with a grown readout (US2, FR-007, FR-008, FR-009, FR-014)', () => {
+  for (const [label, box, reservedRects] of PINNED_VIEWPORTS) {
+    it(`no intersection, full containment, and reserved-region clearance hold at the tallest permitted readout height (${label})`, () => {
+      const sizes = OCCUPANT_SIZE_SAMPLES.typicalReadout;
+      const growthAllowance = box.height / 3;
+      const layout = computeTopStripLayout(box, reservedRects, sizes, growthAllowance);
+      const rects = collectRects(layout);
+      for (let i = 0; i < rects.length; i++) {
+        for (let j = i + 1; j < rects.length; j++) {
+          expect(rectsIntersect(rects[i], rects[j])).toBe(false);
+        }
+      }
+      for (const rect of rects) {
+        expect(rectFullyInside(rect, box)).toBe(true);
+        for (const reserved of reservedRects) {
+          expect(rectsIntersect(rect, reserved)).toBe(false);
+        }
+      }
+    });
+  }
+});
+
 describe('computeTopStripLayout — theme count scaling (US3, FR-012, FR-014, SC-009)', () => {
   // READOUT_TITLE_WIDE forces the collapse decision at every one of these
   // theme counts (the point of this describe block: the collapsed form's

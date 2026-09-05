@@ -237,7 +237,7 @@ returns the same arrangement (spec.md User Story 2, Acceptance Scenarios
 
 ### Tests for User Story 2
 
-- [ ] T012 [P] [US2] In `tests/lib/layout/topStrip.test.ts`, add the FR-013/
+- [X] T012 [P] [US2] In `tests/lib/layout/topStrip.test.ts`, add the FR-013/
   FR-022/SC-005 identity assertion: call `computeTopStripLayout` twice at
   the same viewport and occupant sizes, differing only in
   `readoutHeightAtCapWidth` (one a one-line value, one T003's tallest
@@ -245,7 +245,7 @@ returns the same arrangement (spec.md User Story 2, Acceptance Scenarios
   `growthAllowance` standing in for a stale/buggy measurement), and assert
   `muteButton.rect` and `themePicker.rect` are deep-equal across all three
   calls, at every pinned viewport.
-- [ ] T013 [P] [US2] In `tests/lib/layout/topStrip.test.ts`, add the
+- [X] T013 [P] [US2] In `tests/lib/layout/topStrip.test.ts`, add the
   FR-016/FR-016a/SC-006 settling assertions: (a) `computeReadoutWidthCap`'s
   return value is identical regardless of what `readoutHeightAtCapWidth` a
   subsequent `computeTopStripLayout` call receives (true by signature —
@@ -257,13 +257,13 @@ returns the same arrangement (spec.md User Story 2, Acceptance Scenarios
   `readoutHeightAtCapWidth`) is deep-equal to one computed with the correct
   value in every field **except** `readout.rect.height`/`capped`/
   `maxLines` — pinning that the wrong value never reaches steps 1-5.
-- [ ] T014 [US2] In `tests/lib/layout/topStrip.test.ts`, add the 012 FR-012a
+- [X] T014 [US2] In `tests/lib/layout/topStrip.test.ts`, add the 012 FR-012a
   restatement (AC6): across `readoutHeightAtCapWidth` values from one line
   to the tallest permitted, at a viewport where the natural-size sum forces
   a borderline collapse decision, assert `themePicker.collapsed` does not
   change — the collapse decision is made from natural sizes only, and a
   wrapped readout must not flip it either direction.
-- [ ] T015 [US2] In `tests/lib/layout/topStrip.test.ts`, add a grown-readout
+- [X] T015 [US2] In `tests/lib/layout/topStrip.test.ts`, add a grown-readout
   012-properties sweep: at every pinned viewport, both orientations, with
   each viewport's `reservedRects` active, and a `readoutHeightAtCapWidth`
   at the tallest the growth allowance permits, assert no two occupant boxes

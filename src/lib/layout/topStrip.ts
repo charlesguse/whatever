@@ -208,7 +208,14 @@ export function computeTopStripLayout(
     sizes.readout && readoutHeight !== undefined
       ? {
           x: usableLeft,
-          y: centerY(readoutHeight),
+          // Centered against the readout's natural (single-line) height, not
+          // its grown height — so the box's top edge is fixed and growth
+          // only ever extends downward. Centering against the achieved
+          // height instead would move readout.rect.y whenever the content's
+          // height changed, which is exactly the dependency FR-016a/FR-022
+          // rule out for the other occupants and which step 6 never lists
+          // as something the readout's own height resolution touches.
+          y: centerY(sizes.readout.height),
           width: Math.max(0, Math.min(sizes.readout.width, readoutCap)),
           height: readoutHeight,
         }
