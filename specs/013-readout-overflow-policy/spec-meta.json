@@ -3,7 +3,7 @@
   "spec_dir": "specs/013-readout-overflow-policy",
   "feature_num": "013",
   "stage": "implement",
-  "iteration": 1,
+  "iteration": 2,
   "spec_branch": "spec/013-readout-overflow-policy",
   "pending_re_review_from": ["charlesguse"]
 }
