@@ -362,15 +362,28 @@
   });
 
   // The shell's second-pass measurement (FR-016b): the readout's real
-  // wrapped height at exactly readoutWidthCap, re-read on the same triggers
-  // topStripSizes already uses. undefined before topStripSizes/hudText exist
-  // yet, or while no readout is shown — computeTopStripLayout falls back to
-  // the natural single-line height in that case (Edge Cases).
-  let readoutHeightAtCapWidth = $derived.by(() => {
+  // wrapped height at exactly readoutWidthCap. Must re-run on every input
+  // that can change that cap width, or a stale height reaches
+  // computeTopStripLayout while -webkit-line-clamp silently cuts the text
+  // with no indication (FR-011). Four trigger inputs, all read below or via
+  // readoutWidthCap's own dependencies: insetBox, touchLayout/reservedRects
+  // (flips via controlsVisible/lastInputSource/session.screen), hudText, and
+  // theme.displayName. A future change adding a fifth cap input must extend
+  // this list, not rely on call-site convention.
+  //
+  // This is an $effect rather than a $derived: $effect is documented to run
+  // only after the DOM has been updated, so by the time it reads
+  // getBoundingClientRect() the probe's width style (also driven by
+  // readoutWidthCap) is guaranteed to already reflect the new value — a
+  // $derived reading readoutWidthCap directly would race the same DOM
+  // update with no such guarantee.
+  let readoutHeightAtCapWidth: number | undefined = $state(undefined);
+  $effect(() => {
     topStripProbeTick;
     void theme.displayName;
-    if (hudText === undefined || !readoutCappedProbeEl) return undefined;
-    return readoutCappedProbeEl.getBoundingClientRect().height;
+    void readoutWidthCap;
+    readoutHeightAtCapWidth =
+      hudText === undefined || !readoutCappedProbeEl ? undefined : readoutCappedProbeEl.getBoundingClientRect().height;
   });
 
   // FR-017: recomputed only when insetBox, the touch layout's reservedRects,

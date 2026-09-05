@@ -202,7 +202,13 @@ export function computeTopStripLayout(
   // to (but never beyond) growthAllowance.
   const contentHeight = sizes.readout ? (readoutHeightAtCapWidth ?? sizes.readout.height) : undefined;
   const readoutHeight = contentHeight !== undefined ? Math.min(contentHeight, growthAllowance) : undefined;
-  const maxLines = sizes.readout ? Math.max(1, Math.floor(growthAllowance / sizes.readout.height)) : 1;
+  // A zero or unavailable natural height (Edge Cases: "Text metrics that are
+  // unavailable or report zero") must not reach this division — dividing by
+  // zero yields Infinity, and `-webkit-line-clamp: Infinity` is an invalid
+  // CSS declaration the browser silently drops. Fall back to 1 line, the
+  // same single-line default the height fallback above uses.
+  const maxLines =
+    sizes.readout && sizes.readout.height > 0 ? Math.max(1, Math.floor(growthAllowance / sizes.readout.height)) : 1;
 
   const readoutRect: Rect | undefined =
     sizes.readout && readoutHeight !== undefined
