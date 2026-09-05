@@ -28,6 +28,10 @@ const WIDE_DESKTOP: InsetBox = { x: 0, y: 0, width: 1024, height: 768 };
 // picker still fits here, so this is where FR-013's priority order (picker
 // gives way first, never the readout) matters most.
 const REPORTING_DEVICE_PORTRAIT: InsetBox = { x: 0, y: 0, width: 412, height: 915 };
+const REPORTING_DEVICE_LANDSCAPE: InsetBox = { x: 0, y: 0, width: 915, height: 412 };
+// FR-020's third pinned width: 360 CSS px, between 320 and 412.
+const PORTRAIT_360: InsetBox = { x: 0, y: 0, width: 360, height: 640 };
+const LANDSCAPE_360: InsetBox = { x: 0, y: 0, width: 640, height: 360 };
 
 // Matching reservedRects samples, shaped exactly like
 // computeTouchControlLayout's own output (a bottom band in portrait, two
@@ -41,9 +45,37 @@ const LANDSCAPE_RESERVED_RECTS: readonly Rect[] = computeTouchControlLayout(
   NARROWEST_LANDSCAPE,
   computeOrientation(NARROWEST_LANDSCAPE)
 ).reservedRects;
+const PORTRAIT_360_RESERVED_RECTS: readonly Rect[] = computeTouchControlLayout(
+  PORTRAIT_360,
+  computeOrientation(PORTRAIT_360)
+).reservedRects;
+const LANDSCAPE_360_RESERVED_RECTS: readonly Rect[] = computeTouchControlLayout(
+  LANDSCAPE_360,
+  computeOrientation(LANDSCAPE_360)
+).reservedRects;
+const REPORTING_DEVICE_PORTRAIT_RESERVED_RECTS: readonly Rect[] = computeTouchControlLayout(
+  REPORTING_DEVICE_PORTRAIT,
+  computeOrientation(REPORTING_DEVICE_PORTRAIT)
+).reservedRects;
+const REPORTING_DEVICE_LANDSCAPE_RESERVED_RECTS: readonly Rect[] = computeTouchControlLayout(
+  REPORTING_DEVICE_LANDSCAPE,
+  computeOrientation(REPORTING_DEVICE_LANDSCAPE)
+).reservedRects;
 // "No touch controls visible" cases (Edge Cases) — an empty array, exactly
 // what App.svelte passes when touchLayout is undefined.
 const NO_RESERVED_RECTS: readonly Rect[] = [];
+
+// FR-020's full pinned viewport set (320/360/412, both orientations), each
+// paired with its own reservedRects sample — used by every fit/cap
+// assertion below that must hold at all three pinned widths.
+const PINNED_VIEWPORTS: readonly [string, InsetBox, readonly Rect[]][] = [
+  ['320 portrait', NARROWEST_PORTRAIT, PORTRAIT_RESERVED_RECTS],
+  ['320 landscape', NARROWEST_LANDSCAPE, LANDSCAPE_RESERVED_RECTS],
+  ['360 portrait', PORTRAIT_360, PORTRAIT_360_RESERVED_RECTS],
+  ['360 landscape', LANDSCAPE_360, LANDSCAPE_360_RESERVED_RECTS],
+  ['412 portrait', REPORTING_DEVICE_PORTRAIT, REPORTING_DEVICE_PORTRAIT_RESERVED_RECTS],
+  ['412 landscape', REPORTING_DEVICE_LANDSCAPE, REPORTING_DEVICE_LANDSCAPE_RESERVED_RECTS],
+];
 
 // A typical in-play readout and the title screen's widest readout line
 // (spec.md Acceptance Scenario 4) — both natural sizes, never hard-coded
@@ -51,6 +83,18 @@ const NO_RESERVED_RECTS: readonly Rect[] = [];
 const READOUT_TYPICAL: Size = { width: 140, height: 24 };
 const READOUT_TITLE_WIDE: Size = { width: 260, height: 24 };
 const MUTE_BUTTON: Size = { width: 44, height: 32 };
+
+// A plain stand-in for what the browser's text metrics would report for a
+// readout wrapped to a given capped width (data-model.md's Occupant Content
+// Size entity: "no DOM") — narrower widths need more lines and so report a
+// taller height, and any width at or beyond the readout's own natural width
+// needs only its one natural line. Deliberately invented numbers, not the
+// maintainer's measured 44/62/80px or 18/36px spill figures (SC-002).
+function heightForWidth(readout: Size, capWidth: number): number {
+  if (capWidth >= readout.width) return readout.height;
+  const lines = Math.ceil(readout.width / Math.max(1, capWidth));
+  return readout.height * lines;
+}
 
 // One theme button's natural width plus its row gap, standing in for the
 // measured widths of one through four registered themes (data-model.md's

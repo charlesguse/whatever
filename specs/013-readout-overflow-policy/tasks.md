@@ -91,7 +91,7 @@ a height-for-width stand-in table (data-model.md's "Occupant Content Size").
 **⚠️ CRITICAL**: No user story's fit/cap tests can be written until this
 phase is complete.
 
-- [ ] T002 In `tests/lib/layout/topStrip.test.ts`, add the 360 CSS px
+- [X] T002 In `tests/lib/layout/topStrip.test.ts`, add the 360 CSS px
   portrait/landscape `InsetBox` pair (`PORTRAIT_360`/`LANDSCAPE_360`)
   alongside the existing 320 (`NARROWEST_PORTRAIT`/`NARROWEST_LANDSCAPE`) and
   412 (`REPORTING_DEVICE_PORTRAIT`; add a matching `REPORTING_DEVICE_LANDSCAPE`)
@@ -99,7 +99,7 @@ phase is complete.
   and matching `reservedRects` samples for 360 derived the same way the
   existing 320/412 samples are (via `computeTouchControlLayout`, not
   hand-rolled).
-- [ ] T003 In `tests/lib/layout/topStrip.test.ts`, add a height-for-width
+- [X] T003 In `tests/lib/layout/topStrip.test.ts`, add a height-for-width
   stand-in helper (data-model.md's Occupant Content Size entity: "a plain
   stand-in for what the browser's text metrics report, supplied as data — no
   DOM") returning a plausible multi-line height for `READOUT_TYPICAL` and
